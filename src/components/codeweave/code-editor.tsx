@@ -91,6 +91,13 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
 
   return (
     <>
+      <style>
+        {`
+          .caret-transparent {
+            caret-color: transparent;
+          }
+        `}
+      </style>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline">JavaScript Input</CardTitle>
