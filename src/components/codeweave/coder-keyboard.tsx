@@ -87,7 +87,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
                   {
                     'flex-grow-[2]': key === 'Backspace' || key === 'Enter',
                     'flex-grow-[1.5]': key === 'Tab' || key === 'Shift',
-                    'flex-grow-[0.75]': key === 'CapsLock',
+                    'flex-grow-[0.375]': key === 'CapsLock',
                     'flex-grow-[8]': key === ' ',
                     'bg-gray-600': (isShift && shift) || (isCapsLock && capsLock),
                   }
