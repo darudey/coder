@@ -47,6 +47,10 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         newCode = code.substring(0, start) + '  ' + code.substring(end);
         newCursorPosition = start + 2;
         break;
+      case 'Ctrl':
+      case 'CapsLock':
+        // Do nothing for control keys
+        return;
       default:
         let insertion = key;
         let cursorOffset = key.length;
