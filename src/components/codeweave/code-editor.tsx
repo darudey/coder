@@ -8,35 +8,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import hljs from 'highlight.js/lib/core';
-import javascript from 'highlight.js/lib/languages/javascript';
-
-hljs.registerLanguage('javascript', javascript);
 
 interface CodeEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
-  withSyntaxHighlighting: boolean;
 }
 
-export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntaxHighlighting }) => {
+export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const metaKeyPressed = useRef(false);
   const [ctrlActive, setCtrlActive] = useState(false);
-
-  const highlightedCode = withSyntaxHighlighting
-    ? hljs.highlight(code, { language: 'javascript' }).value
-    : code;
-
-  const handleScroll = () => {
-    if (textareaRef.current && preRef.current) {
-      preRef.current.scrollTop = textareaRef.current.scrollTop;
-      preRef.current.scrollLeft = textareaRef.current.scrollLeft;
-    }
-  };
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
@@ -128,8 +111,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntax
       if (
         textareaRef.current &&
         !textareaRef.current.contains(target) &&
-        (!keyboard || !keyboard.contains(target)) &&
-        preRef.current && !preRef.current.contains(target)
+        (!keyboard || !keyboard.contains(target))
       ) {
         setIsKeyboardVisible(false);
       }
@@ -167,16 +149,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntax
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
         <CardContent className="flex flex-col flex-grow p-0 relative">
-          {withSyntaxHighlighting && (
-            <pre
-              ref={preRef}
-              aria-hidden="true"
-              className="absolute inset-0 m-0 font-code text-base"
-              style={editorStyles}
-              dangerouslySetInnerHTML={{ __html: highlightedCode + '<br />' }}
-              onClick={() => textareaRef.current?.focus()}
-            />
-          )}
           <Textarea
             ref={textareaRef}
             value={code}
@@ -186,15 +158,11 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntax
                     onCodeChange(e.target.value)
                 }
             }}
-            onScroll={handleScroll}
             onKeyDown={handleNativeKeyDown}
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
             className={cn(
-              "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black",
-              withSyntaxHighlighting
-                ? 'bg-transparent text-transparent'
-                : 'bg-white'
+              "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black bg-white"
             )}
             style={editorStyles}
           />

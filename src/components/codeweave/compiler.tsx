@@ -19,7 +19,6 @@ console.log(greet('World'));
 `;
 
 export interface Settings {
-  syntaxHighlighting: boolean;
   errorChecking: boolean;
 }
 
@@ -28,7 +27,6 @@ export function Compiler() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({
-    syntaxHighlighting: true,
     errorChecking: false,
   });
   const [output, setOutput] = useState<RunResult | null>(null);
@@ -49,7 +47,6 @@ export function Compiler() {
         <CodeEditor
           code={code}
           onCodeChange={setCode}
-          withSyntaxHighlighting={settings.syntaxHighlighting}
         />
       </div>
       <SettingsPanel

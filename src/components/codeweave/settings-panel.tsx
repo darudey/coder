@@ -66,19 +66,6 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         </SheetHeader>
         <div className="grid gap-6 py-6">
           <div className="flex items-center justify-between">
-            <Label htmlFor="syntax-highlighting" className="flex flex-col gap-1">
-              <span>Syntax Highlighting</span>
-              <span className="font-normal text-sm text-muted-foreground">
-                Show code with colors for better readability.
-              </span>
-            </Label>
-            <Switch
-              id="syntax-highlighting"
-              checked={settings.syntaxHighlighting}
-              onCheckedChange={(value) => handleSettingChange('syntaxHighlighting', value)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
             <Label htmlFor="error-checking" className="flex flex-col gap-1">
               <span>AI Error Checking</span>
                <span className="font-normal text-sm text-muted-foreground">
