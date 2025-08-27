@@ -104,7 +104,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
             className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-            style={{ caretColor: 'transparent' }}
           />
         </CardContent>
       </Card>
