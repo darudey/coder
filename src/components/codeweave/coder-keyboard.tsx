@@ -58,7 +58,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
   };
   
   return (
-    <div className="bg-black text-white p-2 md:px-8 md:py-4 font-code shadow-2xl rounded-t-lg">
+    <div className="bg-black text-white p-2 md:px-4 md:py-4 font-code shadow-2xl rounded-t-lg">
       {keyboardLayout.map((row, rowIndex) => (
         <div key={rowIndex} className="flex justify-center gap-1 my-1">
           {row.map((key, keyIndex) => {
