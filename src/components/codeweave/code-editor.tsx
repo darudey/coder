@@ -81,15 +81,21 @@ const getTokenClassName = (type: string) => {
 export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const metaKeyPressed = useRef(false);
   const [ctrlActive, setCtrlActive] = useState(false);
 
+  const lineCount = useMemo(() => code.split('\n').length, [code]);
+
   const handleScroll = () => {
-    if (textareaRef.current && preRef.current) {
-        preRef.current.scrollTop = textareaRef.current.scrollTop;
-        preRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    if (textareaRef.current && preRef.current && lineNumbersRef.current) {
+        const scrollTop = textareaRef.current.scrollTop;
+        const scrollLeft = textareaRef.current.scrollLeft;
+        preRef.current.scrollTop = scrollTop;
+        preRef.current.scrollLeft = scrollLeft;
+        lineNumbersRef.current.scrollTop = scrollTop;
     }
   };
 
@@ -184,7 +190,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         textareaRef.current &&
         !textareaRef.current.contains(target) &&
         (!keyboard || !keyboard.contains(target)) &&
-        preRef.current && !preRef.current.contains(target)
+        preRef.current && !preRef.current.contains(target) &&
+        lineNumbersRef.current && !lineNumbersRef.current.contains(target)
       ) {
         setIsKeyboardVisible(false);
       }
@@ -236,30 +243,49 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-        <CardContent className="flex flex-col flex-grow p-0 relative">
-          <pre
-            ref={preRef}
-            aria-hidden="true"
-            className="absolute inset-0 m-0 font-code text-base overflow-auto pointer-events-none"
-            style={editorStyles}
-          >
-            {highlightedCode}
-          </pre>
-          <Textarea
-            ref={textareaRef}
-            value={code}
-            inputMode={isMobile ? 'none' : 'text'}
-            onChange={(e) => onCodeChange(e.target.value)}
-            onScroll={handleScroll}
-            onKeyDown={handleNativeKeyDown}
-            onFocus={() => setIsKeyboardVisible(true)}
-            placeholder="Enter your JavaScript code here..."
-            className={cn(
-              "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent caret-black"
-            )}
-            style={editorStyles}
-            spellCheck="false"
-          />
+        <CardContent className="flex flex-col flex-grow p-0">
+          <div className="flex flex-grow h-full">
+            <div
+                ref={lineNumbersRef}
+                className="bg-gray-100 text-right select-none overflow-hidden"
+                style={{ ...editorStyles, paddingRight: '1rem' }}
+                aria-hidden="true"
+            >
+                {Array.from({ length: lineCount }, (_, i) => (
+                    <div
+                        key={i}
+                        className={cn("text-gray-400", i % 2 === 1 ? 'bg-gray-200' : 'bg-gray-100')}
+                    >
+                        {i + 1}
+                    </div>
+                ))}
+            </div>
+            <div className="relative flex-grow h-full">
+                <pre
+                    ref={preRef}
+                    aria-hidden="true"
+                    className="absolute inset-0 m-0 font-code text-base overflow-auto pointer-events-none"
+                    style={editorStyles}
+                >
+                    {highlightedCode}
+                </pre>
+                <Textarea
+                    ref={textareaRef}
+                    value={code}
+                    inputMode={isMobile ? 'none' : 'text'}
+                    onChange={(e) => onCodeChange(e.target.value)}
+                    onScroll={handleScroll}
+                    onKeyDown={handleNativeKeyDown}
+                    onFocus={() => setIsKeyboardVisible(true)}
+                    placeholder="Enter your JavaScript code here..."
+                    className={cn(
+                    "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent caret-black"
+                    )}
+                    style={editorStyles}
+                    spellCheck="false"
+                />
+            </div>
+          </div>
         </CardContent>
       </Card>
       <div id="coder-keyboard" className={cn(
