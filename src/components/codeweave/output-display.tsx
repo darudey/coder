@@ -30,7 +30,7 @@ export const OutputDisplay: FC<OutputDisplayProps> = ({
       );
     }
     if (!output) {
-      return <p className="text-muted-foreground p-4">Run code to see the output.</p>;
+      return <p className="text-muted-foreground p-4">Click "Run" to execute the code and see the output in a new tab.</p>;
     }
     return (
       <pre
@@ -47,7 +47,7 @@ export const OutputDisplay: FC<OutputDisplayProps> = ({
     <Card className="flex flex-col h-full overflow-hidden shadow-lg">
       <Tabs defaultValue="output" className="flex flex-col h-full">
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="font-headline">Output</CardTitle>
+          <CardTitle className="font-headline">Preview</CardTitle>
           <TabsList>
             <TabsTrigger value="output">Result</TabsTrigger>
             <TabsTrigger value="highlighted" disabled={!showSyntaxHighlighting}>

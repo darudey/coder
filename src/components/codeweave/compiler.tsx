@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getHighlightedCode, runCode, type RunResult } from '@/app/actions';
+import { getHighlightedCode } from '@/app/actions';
 import { useDebounce } from '@/hooks/use-debounce';
 import AnsiToHtml from '@/lib/ansi-to-html';
 import { CodeEditor } from './code-editor';
@@ -26,7 +26,6 @@ export interface Settings {
 
 export function Compiler() {
   const [code, setCode] = useState<string>(defaultCode);
-  const [output, setOutput] = useState<RunResult | null>(null);
   const [highlightedCode, setHighlightedCode] = useState('');
   const [isCompiling, setIsCompiling] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -40,13 +39,10 @@ export function Compiler() {
 
   const handleRun = async () => {
     setIsCompiling(true);
-    setOutput(null);
-    try {
-      const result = await runCode(code, settings.errorChecking);
-      setOutput(result);
-    } catch (e) {
-      setOutput({ output: 'An unexpected error occurred.', type: 'error' });
-    }
+    const codeToRun = encodeURIComponent(code);
+    const errorChecking = settings.errorChecking;
+    const url = `/output?code=${codeToRun}&errorChecking=${errorChecking}`;
+    window.open(url, '_blank');
     setIsCompiling(false);
   };
 
@@ -74,7 +70,7 @@ export function Compiler() {
           showKeyboard={settings.coderKeyboard}
         />
         <OutputDisplay
-          output={output}
+          output={null}
           highlightedCode={highlightedCode}
           isCompiling={isCompiling}
           showSyntaxHighlighting={settings.syntaxHighlighting}
