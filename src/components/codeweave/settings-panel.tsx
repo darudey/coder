@@ -12,6 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import type { FC } from 'react';
 import type { Settings } from './compiler';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
+import { useState } from 'react';
+import { saveApiKey } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -26,9 +31,29 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   settings,
   onSettingsChange,
 }) => {
+  const [apiKey, setApiKey] = useState('');
+  const { toast } = useToast();
+
   const handleSettingChange = (key: keyof Omit<Settings, 'coderKeyboard'>, value: boolean) => {
     onSettingsChange({ ...settings, [key]: value });
   };
+
+  const handleSaveApiKey = async () => {
+    const result = await saveApiKey(apiKey);
+    if (result.success) {
+      toast({
+        title: 'API Key Saved',
+        description: 'Your Gemini API key has been saved successfully. Please reload the page for it to take effect.',
+      });
+    } else {
+      toast({
+        title: 'Error',
+        description: result.error,
+        variant: 'destructive',
+      });
+    }
+  };
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -65,6 +90,24 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
               checked={settings.errorChecking}
               onCheckedChange={(value) => handleSettingChange('errorChecking', value)}
             />
+          </div>
+           <div className="grid gap-3">
+            <Label htmlFor="api-key" className="flex flex-col gap-1">
+                <span>Gemini API Key</span>
+                <span className="font-normal text-sm text-muted-foreground">
+                    Enter your Gemini API key to use AI features.
+                </span>
+            </Label>
+            <div className="flex gap-2">
+                <Input
+                    id="api-key"
+                    type="password"
+                    placeholder="Your Gemini API Key"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                />
+                <Button onClick={handleSaveApiKey}>Save</Button>
+            </div>
           </div>
         </div>
       </SheetContent>

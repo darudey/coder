@@ -3,6 +3,8 @@
 
 import { errorCheck } from '@/ai/flows/error-checking';
 import { syntaxHighlighting } from '@/ai/flows/syntax-highlighting';
+import fs from 'fs/promises';
+import path from 'path';
 
 export interface RunResult {
   output: string;
@@ -47,4 +49,22 @@ export async function getHighlightedCode(code: string): Promise<string> {
         console.error("Syntax highlighting failed:", e);
         return code;
     }
+}
+
+export async function saveApiKey(apiKey: string): Promise<{ success: boolean; error?: string }> {
+  if (!apiKey) {
+    return { success: false, error: 'API key cannot be empty.' };
+  }
+  
+  try {
+    // In a real app, you'd want to handle this more securely.
+    // For this prototype, we'll write it to a .env.local file.
+    const envLocalPath = path.resolve(process.cwd(), '.env.local');
+    await fs.writeFile(envLocalPath, `GEMINI_API_KEY=${apiKey}\n`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save API key:', error);
+    return { success: false, error: 'Failed to save API key on the server.' };
+  }
 }
