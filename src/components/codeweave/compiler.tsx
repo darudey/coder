@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getHighlightedCode } from '@/app/actions';
+import { runCode, getHighlightedCode, type RunResult } from '@/app/actions';
 import { useDebounce } from '@/hooks/use-debounce';
 import AnsiToHtml from '@/lib/ansi-to-html';
 import { CodeEditor } from './code-editor';
@@ -25,7 +25,7 @@ export interface Settings {
 
 export function Compiler() {
   const [code, setCode] = useState<string>(defaultCode);
-  const [highlightedCode, setHighlightedCode] = useState('');
+  const [output, setOutput] = useState<RunResult | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({
@@ -33,30 +33,14 @@ export function Compiler() {
     errorChecking: true,
   });
 
-  const debouncedCode = useDebounce(code, 500);
 
   const handleRun = async () => {
     setIsCompiling(true);
-    const codeToRun = encodeURIComponent(code);
-    const errorChecking = settings.errorChecking;
-    const url = `/output?code=${codeToRun}&errorChecking=${errorChecking}`;
-    window.open(url, '_blank');
+    const result = await runCode(code, settings.errorChecking);
+    setOutput(result);
     setIsCompiling(false);
   };
 
-  const handleHighlight = useCallback(async () => {
-    if (settings.syntaxHighlighting && debouncedCode) {
-      const ansiCode = await getHighlightedCode(debouncedCode);
-      const htmlCode = AnsiToHtml(ansiCode);
-      setHighlightedCode(htmlCode);
-    } else {
-      setHighlightedCode(debouncedCode.replace(/\n/g, '<br>'));
-    }
-  }, [debouncedCode, settings.syntaxHighlighting]);
-
-  useEffect(() => {
-    handleHighlight();
-  }, [handleHighlight]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -67,10 +51,8 @@ export function Compiler() {
           onCodeChange={setCode}
         />
         <OutputDisplay
-          output={null}
-          highlightedCode={highlightedCode}
+          output={output}
           isCompiling={isCompiling}
-          showSyntaxHighlighting={settings.syntaxHighlighting}
         />
       </div>
       <SettingsPanel
