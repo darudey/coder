@@ -48,12 +48,11 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
                 key={key}
                 variant="outline"
                 className={cn(
-                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 text-xs md:text-sm px-2',
+                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 text-xs p-0 flex-1',
                   {
-                    'w-16 sm:w-24': key === 'Backspace',
-                    'w-12 sm:w-16': key === 'Tab',
-                    'w-16 sm:w-20': key === 'Enter',
-                    'flex-grow': key === ' ',
+                    'flex-grow-[2]': key === 'Backspace' || key === 'Enter',
+                    'flex-grow-[1.5]': key === 'Tab',
+                    'flex-grow-[8]': key === ' ',
                   }
                 )}
                 onClick={() => handleKeyPress(key)}

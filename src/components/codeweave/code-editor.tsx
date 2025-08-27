@@ -72,11 +72,11 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const keyboard = document.getElementById('coder-keyboard');
+      const target = event.target as Node;
       if (
         textareaRef.current &&
-        !textareaRef.current.contains(event.target as Node) &&
-        keyboard &&
-        !keyboard.contains(event.target as Node)
+        !textareaRef.current.contains(target) &&
+        (!keyboard || !keyboard.contains(target))
       ) {
         setIsKeyboardVisible(false);
       }
@@ -85,7 +85,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [textareaRef]);
+  }, []);
   
   const showKeyboard = isMobile || isKeyboardVisible;
 
@@ -104,6 +104,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
             className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            style={{ caretColor: 'transparent' }}
           />
         </CardContent>
       </Card>
