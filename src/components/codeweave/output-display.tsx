@@ -30,7 +30,7 @@ export const OutputDisplay: FC<OutputDisplayProps> = ({
     }
     return (
       <pre
-        className={`p-4 text-sm whitespace-pre-wrap font-code ${
+        className={`p-4 text-sm whitespace-pre-wrap font-code h-full ${
           output.type === 'error' ? 'text-destructive' : 'text-foreground'
         }`}
       >
@@ -40,11 +40,8 @@ export const OutputDisplay: FC<OutputDisplayProps> = ({
   };
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline">Result</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-grow p-0 overflow-hidden">
+    <Card className="flex flex-col h-full overflow-hidden shadow-none border-0">
+        <CardContent className="flex-grow p-0 overflow-hidden h-full">
             <ScrollArea className="h-full">{renderOutput()}</ScrollArea>
         </CardContent>
     </Card>

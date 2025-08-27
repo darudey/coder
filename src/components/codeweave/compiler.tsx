@@ -6,6 +6,9 @@ import { runCode, type RunResult } from '@/app/actions';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { OutputDisplay } from './output-display';
+
 
 const defaultCode = `// Welcome to CodeWeave!
 function greet(name) {
@@ -28,17 +31,21 @@ export function Compiler() {
     syntaxHighlighting: true,
     errorChecking: true,
   });
+  const [output, setOutput] = useState<RunResult | null>(null);
+  const [isResultOpen, setIsResultOpen] = useState(false);
 
   const handleRun = async () => {
     setIsCompiling(true);
-    await runCode(code, settings.errorChecking);
+    const result = await runCode(code, settings.errorChecking);
+    setOutput(result);
+    setIsResultOpen(true);
     setIsCompiling(false);
   };
 
   return (
     <div className="flex flex-col h-screen">
       <Header onRun={handleRun} onSettings={() => setIsSettingsOpen(true)} isCompiling={isCompiling} />
-      <div className="flex-grow p-4 overflow-hidden">
+      <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
         <CodeEditor
           code={code}
           onCodeChange={setCode}
@@ -50,6 +57,16 @@ export function Compiler() {
         settings={settings}
         onSettingsChange={setSettings}
       />
+      <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
+        <DialogContent className="max-w-2xl h-3/4 flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Result</DialogTitle>
+          </DialogHeader>
+          <div className="flex-grow overflow-hidden">
+            <OutputDisplay output={output} isCompiling={isCompiling} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
