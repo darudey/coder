@@ -21,7 +21,6 @@ console.log(greet('World'));
 export interface Settings {
   syntaxHighlighting: boolean;
   errorChecking: boolean;
-  coderKeyboard: boolean;
 }
 
 export function Compiler() {
@@ -32,7 +31,6 @@ export function Compiler() {
   const [settings, setSettings] = useState<Settings>({
     syntaxHighlighting: true,
     errorChecking: true,
-    coderKeyboard: true,
   });
 
   const debouncedCode = useDebounce(code, 500);
@@ -67,7 +65,6 @@ export function Compiler() {
         <CodeEditor
           code={code}
           onCodeChange={setCode}
-          showKeyboard={settings.coderKeyboard}
         />
         <OutputDisplay
           output={null}

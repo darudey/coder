@@ -3,18 +3,20 @@
 
 import { Textarea } from '@/components/ui/textarea';
 import type { FC } from 'react';
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CodeEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
-  showKeyboard: boolean;
 }
 
-export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, showKeyboard }) => {
+export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
@@ -23,10 +25,18 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, showKeyboa
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    const newValue = code.substring(0, start) + key + code.substring(end);
+    let insertion = key;
+    let cursorOffset = key.length;
+
+    if (key.endsWith('( )') || key.endsWith('{ }') || key.endsWith('[ ]') || key.endsWith("' '") || key.endsWith('" "') || key.endsWith('` `')) {
+        insertion = key.slice(0, key.length / 2);
+        cursorOffset = key.length / 2;
+    }
+
+    const newValue = code.substring(0, start) + insertion + code.substring(end);
     onCodeChange(newValue);
 
-    const newCursorPosition = start + key.length;
+    const newCursorPosition = start + cursorOffset;
 
     requestAnimationFrame(() => {
       textarea.selectionStart = newCursorPosition;
@@ -34,6 +44,20 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, showKeyboa
       textarea.focus();
     });
   };
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (textareaRef.current && !textareaRef.current.contains(event.target as Node)) {
+        setIsKeyboardVisible(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [textareaRef]);
+  
+  const showKeyboard = isMobile || isKeyboardVisible;
 
   return (
     <Card className="flex flex-col h-full overflow-hidden shadow-lg">
@@ -45,6 +69,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, showKeyboa
           ref={textareaRef}
           value={code}
           onChange={(e) => onCodeChange(e.target.value)}
+          onFocus={() => setIsKeyboardVisible(true)}
           placeholder="Enter your JavaScript code here..."
           className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         />

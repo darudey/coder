@@ -17,7 +17,7 @@ interface SettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   settings: Settings;
-  onSettingsChange: (settings: Settings) => void;
+  onSettingsChange: (settings: Omit<Settings, 'coderKeyboard'>) => void;
 }
 
 export const SettingsPanel: FC<SettingsPanelProps> = ({
@@ -26,7 +26,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   settings,
   onSettingsChange,
 }) => {
-  const handleSettingChange = (key: keyof Settings, value: boolean) => {
+  const handleSettingChange = (key: keyof Omit<Settings, 'coderKeyboard'>, value: boolean) => {
     onSettingsChange({ ...settings, [key]: value });
   };
 
@@ -64,19 +64,6 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
               id="error-checking"
               checked={settings.errorChecking}
               onCheckedChange={(value) => handleSettingChange('errorChecking', value)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="coder-keyboard" className="flex flex-col gap-1">
-              <span>Coder Keyboard</span>
-               <span className="font-normal text-sm text-muted-foreground">
-                Show an on-screen keyboard with common symbols.
-              </span>
-            </Label>
-            <Switch
-              id="coder-keyboard"
-              checked={settings.coderKeyboard}
-              onCheckedChange={(value) => handleSettingChange('coderKeyboard', value)}
             />
           </div>
         </div>
