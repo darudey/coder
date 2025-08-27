@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import React from 'react';
+import React, { useRef } from 'react';
 import type { FC } from 'react';
 
 interface CoderKeyboardProps {
@@ -27,6 +27,47 @@ const symbolMap: { [key: string]: string } = {
 export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }) => {
   const [shift, setShift] = React.useState(false);
   const [capsLock, setCapsLock] = React.useState(false);
+  const spacebarInteraction = useRef({
+    isDragging: false,
+    startX: 0,
+    lastX: 0,
+    threshold: 10, // Min pixels to move before it's a drag
+    didMove: false,
+  });
+
+  const handleSpacebarDown = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    spacebarInteraction.current.isDragging = true;
+    spacebarInteraction.current.startX = clientX;
+    spacebarInteraction.current.lastX = clientX;
+    spacebarInteraction.current.didMove = false;
+  };
+
+  const handleSpacebarMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!spacebarInteraction.current.isDragging) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const { lastX, threshold } = spacebarInteraction.current;
+    const deltaX = clientX - lastX;
+
+    if (Math.abs(deltaX) > threshold) {
+      if (deltaX > 0) {
+        onKeyPress('ArrowRight');
+      } else {
+        onKeyPress('ArrowLeft');
+      }
+      spacebarInteraction.current.lastX = clientX;
+      spacebarInteraction.current.didMove = true;
+    }
+  };
+  
+  const handleSpacebarUp = () => {
+    if (spacebarInteraction.current.isDragging && !spacebarInteraction.current.didMove) {
+      onKeyPress(' ');
+    }
+    spacebarInteraction.current.isDragging = false;
+    spacebarInteraction.current.didMove = false;
+  };
 
   const handleKeyPress = (key: string) => {
     if (key === 'Shift') {
@@ -66,6 +107,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
             const isShift = key === 'Shift';
             const isCapsLock = key === 'CapsLock';
             const isCtrl = key === 'Ctrl';
+            const isSpace = key === ' ';
             
             let displayKey = key;
             const isLetter = /^[a-z]$/i.test(key);
@@ -80,6 +122,20 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
                 displayKey = symbolMap[key];
             }
             
+            const buttonProps = isSpace
+              ? {
+                  onMouseDown: handleSpacebarDown,
+                  onMouseMove: handleSpacebarMove,
+                  onMouseUp: handleSpacebarUp,
+                  onMouseLeave: handleSpacebarUp,
+                  onTouchStart: handleSpacebarDown,
+                  onTouchMove: handleSpacebarMove,
+                  onTouchEnd: handleSpacebarUp,
+                }
+              : {
+                  onClick: () => handleKeyPress(key),
+                };
+
             return (
               <Button
                 key={`${key}-${keyIndex}`}
@@ -97,9 +153,9 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
                 style={{
                   flexGrow: key === 'CapsLock' ? 0.375 : undefined
                 }}
-                onClick={() => handleKeyPress(key)}
+                {...buttonProps}
               >
-                {displayKey}
+                {isSpace ? 'Space' : displayKey}
               </Button>
             );
           })}

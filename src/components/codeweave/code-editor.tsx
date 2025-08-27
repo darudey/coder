@@ -45,6 +45,16 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     let newCursorPosition = start;
 
     switch (key) {
+      case 'ArrowLeft':
+        if (start > 0) {
+          newCursorPosition = start - 1;
+        }
+        break;
+      case 'ArrowRight':
+        if (start < code.length) {
+            newCursorPosition = start + 1;
+        }
+        break;
       case 'Backspace':
         if (start === end && start > 0) {
           newCode = code.substring(0, start - 1) + code.substring(end);
