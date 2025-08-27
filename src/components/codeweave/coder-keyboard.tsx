@@ -4,6 +4,7 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { FC } from 'react';
+import React from 'react';
 
 interface CoderKeyboardProps {
   onKeyPress: (key: string) => void;
