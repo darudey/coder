@@ -222,7 +222,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       lineHeight: '1.5',
       padding: '1rem',
       whiteSpace: 'pre-wrap',
-      wordWrap: 'break-word',
+      wordBreak: 'break-all',
   };
 
   const highlightedCode = useMemo(() => {
@@ -247,8 +247,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
           <div className="flex flex-grow h-full">
             <div
                 ref={lineNumbersRef}
-                className="bg-gray-100 text-right select-none overflow-hidden"
-                style={{ ...editorStyles, paddingRight: '1rem' }}
+                className="bg-gray-100 text-right select-none overflow-y-hidden"
+                style={{ ...editorStyles, paddingRight: '1rem', whiteSpace: 'pre' }}
                 aria-hidden="true"
             >
                 {Array.from({ length: lineCount }, (_, i) => (
