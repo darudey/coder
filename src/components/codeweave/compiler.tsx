@@ -28,8 +28,8 @@ export function Compiler() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({
-    syntaxHighlighting: true,
-    errorChecking: true,
+    syntaxHighlighting: false,
+    errorChecking: false,
   });
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
