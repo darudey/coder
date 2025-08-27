@@ -25,18 +25,41 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    let insertion = key;
-    let cursorOffset = key.length;
+    let newCode = code;
+    let newCursorPosition = start;
 
-    if (key.endsWith('( )') || key.endsWith('{ }') || key.endsWith('[ ]') || key.endsWith("' '") || key.endsWith('" "') || key.endsWith('` `')) {
-        insertion = key.slice(0, key.length / 2);
-        cursorOffset = key.length / 2;
+    switch (key) {
+      case 'Backspace':
+        if (start === end && start > 0) {
+          newCode = code.substring(0, start - 1) + code.substring(end);
+          newCursorPosition = start - 1;
+        } else {
+          newCode = code.substring(0, start) + code.substring(end);
+          newCursorPosition = start;
+        }
+        break;
+      case 'Enter':
+        newCode = code.substring(0, start) + '\n' + code.substring(end);
+        newCursorPosition = start + 1;
+        break;
+      case 'Tab':
+        newCode = code.substring(0, start) + '  ' + code.substring(end);
+        newCursorPosition = start + 2;
+        break;
+      default:
+        let insertion = key;
+        let cursorOffset = key.length;
+
+        if (key.endsWith('( )') || key.endsWith('{ }') || key.endsWith('[ ]') || key.endsWith("' '") || key.endsWith('" "') || key.endsWith('` `')) {
+            insertion = key.slice(0, key.length / 2);
+            cursorOffset = key.length / 2;
+        }
+        
+        newCode = code.substring(0, start) + insertion + code.substring(end);
+        newCursorPosition = start + cursorOffset;
     }
 
-    const newValue = code.substring(0, start) + insertion + code.substring(end);
-    onCodeChange(newValue);
-
-    const newCursorPosition = start + cursorOffset;
+    onCodeChange(newCode);
 
     requestAnimationFrame(() => {
       textarea.selectionStart = newCursorPosition;
