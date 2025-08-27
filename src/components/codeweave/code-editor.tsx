@@ -151,10 +151,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline">JavaScript Input</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col flex-grow p-0">
+        <CardContent className="flex flex-col flex-grow p-4">
           <Textarea
             ref={textareaRef}
             value={code}
