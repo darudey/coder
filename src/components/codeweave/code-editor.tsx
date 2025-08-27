@@ -3,7 +3,7 @@
 
 import { Textarea } from '@/components/ui/textarea';
 import type { FC } from 'react';
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -14,12 +14,84 @@ interface CodeEditorProps {
   onCodeChange: (code: string) => void;
 }
 
+const parseCode = (code: string) => {
+  const tokens = [];
+  const keywordRegex = /\b(function|return|const|let|var|if|else|for|while|switch|case|break|continue|new|this|true|false|null|undefined|typeof|instanceof|console|log)\b/g;
+  const stringRegex = /(".*?"|'.*?'|`.*?`)/g;
+  const numberRegex = /\b\d+(\.\d+)?\b/g;
+  const commentRegex = /(\/\/.*|\/\*[\s\S]*?\*\/)/g;
+  const operatorRegex = /([+\-*/%<>=!&|?:;,.(){}[\]])/g;
+
+  const allRegex = new RegExp(`(${keywordRegex.source}|${stringRegex.source}|${numberRegex.source}|${commentRegex.source}|${operatorRegex.source})`, 'g');
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = allRegex.exec(code)) !== null) {
+    const textBefore = code.slice(lastIndex, match.index);
+    if (textBefore) {
+      tokens.push({ type: 'default', value: textBefore });
+    }
+
+    const matchedValue = match[0];
+    let type = 'default';
+    if (keywordRegex.test(matchedValue)) type = 'keyword';
+    else if (stringRegex.test(matchedValue)) type = 'string';
+    else if (commentRegex.test(matchedValue)) type = 'comment';
+    else if (numberRegex.test(matchedValue)) type = 'number';
+    else if (operatorRegex.test(matchedValue)) type = 'operator';
+    
+    // Have to reset regex state after manual test
+    keywordRegex.lastIndex = 0;
+    stringRegex.lastIndex = 0;
+    commentRegex.lastIndex = 0;
+    numberRegex.lastIndex = 0;
+    operatorRegex.lastIndex = 0;
+    
+    tokens.push({ type, value: matchedValue });
+    lastIndex = match.index + matchedValue.length;
+  }
+
+  const textAfter = code.slice(lastIndex);
+  if (textAfter) {
+    tokens.push({ type: 'default', value: textAfter });
+  }
+  
+  return tokens;
+};
+
+
+const getTokenClassName = (type: string) => {
+  switch (type) {
+    case 'keyword':
+      return 'text-blue-600';
+    case 'string':
+      return 'text-green-600';
+    case 'comment':
+      return 'text-gray-500 italic';
+    case 'number':
+      return 'text-purple-600';
+    case 'operator':
+      return 'text-red-500';
+    default:
+      return 'text-black';
+  }
+}
+
 export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const metaKeyPressed = useRef(false);
   const [ctrlActive, setCtrlActive] = useState(false);
+
+  const handleScroll = () => {
+    if (textareaRef.current && preRef.current) {
+        preRef.current.scrollTop = textareaRef.current.scrollTop;
+        preRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    }
+  };
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
@@ -111,7 +183,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       if (
         textareaRef.current &&
         !textareaRef.current.contains(target) &&
-        (!keyboard || !keyboard.contains(target))
+        (!keyboard || !keyboard.contains(target)) &&
+        preRef.current && !preRef.current.contains(target)
       ) {
         setIsKeyboardVisible(false);
       }
@@ -145,26 +218,47 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       wordWrap: 'break-word',
   };
 
+  const highlightedCode = useMemo(() => {
+    const tokens = parseCode(code);
+    return (
+        <>
+            {tokens.map((token, i) => (
+                <span key={i} className={getTokenClassName(token.type)}>
+                    {token.value}
+                </span>
+            ))}
+            {/* Add a newline to ensure last line is rendered */}
+            {'\n'}
+        </>
+    );
+  }, [code]);
+
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
         <CardContent className="flex flex-col flex-grow p-0 relative">
+          <pre
+            ref={preRef}
+            aria-hidden="true"
+            className="absolute inset-0 m-0 font-code text-base overflow-auto pointer-events-none"
+            style={editorStyles}
+          >
+            {highlightedCode}
+          </pre>
           <Textarea
             ref={textareaRef}
             value={code}
             inputMode={isMobile ? 'none' : 'text'}
-            onChange={(e) => {
-                if (!metaKeyPressed.current) {
-                    onCodeChange(e.target.value)
-                }
-            }}
+            onChange={(e) => onCodeChange(e.target.value)}
+            onScroll={handleScroll}
             onKeyDown={handleNativeKeyDown}
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
             className={cn(
-              "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black bg-white"
+              "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent caret-black"
             )}
             style={editorStyles}
+            spellCheck="false"
           />
         </CardContent>
       </Card>
