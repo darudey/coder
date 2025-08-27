@@ -2,7 +2,6 @@
 'use server';
 
 import { errorCheck } from '@/ai/flows/error-checking';
-import { syntaxHighlighting } from '@/ai/flows/syntax-highlighting';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -37,18 +36,6 @@ export async function runCode(code: string, useErrorChecking: boolean): Promise<
       type: 'error',
     };
   }
-}
-
-export async function getHighlightedCode(code: string): Promise<string> {
-    if (!code) return '';
-    try {
-        const result = await syntaxHighlighting({ code });
-        return result.highlightedCode;
-    } catch (e) {
-        // If highlighting fails, return the original code
-        console.error("Syntax highlighting failed:", e);
-        return code;
-    }
 }
 
 export async function saveApiKey(apiKey: string): Promise<{ success: boolean; error?: string }> {

@@ -1,3 +1,5 @@
+@import 'highlight.js/styles/atom-one-light.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -85,4 +87,8 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.hljs {
+    background: white !important;
 }

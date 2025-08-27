@@ -22,7 +22,7 @@ interface SettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   settings: Settings;
-  onSettingsChange: (settings: Omit<Settings, 'coderKeyboard'>) => void;
+  onSettingsChange: (settings: Settings) => void;
 }
 
 export const SettingsPanel: FC<SettingsPanelProps> = ({
@@ -34,7 +34,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
 
-  const handleSettingChange = (key: keyof Omit<Settings, 'coderKeyboard'>, value: boolean) => {
+  const handleSettingChange = (key: keyof Settings, value: boolean) => {
     onSettingsChange({ ...settings, [key]: value });
   };
 
@@ -67,7 +67,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         <div className="grid gap-6 py-6">
           <div className="flex items-center justify-between">
             <Label htmlFor="syntax-highlighting" className="flex flex-col gap-1">
-              <span>AI Syntax Highlighting</span>
+              <span>Syntax Highlighting</span>
               <span className="font-normal text-sm text-muted-foreground">
                 Show code with colors for better readability.
               </span>

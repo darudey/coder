@@ -4,23 +4,39 @@
 import { Textarea } from '@/components/ui/textarea';
 import type { FC } from 'react';
 import React, { useRef, useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+
+hljs.registerLanguage('javascript', javascript);
 
 interface CodeEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
+  withSyntaxHighlighting: boolean;
 }
 
-export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
+export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntaxHighlighting }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const metaKeyPressed = useRef(false);
   const [ctrlActive, setCtrlActive] = useState(false);
 
+  const highlightedCode = withSyntaxHighlighting
+    ? hljs.highlight(code, { language: 'javascript' }).value
+    : code;
+
+  const handleScroll = () => {
+    if (textareaRef.current && preRef.current) {
+      preRef.current.scrollTop = textareaRef.current.scrollTop;
+      preRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    }
+  };
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
@@ -74,8 +90,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         break;
       case 'CapsLock':
       case 'Shift':
-        // Do nothing for modifier keys from virtual keyboard,
-        // native shortcuts will be handled by the browser.
         return;
       default:
         const pairMap: {[key:string]: string} = {
@@ -85,18 +99,11 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
             "'": "'",
             '"': '"',
             '`': '`',
-            '( )': '()',
-            '{ }': '{}',
-            '[ ]': '[]',
-            "' '": "''",
-            '" "': '""',
-            '` `': '``'
         };
 
-        if (pairMap[key]) {
-            const pair = pairMap[key];
-            const open = pair[0];
-            const close = pair.length > 1 ? pair[1] : '';
+        if (pairMap[key] && key.length === 1) {
+            const open = key;
+            const close = pairMap[key];
             newCode = code.substring(0, start) + open + close + code.substring(end);
             newCursorPosition = start + 1;
         } else {
@@ -135,7 +142,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.metaKey || e.ctrlKey) {
         metaKeyPressed.current = true;
-        // Allow native behavior for shortcuts like Ctrl+A, Ctrl+C, etc.
         return;
     }
     metaKeyPressed.current = false;
@@ -147,11 +153,28 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   };
 
   const showKeyboard = isMobile || isKeyboardVisible;
+  const editorStyles: React.CSSProperties = {
+      fontFamily: 'var(--font-code)',
+      fontSize: '1rem',
+      lineHeight: '1.5',
+      padding: '1rem',
+      whiteSpace: 'pre-wrap',
+      wordWrap: 'break-word',
+  };
 
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-        <CardContent className="flex flex-col flex-grow p-4">
+        <CardContent className="flex flex-col flex-grow p-0 relative">
+          {withSyntaxHighlighting && (
+            <pre
+              ref={preRef}
+              aria-hidden="true"
+              className="absolute inset-0 m-0 font-code text-base"
+              style={editorStyles}
+              dangerouslySetInnerHTML={{ __html: highlightedCode + '<br />' }}
+            />
+          )}
           <Textarea
             ref={textareaRef}
             value={code}
@@ -161,10 +184,17 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
                     onCodeChange(e.target.value)
                 }
             }}
+            onScroll={handleScroll}
             onKeyDown={handleNativeKeyDown}
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
-            className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black bg-white"
+            className={cn(
+              "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black",
+              withSyntaxHighlighting
+                ? 'bg-transparent text-transparent'
+                : 'bg-white'
+            )}
+            style={editorStyles}
           />
         </CardContent>
       </Card>
