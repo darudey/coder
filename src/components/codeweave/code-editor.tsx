@@ -18,6 +18,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
+  const metaKeyPressed = useRef(false);
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
@@ -49,7 +50,9 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         break;
       case 'Ctrl':
       case 'CapsLock':
-        // Do nothing for control keys
+      case 'Shift':
+        // Do nothing for modifier keys from virtual keyboard,
+        // native shortcuts will be handled by the browser.
         return;
       default:
         const pairMap: {[key:string]: string} = {
@@ -70,7 +73,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         if (pairMap[key]) {
             const pair = pairMap[key];
             const open = pair[0];
-            const close = pair[1];
+            const close = pair.length > 1 ? pair[1] : '';
             newCode = code.substring(0, start) + open + close + code.substring(end);
             newCursorPosition = start + 1;
         } else {
@@ -106,6 +109,20 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     };
   }, []);
   
+  const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.metaKey || e.ctrlKey) {
+        metaKeyPressed.current = true;
+        // Allow native behavior for shortcuts like Ctrl+A, Ctrl+C, etc.
+        return;
+    }
+    metaKeyPressed.current = false;
+
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        handleKeyPress('Tab');
+    }
+  };
+
   const showKeyboard = isMobile || isKeyboardVisible;
 
   return (
@@ -119,7 +136,12 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
             ref={textareaRef}
             value={code}
             inputMode={isMobile ? 'none' : 'text'}
-            onChange={(e) => onCodeChange(e.target.value)}
+            onChange={(e) => {
+                if (!metaKeyPressed.current) {
+                    onCodeChange(e.target.value)
+                }
+            }}
+            onKeyDown={handleNativeKeyDown}
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
             className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black"

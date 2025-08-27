@@ -92,6 +92,9 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
                     'bg-gray-600': (isShift && shift) || (isCapsLock && capsLock),
                   }
                 )}
+                style={{
+                  flexGrow: key === 'CapsLock' ? 0.75 : undefined
+                }}
                 onClick={() => handleKeyPress(key)}
               >
                 {displayKey}
