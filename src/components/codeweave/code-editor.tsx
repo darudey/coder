@@ -91,13 +91,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
 
   return (
     <>
-      <style>
-        {`
-          .caret-transparent {
-            caret-color: transparent;
-          }
-        `}
-      </style>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline">JavaScript Input</CardTitle>
@@ -110,10 +103,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
             onChange={(e) => onCodeChange(e.target.value)}
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
-            className={cn(
-                "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0",
-                !showKeyboard && "caret-transparent"
-            )}
+            className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </CardContent>
       </Card>
