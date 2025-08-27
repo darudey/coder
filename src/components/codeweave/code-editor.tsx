@@ -99,7 +99,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
           <Textarea
             ref={textareaRef}
             value={code}
-            readOnly={isMobile}
+            inputMode={isMobile ? 'none' : 'text'}
             onChange={(e) => onCodeChange(e.target.value)}
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
