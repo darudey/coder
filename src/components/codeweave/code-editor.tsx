@@ -7,6 +7,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface CodeEditorProps {
   code: string;
@@ -83,26 +84,28 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const showKeyboard = isMobile || isKeyboardVisible;
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-      <CardHeader>
-        <CardTitle className="font-headline">JavaScript Input</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col flex-grow p-0">
-        <Textarea
-          ref={textareaRef}
-          value={code}
-          onChange={(e) => onCodeChange(e.target.value)}
-          onFocus={() => setIsKeyboardVisible(true)}
-          placeholder="Enter your JavaScript code here..."
-          className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-        />
-        {showKeyboard && (
-          <>
-            <div className="border-t"></div>
-            <CoderKeyboard onKeyPress={handleKeyPress} />
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <>
+      <Card className="flex flex-col h-full overflow-hidden shadow-lg">
+        <CardHeader>
+          <CardTitle className="font-headline">JavaScript Input</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col flex-grow p-0">
+          <Textarea
+            ref={textareaRef}
+            value={code}
+            onChange={(e) => onCodeChange(e.target.value)}
+            onFocus={() => setIsKeyboardVisible(true)}
+            placeholder="Enter your JavaScript code here..."
+            className="font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </CardContent>
+      </Card>
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+        showKeyboard ? "translate-y-0" : "translate-y-full"
+      )}>
+        <CoderKeyboard onKeyPress={handleKeyPress} />
+      </div>
+    </>
   );
 };

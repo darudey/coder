@@ -37,7 +37,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
   };
   
   return (
-    <div className="bg-muted/50 p-2 font-code">
+    <div className="bg-black text-white p-1 md:p-2 font-code shadow-2xl rounded-t-lg">
       {keyboardLayout.map((row, rowIndex) => (
         <div key={rowIndex} className="flex justify-center gap-1 my-1">
           {row.map((key) => {
@@ -48,11 +48,11 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
                 key={key}
                 variant="outline"
                 className={cn(
-                  'h-10 bg-background transition-transform transform active:scale-95 text-xs md:text-sm px-2',
+                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 text-xs md:text-sm px-2',
                   {
-                    'w-24': key === 'Backspace',
-                    'w-16': key === 'Tab',
-                    'w-20': key === 'Enter',
+                    'w-16 sm:w-24': key === 'Backspace',
+                    'w-12 sm:w-16': key === 'Tab',
+                    'w-16 sm:w-20': key === 'Enter',
                     'flex-grow': key === ' ',
                   }
                 )}
@@ -67,6 +67,3 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
     </div>
   );
 };
-
-// Dummy export to satisfy React
-export {};
