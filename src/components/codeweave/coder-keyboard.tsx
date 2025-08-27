@@ -58,9 +58,9 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
   };
   
   return (
-    <div className="bg-black text-white p-2 md:px-4 md:py-4 font-code shadow-2xl rounded-t-lg">
+    <div className="bg-black text-white p-2 md:px-2 md:py-4 font-code shadow-2xl rounded-t-lg">
       {keyboardLayout.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex justify-center gap-1 my-1">
+        <div key={rowIndex} className="flex justify-center gap-0.5 my-0.5">
           {row.map((key, keyIndex) => {
             const isShift = key === 'Shift';
             const isCapsLock = key === 'CapsLock';
@@ -86,7 +86,8 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
                   'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 text-xs p-0 flex-1',
                   {
                     'flex-grow-[2]': key === 'Backspace' || key === 'Enter',
-                    'flex-grow-[1.5]': key === 'Tab' || key === 'CapsLock' || key === 'Shift',
+                    'flex-grow-[1.5]': key === 'Tab' || key === 'Shift',
+                    'flex-grow-[0.75]': key === 'CapsLock',
                     'flex-grow-[8]': key === ' ',
                     'bg-gray-600': (isShift && shift) || (isCapsLock && capsLock),
                   }
