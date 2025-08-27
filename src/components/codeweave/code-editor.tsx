@@ -71,7 +71,13 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (textareaRef.current && !textareaRef.current.contains(event.target as Node)) {
+      const keyboard = document.getElementById('coder-keyboard');
+      if (
+        textareaRef.current &&
+        !textareaRef.current.contains(event.target as Node) &&
+        keyboard &&
+        !keyboard.contains(event.target as Node)
+      ) {
         setIsKeyboardVisible(false);
       }
     }
@@ -93,6 +99,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
           <Textarea
             ref={textareaRef}
             value={code}
+            readOnly={isMobile}
             onChange={(e) => onCodeChange(e.target.value)}
             onFocus={() => setIsKeyboardVisible(true)}
             placeholder="Enter your JavaScript code here..."
@@ -100,7 +107,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
           />
         </CardContent>
       </Card>
-      <div className={cn(
+      <div id="coder-keyboard" className={cn(
         "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
         showKeyboard ? "translate-y-0" : "translate-y-full"
       )}>
