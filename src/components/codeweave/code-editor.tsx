@@ -101,7 +101,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntax
             '`': '`',
         };
 
-        if (pairMap[key] && key.length === 1) {
+        if (pairMap[key] && key.length === 1 && !/^\d$/.test(key)) {
             const open = key;
             const close = pairMap[key];
             newCode = code.substring(0, start) + open + close + code.substring(end);
@@ -128,7 +128,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntax
       if (
         textareaRef.current &&
         !textareaRef.current.contains(target) &&
-        (!keyboard || !keyboard.contains(target))
+        (!keyboard || !keyboard.contains(target)) &&
+        preRef.current && !preRef.current.contains(target)
       ) {
         setIsKeyboardVisible(false);
       }
@@ -173,6 +174,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, withSyntax
               className="absolute inset-0 m-0 font-code text-base"
               style={editorStyles}
               dangerouslySetInnerHTML={{ __html: highlightedCode + '<br />' }}
+              onClick={() => textareaRef.current?.focus()}
             />
           )}
           <Textarea
