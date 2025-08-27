@@ -8,6 +8,7 @@ import type { FC } from 'react';
 
 interface CoderKeyboardProps {
   onKeyPress: (key: string) => void;
+  ctrlActive?: boolean;
 }
 
 const keyboardLayout = [
@@ -23,7 +24,7 @@ const symbolMap: { [key: string]: string } = {
   '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|', ';': ':', "'": '"', ',': '<', '.': '>', '/': '?',
 };
 
-export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
+export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }) => {
   const [shift, setShift] = React.useState(false);
   const [capsLock, setCapsLock] = React.useState(false);
 
@@ -64,6 +65,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
           {row.map((key, keyIndex) => {
             const isShift = key === 'Shift';
             const isCapsLock = key === 'CapsLock';
+            const isCtrl = key === 'Ctrl';
             
             let displayKey = key;
             const isLetter = /^[a-z]$/i.test(key);
@@ -89,11 +91,11 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress }) => {
                     'flex-grow-[1.5]': key === 'Tab' || key === 'Shift',
                     'flex-grow-[0.375]': key === 'CapsLock',
                     'flex-grow-[8]': key === ' ',
-                    'bg-gray-600': (isShift && shift) || (isCapsLock && capsLock),
+                    'bg-gray-600': (isShift && shift) || (isCapsLock && capsLock) || (isCtrl && ctrlActive),
                   }
                 )}
                 style={{
-                  flexGrow: key === 'CapsLock' ? 0.75 : undefined
+                  flexGrow: key === 'CapsLock' ? 0.375 : undefined
                 }}
                 onClick={() => handleKeyPress(key)}
               >

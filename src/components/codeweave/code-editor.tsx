@@ -19,10 +19,24 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const metaKeyPressed = useRef(false);
+  const [ctrlActive, setCtrlActive] = useState(false);
+
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+
+    if (key === 'Ctrl') {
+        setCtrlActive(prev => !prev);
+        return;
+    }
+
+    if (ctrlActive && key.toLowerCase() === 'a') {
+        textarea.select();
+        setCtrlActive(false); 
+        return;
+    }
+
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
@@ -48,7 +62,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         newCode = code.substring(0, start) + '  ' + code.substring(end);
         newCursorPosition = start + 2;
         break;
-      case 'Ctrl':
       case 'CapsLock':
       case 'Shift':
         // Do nothing for modifier keys from virtual keyboard,
@@ -152,7 +165,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
         showKeyboard ? "translate-y-0" : "translate-y-full"
       )}>
-        <CoderKeyboard onKeyPress={handleKeyPress} />
+        <CoderKeyboard onKeyPress={handleKeyPress} ctrlActive={ctrlActive} />
       </div>
     </>
   );
