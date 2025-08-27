@@ -16,7 +16,7 @@ const keyboardLayout = [
     ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '\\'],
     ['CapsLock', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'Enter'],
     ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Shift'],
-    ['Ctrl', '( )', '{ }', '[ ]', ' ', "' '", '" "', '` `', 'Ctrl'],
+    ['Ctrl', '(', '{', '[', ' ', "'", '"', '`', 'Ctrl'],
 ];
 
 const symbolMap: { [key: string]: string } = {
@@ -164,3 +164,5 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
     </div>
   );
 };
+
+    
