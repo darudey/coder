@@ -52,16 +52,31 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         // Do nothing for control keys
         return;
       default:
-        let insertion = key;
-        let cursorOffset = key.length;
+        const pairMap: {[key:string]: string} = {
+            '(': ')',
+            '{': '}',
+            '[': ']',
+            "'": "'",
+            '"': '"',
+            '`': '`',
+            '( )': '()',
+            '{ }': '{}',
+            '[ ]': '[]',
+            "' '": "''",
+            '" "': '""',
+            '` `': '``'
+        };
 
-        if (key.endsWith('( )') || key.endsWith('{ }') || key.endsWith('[ ]') || key.endsWith("' '") || key.endsWith('" "') || key.endsWith('` `')) {
-            insertion = key.slice(0, key.length / 2);
-            cursorOffset = key.length / 2;
+        if (pairMap[key]) {
+            const pair = pairMap[key];
+            const open = pair[0];
+            const close = pair[1];
+            newCode = code.substring(0, start) + open + close + code.substring(end);
+            newCursorPosition = start + 1;
+        } else {
+            newCode = code.substring(0, start) + key + code.substring(end);
+            newCursorPosition = start + key.length;
         }
-        
-        newCode = code.substring(0, start) + insertion + code.substring(end);
-        newCursorPosition = start + cursorOffset;
     }
 
     onCodeChange(newCode);
