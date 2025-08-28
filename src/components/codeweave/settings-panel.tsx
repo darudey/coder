@@ -95,6 +95,9 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                 />
                 <Button onClick={handleSaveApiKey}>Save</Button>
             </div>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+              Generate API Key
+            </a>
           </div>
         </div>
       </SheetContent>
