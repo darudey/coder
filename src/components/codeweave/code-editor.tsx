@@ -276,7 +276,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
                     onChange={(e) => onCodeChange(e.target.value)}
                     onScroll={handleScroll}
                     onKeyDown={handleNativeKeyDown}
-                    onFocus={() => setIsKeyboardVisible(true)}
+                    onClick={() => setIsKeyboardVisible(true)}
                     placeholder="Enter your JavaScript code here..."
                     className={cn(
                     "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent caret-black"
@@ -292,7 +292,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
         showKeyboard ? "translate-y-0" : "translate-y-full"
       )}>
-        <CoderKeyboard onKeyPress={handleKeyPress} ctrlActive={ctrlActive} />
+        <CoderKeyboard onKeyPress={handleKeyPress} ctrlActive={ctrlActive} onHide={() => setIsKeyboardVisible(false)} />
       </div>
     </>
   );

@@ -3,12 +3,14 @@
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { EyeOff } from 'lucide-react';
 import React, { useRef } from 'react';
 import type { FC } from 'react';
 
 interface CoderKeyboardProps {
   onKeyPress: (key: string) => void;
   ctrlActive?: boolean;
+  onHide: () => void;
 }
 
 const keyboardLayout = [
@@ -16,7 +18,7 @@ const keyboardLayout = [
     ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '\\'],
     ['CapsLock', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'Enter'],
     ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'Shift'],
-    ['Ctrl', '(', '{', '[', ' ', "'", '"', '`', 'Ctrl'],
+    ['Ctrl', '(', '{', '[', ' ', "'", '"', '`', 'EyeOff', 'Ctrl'],
 ];
 
 const symbolMap: { [key: string]: string } = {
@@ -24,7 +26,7 @@ const symbolMap: { [key: string]: string } = {
   '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|', ';': ':', "'": '"', ',': '<', '.': '>', '/': '?',
 };
 
-export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }) => {
+export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, onHide }) => {
   const [shift, setShift] = React.useState(false);
   const [capsLock, setCapsLock] = React.useState(false);
   const spacebarInteraction = useRef({
@@ -78,6 +80,10 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
         setCapsLock(!capsLock);
         return;
     }
+    if (key === 'EyeOff') {
+        onHide();
+        return;
+    }
 
     let keyToSend = key;
     const isLetter = /^[a-z]$/i.test(key);
@@ -108,8 +114,9 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
             const isCapsLock = key === 'CapsLock';
             const isCtrl = key === 'Ctrl';
             const isSpace = key === ' ';
+            const isEyeOff = key === 'EyeOff';
             
-            let displayKey = key;
+            let displayKey: React.ReactNode = key;
             const isLetter = /^[a-z]$/i.test(key);
 
             if (isLetter) {
@@ -120,6 +127,8 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
                 }
             } else if (shift && symbolMap[key]) {
                 displayKey = symbolMap[key];
+            } else if (isEyeOff) {
+                displayKey = <EyeOff />;
             }
             
             const buttonProps = isSpace
@@ -164,5 +173,3 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive }
     </div>
   );
 };
-
-    
