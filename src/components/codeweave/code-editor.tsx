@@ -215,7 +215,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     }
   };
 
-  const showKeyboard = isMobile || isKeyboardVisible;
+  const showKeyboard = isMobile ? isKeyboardVisible : isKeyboardVisible;
   const editorStyles: React.CSSProperties = {
       fontFamily: 'var(--font-code)',
       fontSize: '1rem',
