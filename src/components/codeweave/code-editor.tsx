@@ -317,10 +317,10 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
                     onClick={() => setIsKeyboardVisible(true)}
                     placeholder="Enter your JavaScript code here..."
                     className={cn(
-                    "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent caret-black dark:caret-white",
-                    "text-transparent"
+                    "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
+                    "text-black dark:text-gray-300 bg-transparent"
                     )}
-                    style={editorStyles}
+                    style={{...editorStyles, color: 'transparent'}}
                     spellCheck="false"
                 />
                 <div 
@@ -349,5 +349,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       </div>
     </>
   );
+
+    
 
     
