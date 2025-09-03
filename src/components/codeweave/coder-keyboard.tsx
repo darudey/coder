@@ -110,6 +110,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
       {keyboardLayout.map((row, rowIndex) => (
         <div key={rowIndex} className="flex justify-center gap-0.5 my-0.5">
           {row.map((key, keyIndex) => {
+            const isSpecialKey = ['Backspace', 'Enter', 'Shift', 'Ctrl', 'CapsLock', 'Tab'].includes(key);
             const isShift = key === 'Shift';
             const isCapsLock = key === 'CapsLock';
             const isCtrl = key === 'Ctrl';
@@ -150,7 +151,8 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
                 key={`${key}-${keyIndex}`}
                 variant="outline"
                 className={cn(
-                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 text-base p-0 flex-1',
+                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 p-0 flex-1',
+                  isSpecialKey ? 'text-xs' : 'text-base',
                   {
                     'flex-grow-[2]': key === 'Backspace' || key === 'Enter',
                     'flex-grow-[1.5]': key === 'Tab' || key === 'Shift',
