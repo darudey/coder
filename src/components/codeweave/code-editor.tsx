@@ -123,7 +123,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         gutter.appendChild(div);
       }
       
-      gutter.style.width = (String(lines.length).length * 8 + 34) + 'px';
+      gutter.style.width = (String(lines.length).length * 8 + 17) + 'px';
       syncScroll();
   }, [syncScroll]);
 
@@ -353,3 +353,4 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     
 
     
+
