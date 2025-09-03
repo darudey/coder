@@ -318,7 +318,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
                     placeholder="Enter your JavaScript code here..."
                     className={cn(
                     "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
-                    "text-black dark:text-gray-300 bg-transparent"
+                    "bg-transparent relative z-10"
                     )}
                     style={{...editorStyles, color: 'transparent'}}
                     spellCheck="false"
