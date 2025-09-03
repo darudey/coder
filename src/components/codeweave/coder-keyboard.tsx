@@ -152,7 +152,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
                 variant="outline"
                 className={cn(
                   'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 p-0 flex-1',
-                  isSpecialKey ? 'text-xs' : 'text-base',
+                  isSpecialKey ? 'text-[0.6rem]' : 'text-base',
                   {
                     'flex-grow-[2]': key === 'Backspace' || key === 'Enter',
                     'flex-grow-[1.5]': key === 'Tab' || key === 'Shift',
