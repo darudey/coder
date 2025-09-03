@@ -346,9 +346,4 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       </div>
     </>
   );
-
-    
-
-    
-
-
+};
