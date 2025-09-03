@@ -215,14 +215,14 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     }
   };
 
-  const showKeyboard = isMobile ? isKeyboardVisible : isKeyboardVisible;
+  const showKeyboard = isKeyboardVisible;
   const editorStyles: React.CSSProperties = {
       fontFamily: 'var(--font-code)',
       fontSize: '1rem',
       lineHeight: '1.5',
       padding: '1rem',
       whiteSpace: 'pre-wrap',
-      wordBreak: 'break-all',
+      wordWrap: 'break-word',
   };
 
   const highlightedCode = useMemo(() => {
@@ -254,7 +254,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
                 {Array.from({ length: lineCount }, (_, i) => (
                     <div
                         key={i}
-                        className={cn("text-gray-400", i % 2 === 1 ? 'bg-gray-200' : 'bg-gray-100')}
+                        className={cn("text-gray-400")}
                     >
                         {i + 1}
                     </div>
@@ -297,3 +297,5 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     </>
   );
 };
+
+    
