@@ -3,7 +3,7 @@
 
 import { Textarea } from '@/components/ui/textarea';
 import type { FC } from 'react';
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -74,26 +74,69 @@ const getTokenClassName = (type: string) => {
     case 'operator':
       return 'text-red-500';
     default:
-      return 'text-black';
+      return 'text-black dark:text-gray-300';
   }
 }
 
 export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const metaKeyPressed = useRef(false);
   const [ctrlActive, setCtrlActive] = useState(false);
 
-  const handleScroll = () => {
-    if (textareaRef.current && preRef.current) {
-        const scrollTop = textareaRef.current.scrollTop;
-        const scrollLeft = textareaRef.current.scrollLeft;
-        preRef.current.scrollTop = scrollTop;
-        preRef.current.scrollLeft = scrollLeft;
+  const syncScroll = useCallback(() => {
+    if (textareaRef.current && gutterRef.current) {
+        gutterRef.current.scrollTop = textareaRef.current.scrollTop;
     }
-  };
+  }, []);
+
+  const updateLineNumbers = useCallback(() => {
+      const ta = textareaRef.current;
+      const gutter = gutterRef.current;
+      const mirror = mirrorRef.current;
+
+      if (!ta || !gutter || !mirror) return;
+
+      mirror.style.width = ta.clientWidth + 'px';
+      
+      const lines = ta.value.split(/\r\n|\r|\n/);
+      gutter.textContent = '';
+      mirror.textContent = '';
+
+      for (let i = 0; i < lines.length; i++) {
+        const seg = document.createElement('span');
+        seg.className = 'block';
+        seg.textContent = (lines[i] === '' ? ' ' : lines[i]);
+        mirror.appendChild(seg);
+      }
+
+      const segs = mirror.children;
+      for (let i = 0; i < segs.length; i++) {
+        const h = (segs[i] as HTMLElement).offsetHeight;
+        const div = document.createElement('div');
+        div.className = 'flex items-start h-full';
+        div.textContent = (i + 1).toString();
+        div.style.height = h + 'px';
+        gutter.appendChild(div);
+      }
+      
+      gutter.style.width = (String(lines.length).length * 8 + 34) + 'px';
+      syncScroll();
+  }, [syncScroll]);
+
+
+  useEffect(() => {
+    updateLineNumbers();
+    const handleResize = () => updateLineNumbers();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    }
+  }, [code, updateLineNumbers]);
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
@@ -185,8 +228,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       if (
         textareaRef.current &&
         !textareaRef.current.contains(target) &&
-        (!keyboard || !keyboard.contains(target)) &&
-        preRef.current && !preRef.current.contains(target)
+        (!keyboard || !keyboard.contains(target))
       ) {
         setIsKeyboardVisible(false);
       }
@@ -211,27 +253,34 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   };
 
   const showKeyboard = isKeyboardVisible;
+  
   const editorStyles: React.CSSProperties = {
       fontFamily: 'var(--font-code)',
       fontSize: '0.875rem',
       lineHeight: '1.5',
-      padding: '1rem',
+      padding: '0.5rem 0.75rem',
       whiteSpace: 'pre-wrap',
-      wordWrap: 'break-word',
+      overflowWrap: 'anywhere',
+      tabSize: 2,
   };
-
+  
   const highlightedCode = useMemo(() => {
-    const tokens = parseCode(code);
+    const lines = code.split('\n');
     return (
-        <>
-            {tokens.map((token, i) => (
-                <span key={i} className={getTokenClassName(token.type)}>
+      <>
+        {lines.map((line, lineIndex) => (
+            <div key={lineIndex} className={cn(
+              "min-h-[21px]",
+              lineIndex % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800/50'
+            )}>
+              {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
+                  <span key={tokenIndex} className={getTokenClassName(token.type)}>
                     {token.value}
-                </span>
-            ))}
-            {/* Add a newline to ensure last line is rendered */}
-            {'\n'}
-        </>
+                  </span>
+                ))}
+            </div>
+        ))}
+      </>
     );
   }, [code]);
 
@@ -240,30 +289,54 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
         <CardContent className="flex flex-col flex-grow p-0">
           <div className="flex flex-grow h-full">
+            <div 
+              ref={gutterRef} 
+              className="box-border p-2 pr-1 text-right text-gray-500 bg-gray-100 border-r border-gray-200 select-none overflow-y-auto overflow-x-hidden dark:bg-gray-900 dark:border-gray-700"
+              style={{
+                fontFamily: 'var(--font-code)',
+                fontSize: editorStyles.fontSize,
+                lineHeight: editorStyles.lineHeight,
+              }}
+            >
+            </div>
             <div className="relative flex-grow h-full">
-                <pre
-                    ref={preRef}
+                <div
                     aria-hidden="true"
-                    className="absolute inset-0 m-0 font-code text-base overflow-auto pointer-events-none"
+                    className="absolute inset-0 m-0 pointer-events-none"
                     style={editorStyles}
                 >
                     {highlightedCode}
-                </pre>
+                </div>
                 <Textarea
                     ref={textareaRef}
                     value={code}
                     inputMode={isMobile ? 'none' : 'text'}
                     onChange={(e) => onCodeChange(e.target.value)}
-                    onScroll={handleScroll}
+                    onScroll={syncScroll}
                     onKeyDown={handleNativeKeyDown}
                     onClick={() => setIsKeyboardVisible(true)}
                     placeholder="Enter your JavaScript code here..."
                     className={cn(
-                    "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent caret-black"
+                    "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent caret-black dark:caret-white",
+                    "text-transparent"
                     )}
                     style={editorStyles}
                     spellCheck="false"
                 />
+                <div 
+                    ref={mirrorRef}
+                    aria-hidden="true"
+                    className="absolute top-0 left-0 invisible pointer-events-none"
+                    style={{
+                      fontFamily: 'var(--font-code)',
+                      fontSize: editorStyles.fontSize,
+                      lineHeight: editorStyles.lineHeight,
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      padding: '0.5rem 0.75rem',
+                      boxSizing: 'border-box'
+                    }}
+                ></div>
             </div>
           </div>
         </CardContent>
@@ -276,4 +349,5 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       </div>
     </>
   );
-};
+
+    
