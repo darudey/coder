@@ -269,10 +269,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     return (
       <>
         {lines.map((line, lineIndex) => (
-            <div key={lineIndex} className={cn(
-              "min-h-[21px]",
-              lineIndex % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800/50'
-            )}>
+            <div key={lineIndex} className="min-h-[21px]">
               {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
                   <span key={tokenIndex} className={getTokenClassName(token.type)}>
                     {token.value}
@@ -287,7 +284,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-        <CardContent className="flex flex-col flex-grow p-0">
+        <CardContent className="flex flex-col flex-grow p-0 bg-white dark:bg-gray-800">
           <div className="flex flex-grow h-full">
             <div 
               ref={gutterRef} 
@@ -353,4 +350,5 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     
 
     
+
 
