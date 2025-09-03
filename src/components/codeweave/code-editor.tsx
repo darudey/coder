@@ -81,21 +81,17 @@ const getTokenClassName = (type: string) => {
 export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
-  const lineNumbersRef = useRef<HTMLDivElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const metaKeyPressed = useRef(false);
   const [ctrlActive, setCtrlActive] = useState(false);
 
-  const lineCount = useMemo(() => code.split('\n').length, [code]);
-
   const handleScroll = () => {
-    if (textareaRef.current && preRef.current && lineNumbersRef.current) {
+    if (textareaRef.current && preRef.current) {
         const scrollTop = textareaRef.current.scrollTop;
         const scrollLeft = textareaRef.current.scrollLeft;
         preRef.current.scrollTop = scrollTop;
         preRef.current.scrollLeft = scrollLeft;
-        lineNumbersRef.current.scrollTop = scrollTop;
     }
   };
 
@@ -190,8 +186,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         textareaRef.current &&
         !textareaRef.current.contains(target) &&
         (!keyboard || !keyboard.contains(target)) &&
-        preRef.current && !preRef.current.contains(target) &&
-        lineNumbersRef.current && !lineNumbersRef.current.contains(target)
+        preRef.current && !preRef.current.contains(target)
       ) {
         setIsKeyboardVisible(false);
       }
@@ -245,21 +240,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
         <CardContent className="flex flex-col flex-grow p-0">
           <div className="flex flex-grow h-full">
-            <div
-                ref={lineNumbersRef}
-                className="bg-gray-100 text-right select-none overflow-y-hidden"
-                style={{ ...editorStyles, paddingRight: '1rem', whiteSpace: 'pre' }}
-                aria-hidden="true"
-            >
-                {Array.from({ length: lineCount }, (_, i) => (
-                    <div
-                        key={i}
-                        className={cn("text-gray-400")}
-                    >
-                        {i + 1}
-                    </div>
-                ))}
-            </div>
             <div className="relative flex-grow h-full">
                 <pre
                     ref={preRef}
@@ -297,5 +277,3 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
     </>
   );
 };
-
-    
