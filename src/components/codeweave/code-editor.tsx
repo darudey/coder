@@ -213,7 +213,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   const showKeyboard = isKeyboardVisible;
   const editorStyles: React.CSSProperties = {
       fontFamily: 'var(--font-code)',
-      fontSize: '1rem',
+      fontSize: '0.875rem',
       lineHeight: '1.5',
       padding: '1rem',
       whiteSpace: 'pre-wrap',
