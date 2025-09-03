@@ -10,66 +10,29 @@ export interface RunResult {
   type: 'result' | 'error';
 }
 
-export async function runCode(code: string, useErrorChecking: boolean): Promise<RunResult> {
-  if (useErrorChecking) {
-    const errorCheckResult = await errorCheck({ code });
-    if (errorCheckResult.hasErrors && errorCheckResult.errors.length > 0) {
-      return {
-        output: `Static Analysis Errors:\n${errorCheckResult.errors.join('\n')}`,
-        type: 'error',
-      };
-    }
-  }
-
-  try {
-    const capturedLogs: any[] = [];
-    const originalConsoleLog = console.log;
-    
-    // Override console.log to capture output
-    console.log = (...args: any[]) => {
-      capturedLogs.push(args.map(arg => {
-        if (typeof arg === 'object' && arg !== null) {
-          try {
-            return JSON.stringify(arg, null, 2);
-          } catch (e) {
-            return '[Circular Object]';
-          }
+/**
+ * Performs AI-based static analysis on the code.
+ * Does not execute the code.
+ */
+export async function checkCodeForErrors(code: string): Promise<RunResult | null> {
+    try {
+        const errorCheckResult = await errorCheck({ code });
+        if (errorCheckResult.hasErrors && errorCheckResult.errors.length > 0) {
+            return {
+                output: `Static Analysis Errors:\n${errorCheckResult.errors.join('\n')}`,
+                type: 'error',
+            };
         }
-        return String(arg);
-      }).join(' '));
-    };
-
-    // WARNING: `eval` is used for simplicity. In a real-world application,
-    // this should be replaced with a secure sandboxing environment.
-    let result = eval(code);
-    
-    // Restore original console.log
-    console.log = originalConsoleLog;
-
-    let output = capturedLogs.join('\n');
-    
-    if (result !== undefined) {
-        const resultString = JSON.stringify(result, null, 2);
-        if (output) {
-            output += `\n${resultString}`;
-        } else {
-            output = resultString
-        }
-    } else if (capturedLogs.length === 0) {
-        output = 'undefined';
+        return null; // No errors found
+    } catch (e: any) {
+        // This could happen if the Genkit call fails
+        return {
+            output: `AI Error Check Failed: ${e.message}`,
+            type: 'error',
+        };
     }
-
-    return {
-      output: output,
-      type: 'result',
-    };
-  } catch (e: any) {
-    return {
-      output: e.message,
-      type: 'error',
-    };
-  }
 }
+
 
 export async function saveApiKey(apiKey: string): Promise<{ success: boolean; error?: string }> {
   if (!apiKey) {
