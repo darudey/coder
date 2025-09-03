@@ -22,10 +22,43 @@ export async function runCode(code: string, useErrorChecking: boolean): Promise<
   }
 
   try {
+    const capturedLogs: any[] = [];
+    const originalConsoleLog = console.log;
+    
+    // Override console.log to capture output
+    console.log = (...args: any[]) => {
+      capturedLogs.push(args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (e) {
+            return '[Circular Object]';
+          }
+        }
+        return String(arg);
+      }).join(' '));
+    };
+
     // WARNING: `eval` is used for simplicity. In a real-world application,
     // this should be replaced with a secure sandboxing environment.
-    const result = eval(code);
-    const output = result === undefined ? 'undefined' : JSON.stringify(result, null, 2);
+    let result = eval(code);
+    
+    // Restore original console.log
+    console.log = originalConsoleLog;
+
+    let output = capturedLogs.join('\n');
+    
+    if (result !== undefined) {
+        const resultString = JSON.stringify(result, null, 2);
+        if (output) {
+            output += `\n${resultString}`;
+        } else {
+            output = resultString
+        }
+    } else if (capturedLogs.length === 0) {
+        output = 'undefined';
+    }
+
     return {
       output: output,
       type: 'result',
