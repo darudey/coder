@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { checkCodeForErrors, type RunResult } from '@/app/actions';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
@@ -77,7 +77,10 @@ const runCodeOnClient = (code: string): RunResult => {
 }
 
 export function Compiler() {
-  const [code, setCode] = useState<string>(defaultCode);
+  const [history, setHistory] = useState<string[]>([defaultCode]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const code = history[historyIndex];
+  
   const [isCompiling, setIsCompiling] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({
@@ -85,6 +88,26 @@ export function Compiler() {
   });
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
+
+  const setCode = (newCode: string) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newCode);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+    }
+  }, [historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+    }
+  }, [historyIndex, history.length]);
+
 
   const handleRun = async () => {
     setIsCompiling(true);
@@ -112,6 +135,8 @@ export function Compiler() {
         <CodeEditor
           code={code}
           onCodeChange={setCode}
+          onUndo={undo}
+          onRedo={redo}
         />
       </div>
       <SettingsPanel

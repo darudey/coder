@@ -3,7 +3,7 @@
 
 import { Textarea } from '@/components/ui/textarea';
 import type { FC } from 'react';
-import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 interface CodeEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 const parseCode = (code: string) => {
@@ -78,13 +80,12 @@ const getTokenClassName = (type: string) => {
   }
 }
 
-export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
+export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
-  const metaKeyPressed = useRef(false);
   const [ctrlActive, setCtrlActive] = useState(false);
 
   const syncScroll = useCallback(() => {
@@ -147,10 +148,16 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
         return;
     }
 
-    if (ctrlActive && key.toLowerCase() === 'a') {
-        textarea.select();
-        setCtrlActive(false); 
-        return;
+    if (ctrlActive) {
+      if (key.toLowerCase() === 'a') {
+          textarea.select();
+      } else if (key.toLowerCase() === 'z') {
+          onUndo();
+      } else if (key.toLowerCase() === 'y') {
+          onRedo();
+      }
+      setCtrlActive(false);
+      return;
     }
 
 
@@ -240,11 +247,18 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange }) => {
   }, []);
   
   const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.metaKey || e.ctrlKey) {
-        metaKeyPressed.current = true;
-        return;
+    if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            onUndo();
+            return;
+        }
+        if (e.key.toLowerCase() === 'y') {
+            e.preventDefault();
+            onRedo();
+            return;
+        }
     }
-    metaKeyPressed.current = false;
 
     if (e.key === 'Tab') {
         e.preventDefault();
