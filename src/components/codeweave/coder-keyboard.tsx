@@ -19,7 +19,7 @@ const keyboardLayout = [
     ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '\\'],
     ['CapsLock', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'Enter'],
     ['Shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'Shift'],
-    ['Ctrl', ' ', "'", '"', '`', 'EyeOff', 'Ctrl'],
+    ['Ctrl', ' ', ";", '"', '`', 'EyeOff', 'Ctrl'],
 ];
 
 const symbolMap: { [key: string]: string } = {
@@ -157,7 +157,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
                   'flex-1',
                   {
                     'flex-grow-[2]': key === 'Backspace' || key === 'Enter',
-                    'flex-grow-[1.5]': key === 'Tab' || key === 'Shift' || key === 'Ctrl',
+                    'flex-grow-[1.5]': key === 'Tab' || key === 'Shift',
                     'flex-grow-[0.8]': key === 'CapsLock',
                     'flex-grow-[8]': key === ' ',
                     'bg-gray-600': (isShift && shift) || (isCapsLock && capsLock) || (isCtrl && ctrlActive),
