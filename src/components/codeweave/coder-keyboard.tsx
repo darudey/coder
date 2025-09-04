@@ -4,7 +4,7 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { EyeOff } from 'lucide-react';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import type { FC } from 'react';
 
 interface CoderKeyboardProps {
@@ -14,7 +14,7 @@ interface CoderKeyboardProps {
 }
 
 const keyboardLayout = [
-    ['(', '{', '[', ';', "'", ',', '.', '/', ']','}',')'],
+    ['(', '{', '[', ';', "'", ',', '.', '/', ']','}','_'],
     ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
     ['Tab', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '\\'],
     ['CapsLock', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'Enter'],
@@ -28,8 +28,9 @@ const symbolMap: { [key: string]: string } = {
 };
 
 export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, onHide }) => {
-  const [shift, setShift] = React.useState(false);
-  const [capsLock, setCapsLock] = React.useState(false);
+  const [shift, setShift] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
   const spacebarInteraction = useRef({
     isDragging: false,
     startX: 0,
@@ -72,7 +73,10 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
     spacebarInteraction.current.didMove = false;
   };
 
-  const handleKeyPress = (key: string) => {
+  const handleKeyPress = (key: string, uniqueId: string) => {
+    setPressedKey(uniqueId);
+    setTimeout(() => setPressedKey(null), 100);
+
     if (key === 'Shift') {
       setShift(!shift);
       return;
@@ -111,6 +115,8 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
       {keyboardLayout.map((row, rowIndex) => (
         <div key={rowIndex} className="flex justify-center gap-0.5 my-0.5">
           {row.map((key, keyIndex) => {
+            const uniqueId = `${key}-${rowIndex}-${keyIndex}`;
+            const isPressed = pressedKey === uniqueId;
             const isSpecialKey = ['Backspace', 'Enter', 'Shift', 'Ctrl', 'CapsLock', 'Tab'].includes(key);
             const isShift = key === 'Shift';
             const isCapsLock = key === 'CapsLock';
@@ -144,15 +150,15 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
                   onTouchEnd: handleSpacebarUp,
                 }
               : {
-                  onClick: () => handleKeyPress(key),
+                  onClick: () => handleKeyPress(key, uniqueId),
                 };
 
             return (
               <Button
-                key={`${key}-${keyIndex}`}
+                key={uniqueId}
                 variant="outline"
                 className={cn(
-                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-all transform active:scale-95 p-0',
+                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-colors duration-100 p-0',
                   isSpecialKey ? 'text-[0.6rem]' : 'text-base',
                   'flex-1',
                   {
@@ -160,6 +166,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
                     'flex-grow-[1.5]': key === 'Tab' || key === 'Shift' || key === 'Ctrl',
                     'flex-grow-[0.8]': key === 'CapsLock',
                     'flex-grow-[8]': key === ' ',
+                    'bg-blue-500': isPressed,
                     'bg-gray-600': (isShift && shift) || (isCapsLock && capsLock) || (isCtrl && ctrlActive),
                   }
                 )}
