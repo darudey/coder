@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { OutputDisplay } from './output-display';
 
 
-const defaultCode = `// Welcome to CodeWeave!
+const defaultCode = `// Welcome to 24HrCoding!
 // Your code now runs directly in the browser for instant results.
 function greet(name) {
   return \`Hello, \${name}!\`;
