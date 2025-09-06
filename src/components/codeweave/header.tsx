@@ -21,7 +21,7 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
       <div className="flex items-center justify-between p-2 md:p-4">
         <div className="flex items-center gap-3">
           <Code2 className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl font-bold font-headline text-foreground">24HrCoding</h1>
+          <h1 className="text-xl font-bold font-headline text-foreground">24HrCoding</h1>
         </div>
         {activeFile && (
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
