@@ -128,27 +128,27 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                     <span className="sr-only">New File</span>
                 </Button>
             </div>
-            <div className="flex-grow border rounded-md">
+            <div className="flex-grow border rounded-md min-h-0">
                 <ScrollArea className="h-full">
-                    <Accordion type="multiple" className="w-full p-2">
+                    <Accordion type="multiple" className="w-full">
                         {Object.entries(fileSystem).map(([folderName, files]) => (
-                            <AccordionItem value={folderName} key={folderName}>
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2">
-                                        <Folder className="h-4 w-4" />
-                                        <span>{folderName}</span>
+                            <AccordionItem value={folderName} key={folderName} className="border-b-0">
+                                <AccordionTrigger className="px-2 py-2 text-sm hover:no-underline">
+                                    <div className="flex items-center gap-1.5">
+                                        <Folder className="h-3.5 w-3.5" />
+                                        <span className="font-medium">{folderName}</span>
                                     </div>
                                 </AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="flex flex-col gap-1 pl-4">
+                                <AccordionContent className="pb-0">
+                                    <div className="flex flex-col gap-px pl-4">
                                         {Object.keys(files).map((fileName) => (
-                                            <div key={fileName} className="flex items-center justify-between gap-2 group">
-                                                <button className="flex items-center gap-2 text-left flex-grow" onClick={() => onLoadFile(folderName, fileName)}>
-                                                    <File className="h-4 w-4" />
-                                                    <span>{fileName}</span>
+                                            <div key={fileName} className="flex items-center justify-between gap-1 group pr-2">
+                                                <button className="flex items-center gap-1.5 text-left flex-grow p-1 rounded-sm hover:bg-muted" onClick={() => onLoadFile(folderName, fileName)}>
+                                                    <File className="h-3.5 w-3.5" />
+                                                    <span className="text-xs">{fileName}</span>
                                                 </button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); onDeleteFile(folderName, fileName); }}>
-                                                    <Trash2 className="h-4 w-4" />
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); onDeleteFile(folderName, fileName); }}>
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         ))}
