@@ -1,11 +1,11 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2 } from 'lucide-react';
 import type { FC } from 'react';
 import type { RunResult } from '@/app/actions';
+import { DotLoader } from './dot-loader';
 
 interface OutputDisplayProps {
   output: RunResult | null;
@@ -20,7 +20,7 @@ export const OutputDisplay: FC<OutputDisplayProps> = ({
     if (isCompiling) {
       return (
         <div className="flex items-center justify-center h-full">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <DotLoader className="w-12 text-primary" />
           <p className="ml-4 text-muted-foreground">Running code...</p>
         </div>
       );

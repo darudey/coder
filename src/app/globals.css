@@ -92,3 +92,27 @@ body {
 .hljs {
     background: white !important;
 }
+
+@layer utilities {
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateY(-25%);
+      animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+    50% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+  }
+  .animate-bounce-dot-1 {
+    animation: bounce 1s infinite;
+    animation-delay: -0.3s;
+  }
+  .animate-bounce-dot-2 {
+    animation: bounce 1s infinite;
+    animation-delay: -0.15s;
+  }
+  .animate-bounce-dot-3 {
+    animation: bounce 1s infinite;
+  }
+}

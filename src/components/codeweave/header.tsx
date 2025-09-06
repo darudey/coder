@@ -3,9 +3,10 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Loader2, Code2, Save, File } from 'lucide-react';
+import { Play, Settings, Code2, Save, File } from 'lucide-react';
 import type { FC } from 'react';
 import type { ActiveFile } from './compiler';
+import { DotLoader } from './dot-loader';
 
 interface HeaderProps {
   onRun: () => void;
@@ -34,13 +35,15 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button onClick={onRun} disabled={isCompiling}>
+          <Button onClick={onRun} disabled={isCompiling} className="w-[88px]">
             {isCompiling ? (
-              <Loader2 className="animate-spin" />
+              <DotLoader />
             ) : (
-              <Play />
+              <>
+                <Play />
+                <span className="ml-2 hidden sm:inline">Run</span>
+              </>
             )}
-            <span className="ml-2 hidden sm:inline">Run</span>
           </Button>
           <Button variant="outline" size="icon" onClick={onSaveAs}>
             <Save />
