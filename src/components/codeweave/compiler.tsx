@@ -53,20 +53,6 @@ const getInitialFileSystem = (): FileSystem => {
     return { 'Examples': { 'Welcome.js': defaultCode } };
 }
 
-const getInitialActiveFile = (): ActiveFile | null => {
-    if (typeof window === 'undefined') return null;
-    const saved = localStorage.getItem('activeFile');
-    if (saved) {
-        try {
-            return JSON.parse(saved);
-        } catch (e) {
-            return null;
-        }
-    }
-    return null;
-}
-
-
 const runCodeOnClient = (code: string): RunResult => {
     try {
         const capturedLogs: any[] = [];
@@ -105,13 +91,28 @@ const runCodeOnClient = (code: string): RunResult => {
 }
 
 export function Compiler() {
-  const [fileSystem, setFileSystem] = useState<FileSystem>(getInitialFileSystem);
-  const [activeFile, setActiveFile] = useState<ActiveFile | null>(getInitialActiveFile);
+  const [fileSystem, setFileSystem] = useState<FileSystem>({});
+  const [activeFile, setActiveFile] = useState<ActiveFile | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   
+  useEffect(() => {
+    setIsMounted(true);
+    setFileSystem(getInitialFileSystem());
+    const saved = localStorage.getItem('activeFile');
+    if (saved) {
+        try {
+            setActiveFile(JSON.parse(saved));
+        } catch (e) {
+            setActiveFile(null);
+        }
+    }
+  }, []);
+
   const getCodeFromState = () => {
-    if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName]) {
+    if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
         return fileSystem[activeFile.folderName][activeFile.fileName];
     }
+    if (!isMounted) return ''; // Return empty string during server render or before mount
     const fallbackFolder = Object.keys(fileSystem)[0];
     if (!fallbackFolder) return defaultCode;
     const fallbackFile = Object.keys(fileSystem[fallbackFolder])[0];
@@ -149,12 +150,12 @@ export function Compiler() {
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(historyIndex + 1);
+      setHistoryIndex(newHistory => newHistory + 1);
     }
   }, [historyIndex, history.length]);
 
   useEffect(() => {
-    if (debouncedCode && activeFile) {
+    if (debouncedCode && activeFile && isMounted) {
         setFileSystem(fs => {
             const newFs = { ...fs };
             if (!newFs[activeFile.folderName]) {
@@ -165,21 +166,25 @@ export function Compiler() {
             return newFs;
         });
     }
-  }, [debouncedCode, activeFile]);
+  }, [debouncedCode, activeFile, isMounted]);
 
   useEffect(() => {
+    if (!isMounted) return;
     const codeToSet = getCodeFromState();
-    setHistory([codeToSet]);
-    setHistoryIndex(0);
-  }, [activeFile, fileSystem]);
+    if(codeToSet !== code) {
+      setHistory([codeToSet]);
+      setHistoryIndex(0);
+    }
+  }, [activeFile, fileSystem, isMounted]);
 
   useEffect(() => {
+    if (!isMounted) return;
     if (activeFile) {
         localStorage.setItem('activeFile', JSON.stringify(activeFile));
     } else {
         localStorage.removeItem('activeFile');
     }
-  }, [activeFile]);
+  }, [activeFile, isMounted]);
 
   const handleRun = async () => {
     setIsCompiling(true);
@@ -276,6 +281,9 @@ export function Compiler() {
     }
 };
 
+  if (!isMounted) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <div className="flex flex-col h-screen">
@@ -286,6 +294,8 @@ export function Compiler() {
           onCodeChange={setCode}
           onUndo={undo}
           onRedo={redo}
+          onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
+          hasActiveFile={!!activeFile}
         />
       </div>
       <SettingsPanel
@@ -334,3 +344,5 @@ export function Compiler() {
     </div>
   );
 }
+
+    
