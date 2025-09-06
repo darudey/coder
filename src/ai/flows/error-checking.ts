@@ -18,9 +18,10 @@ export type ErrorCheckInput = z.infer<typeof ErrorCheckInputSchema>;
 
 const ErrorCheckOutputSchema = z.object({
   hasErrors: z.boolean().describe('Indicates whether any errors were found in the code.'),
-  errors: z
-    .array(z.string())
-    .describe('A list of error messages found in the code, if any.'),
+  errors: z.array(z.object({
+    summary: z.string().describe('A short, one-sentence summary of the error.'),
+    explanation: z.string().describe('A more detailed explanation of the error and how to fix it.')
+  })).describe('A list of error messages found in the code, if any.'),
 });
 export type ErrorCheckOutput = z.infer<typeof ErrorCheckOutputSchema>;
 
@@ -34,9 +35,11 @@ const errorCheckPrompt = ai.definePrompt({
   output: {schema: ErrorCheckOutputSchema},
   prompt: `You are a JavaScript code analysis tool.
 
-  Your task is to analyze the provided JavaScript code for syntax and runtime errors.
-
-  Respond with a JSON object indicating whether errors were found and, if so, a list of error messages.
+  Your task is to analyze the provided JavaScript code for syntax and runtime errors. Your analysis should be thorough.
+  
+  For each error you find, provide a short, one-sentence summary and a more detailed explanation of the problem and potential fix.
+  
+  Respond with a JSON object indicating whether errors were found and, if so, a list of structured error objects.
 
   Code to analyze:
   \`\`\`javascript

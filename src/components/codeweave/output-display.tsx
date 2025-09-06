@@ -12,6 +12,30 @@ interface OutputDisplayProps {
   isCompiling: boolean;
 }
 
+const renderStaticAnalysisError = (output: string) => {
+    const errorSections = output.replace('Static Analysis Errors:\n\n', '').split('\n\n---\n\n');
+    
+    return (
+        <div className="p-4 text-sm font-code text-destructive">
+            <h3 className="font-bold text-base mb-4">Static Analysis Errors</h3>
+            {errorSections.map((section, index) => {
+                const summaryMatch = section.match(/Summary: (.*)/);
+                const explanationMatch = section.match(/Explanation: ([\s\S]*)/);
+                const summary = summaryMatch ? summaryMatch[1] : 'Unknown Error';
+                const explanation = explanationMatch ? explanationMatch[1] : 'No details available.';
+
+                return (
+                    <div key={index} className="mb-4 last:mb-0">
+                        <p className="font-semibold mb-1">{summary}</p>
+                        <p className="whitespace-pre-wrap opacity-90">{explanation}</p>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+
 export const OutputDisplay: FC<OutputDisplayProps> = ({
   output,
   isCompiling,
@@ -28,6 +52,11 @@ export const OutputDisplay: FC<OutputDisplayProps> = ({
     if (!output) {
       return <p className="text-muted-foreground p-4">Click "Run" to execute the code and see the output here.</p>;
     }
+
+    if (output.type === 'error' && output.output.startsWith('Static Analysis Errors')) {
+        return renderStaticAnalysisError(output.output);
+    }
+
     return (
       <pre
         className={`p-4 text-sm whitespace-pre-wrap font-code h-full ${

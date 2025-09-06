@@ -91,16 +91,17 @@ export function Compiler() {
   
   useEffect(() => {
     setIsMounted(true);
-    setFileSystem(getInitialFileSystem());
+    const fs = getInitialFileSystem();
+    setFileSystem(fs);
     const saved = localStorage.getItem('activeFile');
     if (saved) {
         try {
             const parsedFile = JSON.parse(saved);
             // Ensure the active file actually exists in the filesystem
-            if (getInitialFileSystem()[parsedFile.folderName]?.[parsedFile.fileName]) {
+            if (fs[parsedFile.folderName]?.[parsedFile.fileName]) {
                 setActiveFile(parsedFile);
             } else {
-                setActiveFile(null);
+                setActiveFile(null); // Or set to a default
             }
         } catch (e) {
             setActiveFile(null);
@@ -108,7 +109,7 @@ export function Compiler() {
     }
   }, []);
 
-  const getCodeFromState = () => {
+  const getCodeFromState = useCallback(() => {
     if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
         return fileSystem[activeFile.folderName][activeFile.fileName];
     }
@@ -120,13 +121,15 @@ export function Compiler() {
         if (Object.keys(fileSystem[fallbackFolder]).length > 0) {
             const fallbackFile = Object.keys(fileSystem[fallbackFolder])[0];
             if (!activeFile && isMounted) {
-                setActiveFile({ folderName: fallbackFolder, fileName: fallbackFile });
+                // Setting state during render is not ideal, but this is a fallback.
+                // A better approach might be a useEffect to set this.
+                setTimeout(() => setActiveFile({ folderName: fallbackFolder, fileName: fallbackFile }), 0);
             }
             return fileSystem[fallbackFolder][fallbackFile];
         }
     }
     return defaultCode;
-  };
+  }, [activeFile, fileSystem, isMounted]);
 
   const [history, setHistory] = useState<string[]>([getCodeFromState()]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -186,6 +189,7 @@ export function Compiler() {
       setHistory([codeToSet]);
       setHistoryIndex(0);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFile, fileSystem, isMounted]);
 
   // This effect persists the active file to localStorage
@@ -228,9 +232,18 @@ export function Compiler() {
     }
     
     const newActiveFile = { fileName: trimmedFileName, folderName: trimmedFolderName };
-    
+    const isNewFileOrRename = !activeFile || activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName;
+
     setFileSystem(fs => {
         const newFs = { ...fs };
+        
+        // If it's a rename or move, we might need to remove the old file
+        if(isNewFileOrRename && activeFile) {
+            // This is a "Save As" operation. The old implementation deleted the source file which was wrong.
+            // A true "Save As" should create a new file and leave the old one.
+            // If the user wants to rename, they should delete the old one manually.
+        }
+
         if (!newFs[newActiveFile.folderName]) {
             newFs[newActiveFile.folderName] = {};
         }
@@ -239,8 +252,7 @@ export function Compiler() {
         return newFs;
     });
 
-    // Only change the active file if it's a new file or a rename
-    if (!activeFile || activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName) {
+    if (isNewFileOrRename) {
         setActiveFile(newActiveFile);
     }
     

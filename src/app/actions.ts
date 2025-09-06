@@ -18,8 +18,12 @@ export async function checkCodeForErrors(code: string): Promise<RunResult | null
     try {
         const errorCheckResult = await errorCheck({ code });
         if (errorCheckResult.hasErrors && errorCheckResult.errors.length > 0) {
+            const formattedErrors = errorCheckResult.errors.map(err => 
+              `Summary: ${err.summary}\n\nExplanation: ${err.explanation}`
+            ).join('\n\n---\n\n');
+
             return {
-                output: `Static Analysis Errors:\n${errorCheckResult.errors.join('\n')}`,
+                output: `Static Analysis Errors:\n\n${formattedErrors}`,
                 type: 'error',
             };
         }
