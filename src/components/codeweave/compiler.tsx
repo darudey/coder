@@ -95,7 +95,13 @@ export function Compiler() {
     const saved = localStorage.getItem('activeFile');
     if (saved) {
         try {
-            setActiveFile(JSON.parse(saved));
+            const parsedFile = JSON.parse(saved);
+            // Ensure the active file actually exists in the filesystem
+            if (getInitialFileSystem()[parsedFile.folderName]?.[parsedFile.fileName]) {
+                setActiveFile(parsedFile);
+            } else {
+                setActiveFile(null);
+            }
         } catch (e) {
             setActiveFile(null);
         }
@@ -107,10 +113,19 @@ export function Compiler() {
         return fileSystem[activeFile.folderName][activeFile.fileName];
     }
     if (!isMounted) return ''; // Return empty string during server render or before mount
-    const fallbackFolder = Object.keys(fileSystem)[0];
-    if (!fallbackFolder) return defaultCode;
-    const fallbackFile = Object.keys(fileSystem[fallbackFolder])[0];
-    return fallbackFile ? fileSystem[fallbackFolder][fallbackFile] : defaultCode;
+    
+    // Fallback logic
+    if (Object.keys(fileSystem).length > 0) {
+        const fallbackFolder = Object.keys(fileSystem)[0];
+        if (Object.keys(fileSystem[fallbackFolder]).length > 0) {
+            const fallbackFile = Object.keys(fileSystem[fallbackFolder])[0];
+            if (!activeFile && isMounted) {
+                setActiveFile({ folderName: fallbackFolder, fileName: fallbackFile });
+            }
+            return fileSystem[fallbackFolder][fallbackFile];
+        }
+    }
+    return defaultCode;
   };
 
   const [history, setHistory] = useState<string[]>([getCodeFromState()]);
@@ -147,7 +162,8 @@ export function Compiler() {
       setHistoryIndex(newHistory => newHistory + 1);
     }
   }, [historyIndex, history.length]);
-
+  
+  // This effect syncs the debounced code changes to the active file in the filesystem
   useEffect(() => {
     if (debouncedCode && activeFile && isMounted) {
         setFileSystem(fs => {
@@ -161,7 +177,8 @@ export function Compiler() {
         });
     }
   }, [debouncedCode, activeFile, isMounted]);
-
+  
+  // This effect loads the code from the active file into the editor
   useEffect(() => {
     if (!isMounted) return;
     const codeToSet = getCodeFromState();
@@ -171,6 +188,7 @@ export function Compiler() {
     }
   }, [activeFile, fileSystem, isMounted]);
 
+  // This effect persists the active file to localStorage
   useEffect(() => {
     if (!isMounted) return;
     if (activeFile) {
@@ -194,45 +212,40 @@ export function Compiler() {
   const handleSaveRequest = () => {
     setSaveForm({ 
         fileName: activeFile?.fileName || '', 
-        folderName: activeFile?.folderName || '' 
+        folderName: activeFile?.folderName || 'New Files' 
     });
     setIsSaveOpen(true);
   };
 
   const handleSave = () => {
     const { fileName, folderName } = saveForm;
-    if (!fileName.trim() || !folderName.trim()) {
+    const trimmedFileName = fileName.trim();
+    const trimmedFolderName = folderName.trim();
+
+    if (!trimmedFileName || !trimmedFolderName) {
         toast({ title: 'Error', description: 'File and folder names cannot be empty.', variant: 'destructive' });
         return;
     }
     
-    const newActiveFile = { fileName: fileName.trim(), folderName: folderName.trim() };
+    const newActiveFile = { fileName: trimmedFileName, folderName: trimmedFolderName };
     
     setFileSystem(fs => {
-        let newFs = { ...fs };
-        
-        // If file was renamed or moved, remove the old entry
-        if (activeFile && (activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName)) {
-            if (newFs[activeFile.folderName]) {
-                delete newFs[activeFile.folderName][activeFile.fileName];
-                if (Object.keys(newFs[activeFile.folderName]).length === 0) {
-                    delete newFs[activeFile.folderName];
-                }
-            }
-        }
-        
+        const newFs = { ...fs };
         if (!newFs[newActiveFile.folderName]) {
             newFs[newActiveFile.folderName] = {};
         }
         newFs[newActiveFile.folderName][newActiveFile.fileName] = code;
-        
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
 
-    setActiveFile(newActiveFile);
+    // Only change the active file if it's a new file or a rename
+    if (!activeFile || activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName) {
+        setActiveFile(newActiveFile);
+    }
+    
     setIsSaveOpen(false);
-    toast({ title: 'Code Saved', description: `Saved as ${folderName}/${fileName}` });
+    toast({ title: 'Code Saved', description: `Saved as ${trimmedFolderName}/${trimmedFileName}` });
   };
   
   const loadFile = (folderName: string, fileName: string) => {
@@ -281,7 +294,13 @@ export function Compiler() {
 
   return (
     <div className="flex flex-col h-screen">
-      <Header onRun={handleRun} onSettings={() => setIsSettingsOpen(true)} isCompiling={isCompiling} onSave={handleSaveRequest} activeFile={activeFile} />
+      <Header 
+        onRun={handleRun} 
+        onSettings={() => setIsSettingsOpen(true)} 
+        isCompiling={isCompiling} 
+        onSaveAs={handleSaveRequest} 
+        activeFile={activeFile} 
+      />
       <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
         <CodeEditor
           code={code}
