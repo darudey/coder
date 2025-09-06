@@ -19,13 +19,13 @@ interface HeaderProps {
 export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, activeFile }) => {
   return (
     <header>
-      <div className="flex items-center justify-between p-2 md:p-4 gap-4">
-        <div className="flex items-center gap-3 shrink-0">
-          <Code2 className="w-8 h-8 text-primary" />
-          <h1 className="text-xl font-bold font-headline text-foreground">24HrCoding</h1>
+      <div className="flex items-center justify-between p-2 md:p-3 gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <Code2 className="w-7 h-7 md:w-8 md:h-8 text-primary" />
+          <h1 className="text-lg md:text-xl font-bold font-headline text-foreground">24HrCoding</h1>
         </div>
         
-        <div className="flex-1 flex justify-center min-w-0">
+        <div className="flex-1 flex justify-center min-w-0 px-2">
           {activeFile && (
               <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground truncate">
                   <File className="w-4 h-4 shrink-0" />
@@ -34,23 +34,23 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button onClick={onRun} disabled={isCompiling} className="w-[88px]">
+        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+          <Button onClick={onRun} disabled={isCompiling} className="min-w-[70px] md:min-w-[88px]">
             {isCompiling ? (
               <DotLoader />
             ) : (
               <>
-                <Play />
-                <span className="ml-2 hidden sm:inline">Run</span>
+                <Play className="w-4 h-4" />
+                <span className="ml-1.5 hidden sm:inline">Run</span>
               </>
             )}
           </Button>
           <Button variant="outline" size="icon" onClick={onSaveAs}>
-            <Save />
+            <Save className="w-4 h-4" />
             <span className="sr-only">Save As</span>
           </Button>
           <Button variant="outline" size="icon" onClick={onSettings}>
-            <Settings />
+            <Settings className="w-4 h-4" />
             <span className="sr-only">Settings</span>
           </Button>
         </div>
