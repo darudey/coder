@@ -9,6 +9,7 @@ import { SettingsPanel } from './settings-panel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { OutputDisplay } from './output-display';
 import { useToast } from '@/hooks/use-toast';
+import { useDebounce } from '@/hooks/use-debounce';
 
 
 const defaultCode = `// Welcome to 24HrCoding!
@@ -88,6 +89,7 @@ export function Compiler() {
   const [history, setHistory] = useState<string[]>([getInitialCode()]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const code = history[historyIndex];
+  const debouncedCode = useDebounce(code, 500);
   
   const [isCompiling, setIsCompiling] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -117,6 +119,11 @@ export function Compiler() {
     }
   }, [historyIndex, history.length]);
 
+  useEffect(() => {
+    if (debouncedCode) {
+        localStorage.setItem('editorCode', debouncedCode);
+    }
+  }, [debouncedCode]);
 
   const handleRun = async () => {
     setIsCompiling(true);
