@@ -87,6 +87,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const [ctrlActive, setCtrlActive] = useState(false);
+  const [fontSize, setFontSize] = useState(14); // Initial font size in pixels
 
   const syncScroll = useCallback(() => {
     if (textareaRef.current && gutterRef.current) {
@@ -137,7 +138,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
     return () => {
       window.removeEventListener('resize', handleResize);
     }
-  }, [code, updateLineNumbers]);
+  }, [code, updateLineNumbers, fontSize]);
 
   const handleKeyPress = (key: string) => {
     const textarea = textareaRef.current;
@@ -258,6 +259,16 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
             onRedo();
             return;
         }
+        if (e.key === '=') { // For Ctrl +
+            e.preventDefault();
+            setFontSize(fs => Math.min(fs + 1, 40));
+            return;
+        }
+        if (e.key === '-') { // For Ctrl -
+            e.preventDefault();
+            setFontSize(fs => Math.max(fs - 1, 8));
+            return;
+        }
     }
 
     if (e.key === 'Tab') {
@@ -268,22 +279,23 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
 
   const showKeyboard = isKeyboardVisible;
   
-  const editorStyles: React.CSSProperties = {
+  const editorStyles: React.CSSProperties = useMemo(() => ({
       fontFamily: 'var(--font-code)',
-      fontSize: '0.875rem',
+      fontSize: `${fontSize}px`,
       lineHeight: '1.5',
       padding: '0.5rem 0.75rem',
       whiteSpace: 'pre-wrap',
       overflowWrap: 'anywhere',
+      // @ts-ignore
       tabSize: 2,
-  };
+  }), [fontSize]);
   
   const highlightedCode = useMemo(() => {
     const lines = code.split('\n');
     return (
       <>
         {lines.map((line, lineIndex) => (
-            <div key={lineIndex} className="min-h-[21px]">
+            <div key={lineIndex} className="min-h-[21px]" style={{minHeight: `${fontSize * 1.5}px`}}>
               {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
                   <span key={tokenIndex} className={getTokenClassName(token.type)}>
                     {token.value}
@@ -293,7 +305,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
         ))}
       </>
     );
-  }, [code]);
+  }, [code, fontSize]);
 
   return (
     <>
@@ -339,12 +351,9 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
                     aria-hidden="true"
                     className="absolute top-0 left-0 invisible pointer-events-none"
                     style={{
-                      fontFamily: 'var(--font-code)',
-                      fontSize: editorStyles.fontSize,
-                      lineHeight: editorStyles.lineHeight,
+                      ...editorStyles,
                       whiteSpace: 'pre-wrap',
                       overflowWrap: 'anywhere',
-                      padding: '0.5rem 0.75rem',
                       boxSizing: 'border-box'
                     }}
                 ></div>
