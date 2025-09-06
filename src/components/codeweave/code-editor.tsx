@@ -131,7 +131,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
       
       gutter.style.width = (String(lines.length).length * 8 + 17) + 'px';
       syncScroll();
-  }, [syncScroll]);
+  }, [syncScroll, fontSize]);
 
 
   useEffect(() => {
@@ -255,7 +255,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
     };
   }, []);
   
-  const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleNativeKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -281,29 +281,40 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
             return;
         }
         if (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'x') {
+            // If no text is selected, select the whole line
             if (textarea.selectionStart === textarea.selectionEnd) {
                 e.preventDefault();
                 const currentCursor = textarea.selectionStart;
                 const text = textarea.value;
-                
                 const lineStart = text.lastIndexOf('\n', currentCursor - 1) + 1;
                 const lineEnd = text.indexOf('\n', currentCursor);
-                
                 const finalLineEnd = lineEnd === -1 ? text.length : lineEnd;
 
                 textarea.setSelectionRange(lineStart, finalLineEnd);
-                
-                try {
-                    document.execCommand(e.key.toLowerCase() === 'c' ? 'copy' : 'cut');
-                } catch (err) {
-                    console.error('Could not execute command: ', err);
-                }
-                
-                // After the command, we might want to restore cursor position
-                // For 'cut', the content is gone, so cursor behavior might differ.
-                // For simplicity, we leave the line selected. The user can click to deselect.
             }
-            // If text is selected, let the default browser behavior handle it.
+             // Now that text is selected (either by user or by us), copy or cut it
+            const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+
+            if (selectedText) {
+                e.preventDefault();
+                try {
+                    await navigator.clipboard.writeText(selectedText);
+                    if (e.key.toLowerCase() === 'x') { // If cut, remove the text
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const newCode = code.substring(0, start) + code.substring(end);
+                        onCodeChange(newCode);
+                        
+                        // Move cursor to the start position after cutting
+                        requestAnimationFrame(() => {
+                          textarea.selectionStart = start;
+                          textarea.selectionEnd = start;
+                        });
+                    }
+                } catch (err) {
+                    console.error('Clipboard operation failed: ', err);
+                }
+            }
             return;
         }
         if (e.key.toLowerCase() === 'd') {
