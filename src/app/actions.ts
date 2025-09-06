@@ -43,7 +43,33 @@ export async function saveApiKey(apiKey: string): Promise<{ success: boolean; er
     // In a real app, you'd want to handle this more securely.
     // For this prototype, we'll write it to a .env.local file.
     const envLocalPath = path.resolve(process.cwd(), '.env.local');
-    await fs.writeFile(envLocalPath, `GEMINI_API_KEY=${apiKey}\n`);
+    // Read existing content, if any
+    let content = '';
+    try {
+      content = await fs.readFile(envLocalPath, 'utf-8');
+    } catch (readError: any) {
+      if (readError.code !== 'ENOENT') {
+        throw readError;
+      }
+    }
+
+    const lines = content.split('\n');
+    const newKeyLine = `GEMINI_API_KEY=${apiKey}`;
+    let keyExists = false;
+
+    const newLines = lines.map(line => {
+      if (line.startsWith('GEMINI_API_KEY=')) {
+        keyExists = true;
+        return newKeyLine;
+      }
+      return line;
+    });
+
+    if (!keyExists) {
+      newLines.push(newKeyLine);
+    }
+    
+    await fs.writeFile(envLocalPath, newLines.filter(line => line).join('\n'));
     
     return { success: true };
   } catch (error) {

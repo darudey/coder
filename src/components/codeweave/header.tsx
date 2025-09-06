@@ -3,17 +3,19 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Loader2, Code2, Save } from 'lucide-react';
+import { Play, Settings, Loader2, Code2, Save, File } from 'lucide-react';
 import type { FC } from 'react';
+import type { ActiveFile } from './compiler';
 
 interface HeaderProps {
   onRun: () => void;
   onSettings: () => void;
   isCompiling: boolean;
   onSave: () => void;
+  activeFile: ActiveFile | null;
 }
 
-export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave }) => {
+export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave, activeFile }) => {
   return (
     <header>
       <div className="flex items-center justify-between p-2 md:p-4">
@@ -21,6 +23,12 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
           <Code2 className="w-8 h-8 text-primary" />
           <h1 className="text-2xl font-bold font-headline text-foreground">24HrCoding</h1>
         </div>
+        {activeFile && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <File className="w-4 h-4" />
+                <span>{activeFile.folderName} / {activeFile.fileName}</span>
+            </div>
+        )}
         <div className="flex items-center gap-2">
           <Button onClick={onRun} disabled={isCompiling}>
             {isCompiling ? (

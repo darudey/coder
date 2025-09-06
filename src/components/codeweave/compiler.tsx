@@ -6,14 +6,16 @@ import { checkCodeForErrors, type RunResult } from '@/app/actions';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { OutputDisplay } from './output-display';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
-
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
+import { Label } from '../ui/label';
 
 const defaultCode = `// Welcome to 24HrCoding!
-// Your code now runs directly in the browser for instant results.
+// Use the settings panel to save and load your creations.
 function greet(name) {
   return \`Hello, \${name}!\`;
 }
@@ -25,19 +27,51 @@ export interface Settings {
   errorChecking: boolean;
 }
 
-const getInitialCode = (): string => {
-  if (typeof window === 'undefined') {
-    return defaultCode;
-  }
-  return localStorage.getItem('editorCode') || defaultCode;
+export type FileSystem = {
+  [folderName: string]: {
+    [fileName: string]: string;
+  };
+};
+
+export interface ActiveFile {
+    folderName: string;
+    fileName: string;
 }
+
+const getInitialFileSystem = (): FileSystem => {
+    if (typeof window === 'undefined') {
+        return { 'Examples': { 'Welcome.js': defaultCode } };
+    }
+    const saved = localStorage.getItem('codeFileSystem');
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            return { 'Examples': { 'Welcome.js': defaultCode } };
+        }
+    }
+    return { 'Examples': { 'Welcome.js': defaultCode } };
+}
+
+const getInitialActiveFile = (): ActiveFile | null => {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('activeFile');
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
 
 const runCodeOnClient = (code: string): RunResult => {
     try {
         const capturedLogs: any[] = [];
         const originalConsoleLog = console.log;
 
-        // Override console.log to capture output
         const customLog = (...args: any[]) => {
             capturedLogs.push(args.map(arg => {
                 if (typeof arg === 'object' && arg !== null) {
@@ -51,60 +85,60 @@ const runCodeOnClient = (code: string): RunResult => {
             }).join(' '));
         };
         
-        // Temporarily replace console.log
         console.log = customLog;
-
-        // In a real-world application, this should be sandboxed.
         let result = (new Function(code))();
-
-        // Restore original console.log
         console.log = originalConsoleLog;
 
         let output = capturedLogs.join('\n');
 
         if (result !== undefined) {
             const resultString = JSON.stringify(result, null, 2);
-            if (output) {
-                output += `\n${resultString}`;
-            } else {
-                output = resultString
-            }
+            output = output ? `${output}\n${resultString}` : resultString;
         } else if (capturedLogs.length === 0) {
             output = 'undefined';
         }
 
-        return {
-            output: output,
-            type: 'result',
-        };
+        return { output, type: 'result' };
     } catch (e: any) {
-        return {
-            output: `${e.name}: ${e.message}`,
-            type: 'error',
-        };
+        return { output: `${e.name}: ${e.message}`, type: 'error' };
     }
 }
 
 export function Compiler() {
-  const [history, setHistory] = useState<string[]>([getInitialCode()]);
+  const [fileSystem, setFileSystem] = useState<FileSystem>(getInitialFileSystem);
+  const [activeFile, setActiveFile] = useState<ActiveFile | null>(getInitialActiveFile);
+  
+  const getCodeFromState = () => {
+    if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName]) {
+        return fileSystem[activeFile.folderName][activeFile.fileName];
+    }
+    const fallbackFolder = Object.keys(fileSystem)[0];
+    if (!fallbackFolder) return defaultCode;
+    const fallbackFile = Object.keys(fileSystem[fallbackFolder])[0];
+    return fallbackFile ? fileSystem[fallbackFolder][fallbackFile] : defaultCode;
+  };
+
+  const [history, setHistory] = useState<string[]>([getCodeFromState()]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const code = history[historyIndex];
   const debouncedCode = useDebounce(code, 500);
   
   const [isCompiling, setIsCompiling] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState<Settings>({
-    errorChecking: false,
-  });
+  const [settings, setSettings] = useState<Settings>({ errorChecking: false });
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
+  const [isSaveOpen, setIsSaveOpen] = useState(false);
+  const [saveForm, setSaveForm] = useState({ fileName: '', folderName: '' });
   const { toast } = useToast();
 
-  const setCode = (newCode: string) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newCode);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
+  const setCode = (newCode: string, fromHistory = false) => {
+    if (!fromHistory) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newCode);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
   };
 
   const undo = useCallback(() => {
@@ -120,41 +154,132 @@ export function Compiler() {
   }, [historyIndex, history.length]);
 
   useEffect(() => {
-    if (debouncedCode) {
-        localStorage.setItem('editorCode', debouncedCode);
+    if (debouncedCode && activeFile) {
+        setFileSystem(fs => {
+            const newFs = { ...fs };
+            if (!newFs[activeFile.folderName]) {
+                newFs[activeFile.folderName] = {};
+            }
+            newFs[activeFile.folderName][activeFile.fileName] = debouncedCode;
+            localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+            return newFs;
+        });
     }
-  }, [debouncedCode]);
+  }, [debouncedCode, activeFile]);
+
+  useEffect(() => {
+    const codeToSet = getCodeFromState();
+    setHistory([codeToSet]);
+    setHistoryIndex(0);
+  }, [activeFile, fileSystem]);
+
+  useEffect(() => {
+    if (activeFile) {
+        localStorage.setItem('activeFile', JSON.stringify(activeFile));
+    } else {
+        localStorage.removeItem('activeFile');
+    }
+  }, [activeFile]);
 
   const handleRun = async () => {
     setIsCompiling(true);
     setIsResultOpen(true);
-
-    let result: RunResult | null = null;
-
-    if (settings.errorChecking) {
-        result = await checkCodeForErrors(code);
-    }
-    
-    // If AI check passed or was disabled, run code on the client
+    let result = settings.errorChecking ? await checkCodeForErrors(code) : null;
     if (!result) {
         result = runCodeOnClient(code);
     }
-
     setOutput(result);
     setIsCompiling(false);
   };
 
-  const handleSave = () => {
-    localStorage.setItem('editorCode', code);
-    toast({
-      title: 'Code Saved',
-      description: 'Your code has been saved to your browser\'s local storage.',
+  const handleSaveRequest = () => {
+    setSaveForm({ 
+        fileName: activeFile?.fileName || '', 
+        folderName: activeFile?.folderName || '' 
     });
+    setIsSaveOpen(true);
   };
+
+  const handleSave = () => {
+    const { fileName, folderName } = saveForm;
+    if (!fileName.trim() || !folderName.trim()) {
+        toast({ title: 'Error', description: 'File and folder names cannot be empty.', variant: 'destructive' });
+        return;
+    }
+    
+    const newActiveFile = { fileName: fileName.trim(), folderName: folderName.trim() };
+    
+    setFileSystem(fs => {
+        let newFs = { ...fs };
+        
+        // If file was renamed or moved, remove the old entry
+        if (activeFile && (activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName)) {
+            if (newFs[activeFile.folderName]) {
+                delete newFs[activeFile.folderName][activeFile.fileName];
+                if (Object.keys(newFs[activeFile.folderName]).length === 0) {
+                    delete newFs[activeFile.folderName];
+                }
+            }
+        }
+        
+        if (!newFs[newActiveFile.folderName]) {
+            newFs[newActiveFile.folderName] = {};
+        }
+        newFs[newActiveFile.folderName][newActiveFile.fileName] = code;
+        
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+
+    setActiveFile(newActiveFile);
+    setIsSaveOpen(false);
+    toast({ title: 'Code Saved', description: `Saved as ${folderName}/${fileName}` });
+  };
+  
+  const loadFile = (folderName: string, fileName: string) => {
+    setActiveFile({ folderName, fileName });
+    setIsSettingsOpen(false);
+  };
+  
+  const createNewFile = () => {
+    const newFile = { folderName: 'New Files', fileName: `Untitled-${Date.now()}.js` };
+    setFileSystem(fs => {
+        const newFs = { ...fs };
+        if (!newFs[newFile.folderName]) {
+            newFs[newFile.folderName] = {};
+        }
+        newFs[newFile.folderName][newFile.fileName] = defaultCode;
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+    setActiveFile(newFile);
+    setIsSettingsOpen(false);
+  };
+
+  const deleteFile = (folderName: string, fileName: string) => {
+    setFileSystem(fs => {
+        const newFs = { ...fs };
+        if (newFs[folderName]) {
+            delete newFs[folderName][fileName];
+            if (Object.keys(newFs[folderName]).length === 0) {
+                delete newFs[folderName];
+            }
+        }
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+
+    if (activeFile?.folderName === folderName && activeFile?.fileName === fileName) {
+        setActiveFile(null);
+        setHistory([defaultCode]);
+        setHistoryIndex(0);
+    }
+};
+
 
   return (
     <div className="flex flex-col h-screen">
-      <Header onRun={handleRun} onSettings={() => setIsSettingsOpen(true)} isCompiling={isCompiling} onSave={handleSave} />
+      <Header onRun={handleRun} onSettings={() => setIsSettingsOpen(true)} isCompiling={isCompiling} onSave={handleSaveRequest} activeFile={activeFile} />
       <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
         <CodeEditor
           code={code}
@@ -168,6 +293,10 @@ export function Compiler() {
         onOpenChange={setIsSettingsOpen}
         settings={settings}
         onSettingsChange={setSettings}
+        fileSystem={fileSystem}
+        onLoadFile={loadFile}
+        onNewFile={createNewFile}
+        onDeleteFile={deleteFile}
       />
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
         <DialogContent className="max-w-2xl h-3/4 flex flex-col">
@@ -177,6 +306,29 @@ export function Compiler() {
           <div className="flex-grow overflow-hidden">
             <OutputDisplay output={output} isCompiling={isCompiling} />
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Save Code</DialogTitle>
+                <DialogDescription>
+                    Enter a file and folder name to save your code.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="folderName" className="text-right">Folder</Label>
+                    <Input id="folderName" value={saveForm.folderName} onChange={(e) => setSaveForm({...saveForm, folderName: e.target.value })} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="fileName" className="text-right">File Name</Label>
+                    <Input id="fileName" value={saveForm.fileName} onChange={(e) => setSaveForm({...saveForm, fileName: e.target.value })} className="col-span-3" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={handleSave}>Save</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
