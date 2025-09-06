@@ -477,5 +477,4 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
       </AlertDialog>
     </>
   );
-
-    
+};
