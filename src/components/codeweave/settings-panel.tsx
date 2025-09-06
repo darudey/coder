@@ -14,8 +14,7 @@ import type { FC } from 'react';
 import type { Settings, FileSystem } from './compiler';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import { useState } from 'react';
-import { saveApiKey } from '@/app/actions';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { File, Folder, Plus, Trash2 } from 'lucide-react';
@@ -44,6 +43,15 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
+  
+  useEffect(() => {
+    if (open) {
+      const storedApiKey = localStorage.getItem('gemini-api-key');
+      if (storedApiKey) {
+        setApiKey(storedApiKey);
+      }
+    }
+  }, [open]);
 
   const handleSettingChange = (key: keyof Settings, value: boolean) => {
     onSettingsChange({ ...settings, [key]: value });
@@ -58,19 +66,11 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
       });
       return;
     }
-    const result = await saveApiKey(apiKey);
-    if (result.success) {
-      toast({
+    localStorage.setItem('gemini-api-key', apiKey);
+    toast({
         title: 'API Key Saved',
-        description: 'Your Gemini API key has been saved. Please reload the page for it to take effect.',
-      });
-    } else {
-      toast({
-        title: 'Error',
-        description: result.error,
-        variant: 'destructive',
-      });
-    }
+        description: 'Your Gemini API key has been saved in your browser.',
+    });
   };
 
 
@@ -101,7 +101,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
             <Label htmlFor="api-key" className="flex flex-col gap-1">
                 <span>Gemini API Key</span>
                 <span className="font-normal text-sm text-muted-foreground">
-                    Enter your key to use AI features.
+                    Enter your key to use AI features. It will be saved in your browser.
                 </span>
             </Label>
             <div className="flex gap-2">
