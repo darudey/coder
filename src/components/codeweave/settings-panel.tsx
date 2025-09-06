@@ -128,9 +128,9 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                     <span className="sr-only">New File</span>
                 </Button>
             </div>
-            <div className="flex-grow relative border rounded-md">
-                <ScrollArea className="absolute inset-0">
-                    <Accordion type="multiple" className="w-full">
+            <div className="flex-grow border rounded-md">
+                <ScrollArea className="h-full">
+                    <Accordion type="multiple" className="w-full p-2">
                         {Object.entries(fileSystem).map(([folderName, files]) => (
                             <AccordionItem value={folderName} key={folderName}>
                                 <AccordionTrigger>
