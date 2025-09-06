@@ -8,6 +8,7 @@ import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { OutputDisplay } from './output-display';
+import { useToast } from '@/hooks/use-toast';
 
 
 const defaultCode = `// Welcome to 24HrCoding!
@@ -21,6 +22,13 @@ console.log(greet('World'));
 
 export interface Settings {
   errorChecking: boolean;
+}
+
+const getInitialCode = (): string => {
+  if (typeof window === 'undefined') {
+    return defaultCode;
+  }
+  return localStorage.getItem('editorCode') || defaultCode;
 }
 
 const runCodeOnClient = (code: string): RunResult => {
@@ -77,7 +85,7 @@ const runCodeOnClient = (code: string): RunResult => {
 }
 
 export function Compiler() {
-  const [history, setHistory] = useState<string[]>([defaultCode]);
+  const [history, setHistory] = useState<string[]>([getInitialCode()]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const code = history[historyIndex];
   
@@ -88,6 +96,7 @@ export function Compiler() {
   });
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
+  const { toast } = useToast();
 
   const setCode = (newCode: string) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -128,9 +137,17 @@ export function Compiler() {
     setIsCompiling(false);
   };
 
+  const handleSave = () => {
+    localStorage.setItem('editorCode', code);
+    toast({
+      title: 'Code Saved',
+      description: 'Your code has been saved to your browser\'s local storage.',
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen">
-      <Header onRun={handleRun} onSettings={() => setIsSettingsOpen(true)} isCompiling={isCompiling} />
+      <Header onRun={handleRun} onSettings={() => setIsSettingsOpen(true)} isCompiling={isCompiling} onSave={handleSave} />
       <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
         <CodeEditor
           code={code}

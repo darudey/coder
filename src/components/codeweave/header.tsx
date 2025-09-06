@@ -3,16 +3,17 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Loader2, Code2 } from 'lucide-react';
+import { Play, Settings, Loader2, Code2, Save } from 'lucide-react';
 import type { FC } from 'react';
 
 interface HeaderProps {
   onRun: () => void;
   onSettings: () => void;
   isCompiling: boolean;
+  onSave: () => void;
 }
 
-export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling }) => {
+export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave }) => {
   return (
     <header>
       <div className="flex items-center justify-between p-2 md:p-4">
@@ -28,6 +29,10 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling }) => {
               <Play />
             )}
             <span className="ml-2 hidden sm:inline">Run</span>
+          </Button>
+          <Button variant="outline" size="icon" onClick={onSave}>
+            <Save />
+            <span className="sr-only">Save</span>
           </Button>
           <Button variant="outline" size="icon" onClick={onSettings}>
             <Settings />
