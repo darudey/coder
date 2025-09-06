@@ -144,7 +144,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
     }
   }, [code, updateLineNumbers, fontSize]);
 
-  const handleKeyPress = (key: string) => {
+  const handleKeyPress = async (key: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -154,18 +154,74 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
     }
 
     if (ctrlActive) {
-      if (key.toLowerCase() === 'a') {
-          textarea.select();
-      } else if (key.toLowerCase() === 'z') {
-          onUndo();
-      } else if (key.toLowerCase() === 'y') {
-          onRedo();
-      } else if (key.toLowerCase() === 'd') {
-        if(hasActiveFile) {
-            setShowDeleteConfirm(true);
+      setCtrlActive(false); // Consume the Ctrl press
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      switch (key.toLowerCase()) {
+        case 'a':
+            textarea.select();
+            break;
+        case 'z':
+            onUndo();
+            break;
+        case 'y':
+            onRedo();
+            break;
+        case 'd':
+            if(hasActiveFile) {
+                setShowDeleteConfirm(true);
+            }
+            break;
+        case 'c': { // Copy
+            let textToCopy = code.substring(start, end);
+            if (start === end) {
+                const lineStart = code.lastIndexOf('\n', start - 1) + 1;
+                const lineEnd = code.indexOf('\n', start);
+                textToCopy = code.substring(lineStart, lineEnd === -1 ? code.length : lineEnd);
+            }
+            await navigator.clipboard.writeText(textToCopy);
+            break;
+        }
+        case 'x': { // Cut
+            let textToCut = code.substring(start, end);
+            let selectionStart = start;
+            let selectionEnd = end;
+
+            if (start === end) {
+                selectionStart = code.lastIndexOf('\n', start - 1) + 1;
+                const lineEnd = code.indexOf('\n', start);
+                selectionEnd = lineEnd === -1 ? code.length : lineEnd + (lineEnd === code.length -1 ? 0 : 1);
+                textToCut = code.substring(selectionStart, selectionEnd);
+            }
+            
+            await navigator.clipboard.writeText(textToCut);
+            
+            const newCode = code.substring(0, selectionStart) + code.substring(selectionEnd);
+            onCodeChange(newCode);
+
+            requestAnimationFrame(() => {
+                textarea.selectionStart = selectionStart;
+                textarea.selectionEnd = selectionStart;
+                textarea.focus();
+            });
+            break;
+        }
+        case 'v': { // Paste
+            const textFromClipboard = await navigator.clipboard.readText();
+            const newCode = code.substring(0, start) + textFromClipboard + code.substring(end);
+            const newCursorPosition = start + textFromClipboard.length;
+            
+            onCodeChange(newCode);
+
+            requestAnimationFrame(() => {
+                textarea.selectionStart = newCursorPosition;
+                textarea.selectionEnd = newCursorPosition;
+                textarea.focus();
+            });
+            break;
         }
       }
-      setCtrlActive(false);
       return;
     }
 
@@ -421,4 +477,5 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
       </AlertDialog>
     </>
   );
-};
+
+    
