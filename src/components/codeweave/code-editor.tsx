@@ -8,12 +8,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogAction, AlertDialogCancel } from '../ui/alert-dialog';
 
 interface CodeEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onDeleteFile: () => void;
+  hasActiveFile: boolean;
 }
 
 const parseCode = (code: string) => {
@@ -80,7 +83,7 @@ const getTokenClassName = (type: string) => {
   }
 }
 
-export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo }) => {
+export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
@@ -88,6 +91,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
   const isMobile = useIsMobile();
   const [ctrlActive, setCtrlActive] = useState(false);
   const [fontSize, setFontSize] = useState(14); // Initial font size in pixels
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const syncScroll = useCallback(() => {
     if (textareaRef.current && gutterRef.current) {
@@ -156,6 +160,10 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
           onUndo();
       } else if (key.toLowerCase() === 'y') {
           onRedo();
+      } else if (key.toLowerCase() === 'd') {
+        if(hasActiveFile) {
+            setShowDeleteConfirm(true);
+        }
       }
       setCtrlActive(false);
       return;
@@ -298,6 +306,13 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
             // If text is selected, let the default browser behavior handle it.
             return;
         }
+        if (e.key.toLowerCase() === 'd') {
+            e.preventDefault();
+            if(hasActiveFile) {
+                setShowDeleteConfirm(true);
+            }
+            return;
+        }
     }
 
     if (e.key === 'Tab') {
@@ -396,6 +411,23 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
       )}>
         <CoderKeyboard onKeyPress={handleKeyPress} ctrlActive={ctrlActive} onHide={() => setIsKeyboardVisible(false)} />
       </div>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the current file.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                    onDeleteFile();
+                    setShowDeleteConfirm(false);
+                }}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
