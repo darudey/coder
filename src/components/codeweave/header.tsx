@@ -24,7 +24,7 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
           <h1 className="text-2xl font-bold font-headline text-foreground">24HrCoding</h1>
         </div>
         {activeFile && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <File className="w-4 h-4" />
                 <span>{activeFile.folderName} / {activeFile.fileName}</span>
             </div>
