@@ -248,6 +248,9 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
   }, []);
   
   const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
     if (e.ctrlKey || e.metaKey) {
         if (e.key.toLowerCase() === 'z') {
             e.preventDefault();
@@ -267,6 +270,32 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
         if (e.key === '-') { // For Ctrl -
             e.preventDefault();
             setFontSize(fs => Math.max(fs - 1, 8));
+            return;
+        }
+        if (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'x') {
+            if (textarea.selectionStart === textarea.selectionEnd) {
+                e.preventDefault();
+                const currentCursor = textarea.selectionStart;
+                const text = textarea.value;
+                
+                const lineStart = text.lastIndexOf('\n', currentCursor - 1) + 1;
+                const lineEnd = text.indexOf('\n', currentCursor);
+                
+                const finalLineEnd = lineEnd === -1 ? text.length : lineEnd;
+
+                textarea.setSelectionRange(lineStart, finalLineEnd);
+                
+                try {
+                    document.execCommand(e.key.toLowerCase() === 'c' ? 'copy' : 'cut');
+                } catch (err) {
+                    console.error('Could not execute command: ', err);
+                }
+                
+                // After the command, we might want to restore cursor position
+                // For 'cut', the content is gone, so cursor behavior might differ.
+                // For simplicity, we leave the line selected. The user can click to deselect.
+            }
+            // If text is selected, let the default browser behavior handle it.
             return;
         }
     }
