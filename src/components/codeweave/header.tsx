@@ -27,7 +27,7 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
         
         <div className="flex-1 flex justify-center min-w-0">
           {activeFile && (
-              <div className="hidden sm:flex items-center gap-2 text-[8px] text-muted-foreground truncate">
+              <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground truncate">
                   <File className="w-4 h-4 shrink-0" />
                   <span className="truncate">{activeFile.folderName} / {activeFile.fileName}</span>
               </div>
