@@ -53,42 +53,36 @@ const getInitialFileSystem = (): FileSystem => {
     return { 'Examples': { 'Welcome.js': defaultCode } };
 }
 
-const runCodeOnClient = (code: string): RunResult => {
-    try {
-        const capturedLogs: any[] = [];
-        const originalConsoleLog = console.log;
+const runCodeOnClient = (code: string): Promise<RunResult> => {
+    return new Promise((resolve) => {
+        const worker = new Worker('/runner.js');
+        const timeout = setTimeout(() => {
+            worker.terminate();
+            resolve({
+                output: 'Execution timed out. Your code may have an infinite loop.',
+                type: 'error',
+            });
+        }, 5000); // 5-second timeout
 
-        const customLog = (...args: any[]) => {
-            capturedLogs.push(args.map(arg => {
-                if (typeof arg === 'object' && arg !== null) {
-                    try {
-                        return JSON.stringify(arg, null, 2);
-                    } catch (e) {
-                        return '[Circular Object]';
-                    }
-                }
-                return String(arg);
-            }).join(' '));
+        worker.onmessage = (e) => {
+            clearTimeout(timeout);
+            worker.terminate();
+            resolve(e.data);
         };
-        
-        console.log = customLog;
-        let result = (new Function(code))();
-        console.log = originalConsoleLog;
 
-        let output = capturedLogs.join('\n');
+        worker.onerror = (e) => {
+            clearTimeout(timeout);
+            worker.terminate();
+            resolve({
+                output: `Worker error: ${e.message}`,
+                type: 'error',
+            });
+        };
 
-        if (result !== undefined) {
-            const resultString = JSON.stringify(result, null, 2);
-            output = output ? `${output}\n${resultString}` : resultString;
-        } else if (capturedLogs.length === 0) {
-            output = 'undefined';
-        }
+        worker.postMessage({ code });
+    });
+};
 
-        return { output, type: 'result' };
-    } catch (e: any) {
-        return { output: `${e.name}: ${e.message}`, type: 'error' };
-    }
-}
 
 export function Compiler() {
   const [fileSystem, setFileSystem] = useState<FileSystem>({});
@@ -191,7 +185,7 @@ export function Compiler() {
     setIsResultOpen(true);
     let result = settings.errorChecking ? await checkCodeForErrors(code) : null;
     if (!result) {
-        result = runCodeOnClient(code);
+        result = await runCodeOnClient(code);
     }
     setOutput(result);
     setIsCompiling(false);
@@ -344,5 +338,3 @@ export function Compiler() {
     </div>
   );
 }
-
-    
