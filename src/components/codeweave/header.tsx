@@ -3,10 +3,11 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Code2, Save, File } from 'lucide-react';
+import { Play, Settings, Save, File } from 'lucide-react';
 import type { FC } from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
+import { LogoIcon } from './logo-icon';
 
 interface HeaderProps {
   onRun: () => void;
@@ -21,7 +22,7 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
     <header>
       <div className="flex items-center justify-between p-2 md:p-3 gap-2">
         <div className="flex items-center gap-2 shrink-0">
-          <Code2 className="w-7 h-7 md:w-8 md:h-8 text-primary" />
+          <LogoIcon className="w-7 h-7 md:w-8 md:h-8" />
           <h1 className="text-lg md:text-xl font-bold font-headline text-foreground">24HrCoding</h1>
         </div>
         
