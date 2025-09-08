@@ -152,7 +152,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
                 key={`${key}-${rowIndex}-${keyIndex}`}
                 variant="outline"
                 className={cn(
-                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-colors duration-100 p-0',
+                  'h-10 bg-gray-800 text-white border-gray-700 hover:bg-gray-700 active:bg-gray-600 transition-colors duration-100 p-0 select-none',
                   isSpecialKey ? 'text-[0.6rem]' : 'text-base',
                   'flex-1',
                   {
