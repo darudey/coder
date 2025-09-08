@@ -3,7 +3,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { FC } from 'react';
+import React from 'react';
 import type { RunResult } from '@/app/actions';
 import { DotLoader } from './dot-loader';
 
@@ -36,7 +36,7 @@ const renderStaticAnalysisError = (output: string) => {
 };
 
 
-export const OutputDisplay: FC<OutputDisplayProps> = ({
+const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   output,
   isCompiling,
 }) => {
@@ -76,3 +76,7 @@ export const OutputDisplay: FC<OutputDisplayProps> = ({
     </Card>
   );
 };
+
+export const OutputDisplay = React.memo(MemoizedOutputDisplay);
+
+    

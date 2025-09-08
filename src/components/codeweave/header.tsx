@@ -4,7 +4,7 @@
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Play, Settings, Save, File } from 'lucide-react';
-import type { FC } from 'react';
+import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
 import { LogoIcon } from './logo-icon';
@@ -18,7 +18,7 @@ interface HeaderProps {
   activeFile: ActiveFile | null;
 }
 
-export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, activeFile }) => {
+const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, activeFile }) => {
   return (
     <header className="bg-background">
       <div className={cn(
@@ -63,3 +63,7 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
     </header>
   );
 };
+
+export const Header = React.memo(MemoizedHeader);
+
+    

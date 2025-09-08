@@ -2,7 +2,6 @@
 'use client';
 
 import { Textarea } from '@/components/ui/textarea';
-import type { FC } from 'react';
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
@@ -83,7 +82,7 @@ const getTokenClassName = (type: string) => {
   }
 }
 
-export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile }) => {
+const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
@@ -144,7 +143,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
     }
   }, [code, updateLineNumbers, fontSize]);
 
-  const handleKeyPress = async (key: string) => {
+  const handleKeyPress = useCallback(async (key: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -291,7 +290,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
       textarea.selectionEnd = newCursorPosition;
       textarea.focus();
     });
-  };
+  }, [ctrlActive, onUndo, onRedo, hasActiveFile, code, onCodeChange]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -311,7 +310,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
     };
   }, []);
   
-  const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -366,7 +365,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
         e.preventDefault();
         handleKeyPress('Tab');
     }
-  };
+  }, [onUndo, onRedo, hasActiveFile, handleKeyPress]);
 
   const showKeyboard = isKeyboardVisible;
   
@@ -478,3 +477,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, on
     </>
   );
 };
+
+export const CodeEditor = React.memo(MemoizedCodeEditor);
+
+    
