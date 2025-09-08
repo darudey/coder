@@ -26,7 +26,7 @@ export const Header: FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSave
       )}>
         <div className="flex items-center gap-2 shrink-0">
           <LogoIcon className="w-6 h-6" />
-          <h1 className="text-base font-bold font-headline bg-gradient-to-r from-[#ff00a0] to-[#00bfff] bg-clip-text text-transparent">24HrCoding</h1>
+          <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
         </div>
         
         <div className="flex-1 flex justify-center min-w-0">
