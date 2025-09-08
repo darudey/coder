@@ -130,7 +130,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       
       gutter.style.width = (String(lines.length).length * 8 + 17) + 'px';
       syncScroll();
-  }, [syncScroll, fontSize]);
+  }, [syncScroll]);
 
 
   useEffect(() => {
@@ -290,7 +290,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       textarea.selectionEnd = newCursorPosition;
       textarea.focus();
     });
-  }, [ctrlActive, onUndo, onRedo, hasActiveFile, code, onCodeChange]);
+  }, [code, onCodeChange, onUndo, onRedo, ctrlActive, hasActiveFile]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

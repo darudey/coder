@@ -145,14 +145,14 @@ export function Compiler() {
   const [saveForm, setSaveForm] = useState({ fileName: '', folderName: '' });
   const { toast } = useToast();
 
-  const setCode = (newCode: string, fromHistory = false) => {
+  const setCode = useCallback((newCode: string, fromHistory = false) => {
     if (!fromHistory) {
       const newHistory = history.slice(0, historyIndex + 1);
       newHistory.push(newCode);
       setHistory(newHistory);
       setHistoryIndex(newHistory.length - 1);
     }
-  };
+  }, [history, historyIndex]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -202,7 +202,7 @@ export function Compiler() {
     }
   }, [activeFile, isMounted]);
 
-  const handleRun = async () => {
+  const handleRun = useCallback(async () => {
     setIsCompiling(true);
     setIsResultOpen(true);
     let result = settings.errorChecking ? await checkCodeForErrors(code) : null;
@@ -211,17 +211,17 @@ export function Compiler() {
     }
     setOutput(result);
     setIsCompiling(false);
-  };
+  }, [code, settings.errorChecking]);
 
-  const handleSaveRequest = () => {
+  const handleSaveRequest = useCallback(() => {
     setSaveForm({ 
         fileName: activeFile?.fileName || '', 
         folderName: activeFile?.folderName || 'New Files' 
     });
     setIsSaveOpen(true);
-  };
+  }, [activeFile]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     const { fileName, folderName } = saveForm;
     const trimmedFileName = fileName.trim();
     const trimmedFolderName = folderName.trim();
@@ -258,14 +258,14 @@ export function Compiler() {
     
     setIsSaveOpen(false);
     toast({ title: 'Code Saved', description: `Saved as ${trimmedFolderName}/${trimmedFileName}` });
-  };
+  }, [saveForm, activeFile, code, toast]);
   
-  const loadFile = (folderName: string, fileName: string) => {
+  const loadFile = useCallback((folderName: string, fileName: string) => {
     setActiveFile({ folderName, fileName });
     setIsSettingsOpen(false);
-  };
+  }, []);
   
-  const createNewFile = () => {
+  const createNewFile = useCallback(() => {
     const newFile = { folderName: 'New Files', fileName: `Untitled-${Date.now()}.js` };
     setFileSystem(fs => {
         const newFs = { ...fs };
@@ -278,9 +278,9 @@ export function Compiler() {
     });
     setActiveFile(newFile);
     setIsSettingsOpen(false);
-  };
+  }, []);
 
-  const deleteFile = (folderName: string, fileName: string) => {
+  const deleteFile = useCallback((folderName: string, fileName: string) => {
     setFileSystem(fs => {
         const newFs = { ...fs };
         if (newFs[folderName]) {
@@ -298,7 +298,7 @@ export function Compiler() {
         setHistory([defaultCode]);
         setHistoryIndex(0);
     }
-};
+}, [activeFile]);
 
   if (!isMounted) {
     return null; // Or a loading spinner
@@ -369,3 +369,5 @@ export function Compiler() {
     </div>
   );
 }
+
+    
