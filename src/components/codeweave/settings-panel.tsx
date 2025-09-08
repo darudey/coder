@@ -17,7 +17,7 @@ import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { File, Folder, Plus, Trash2 } from 'lucide-react';
+import { File, Folder, Plus, Trash2, Moon, Sun } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface SettingsPanelProps {
@@ -43,6 +43,27 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
+  const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    const storedTheme = localStorage.getItem('theme');
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const initialTheme = storedTheme || systemTheme;
+    setTheme(initialTheme);
+  }, []);
+  
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  };
   
   useEffect(() => {
     if (open) {
@@ -78,7 +99,14 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col">
         <SheetHeader>
-          <SheetTitle>Settings</SheetTitle>
+          <div className="flex justify-between items-center">
+            <SheetTitle>Settings</SheetTitle>
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">Toggle theme</span>
+            </Button>
+          </div>
           <SheetDescription>
             Configure compiler features and manage your saved code.
           </SheetDescription>
