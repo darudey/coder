@@ -340,6 +340,17 @@ export function Compiler() {
 
     setFileSystem(fs => {
         const newFs = { ...fs };
+        
+        // If it's a rename, remove the old file entry
+        if (isNewFileOrRename && activeFile) {
+            if (newFs[activeFile.folderName]) {
+                delete newFs[activeFile.folderName][activeFile.fileName];
+                if (Object.keys(newFs[activeFile.folderName]).length === 0) {
+                    delete newFs[activeFile.folderName];
+                }
+            }
+        }
+
         if (!newFs[newActiveFile.folderName]) {
             newFs[newActiveFile.folderName] = {};
         }
@@ -351,7 +362,9 @@ export function Compiler() {
     if (isNewFileOrRename) {
         setOpenFiles(of => {
             const newOpenFiles = [...of];
-            newOpenFiles[activeFileIndex] = newActiveFile;
+            if (activeFileIndex !== -1) {
+                newOpenFiles[activeFileIndex] = newActiveFile;
+            }
             return newOpenFiles;
         })
     }
