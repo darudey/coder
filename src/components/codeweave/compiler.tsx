@@ -13,6 +13,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
+import { TabBar } from './tab-bar';
 
 const defaultCode = `// Welcome to 24HrCoding!
 // Use the settings panel to save and load your creations.
@@ -45,9 +46,13 @@ const getInitialFileSystem = (): FileSystem => {
     const saved = localStorage.getItem('codeFileSystem');
     if (saved) {
         try {
-            return JSON.parse(saved);
+            const fs = JSON.parse(saved);
+            // Ensure fs is an object and not empty
+            if (fs && typeof fs === 'object' && Object.keys(fs).length > 0) {
+                return fs;
+            }
         } catch (e) {
-            return { 'Examples': { 'Welcome.js': defaultCode } };
+            // Fallback if parsing fails
         }
     }
     return { 'Examples': { 'Welcome.js': defaultCode } };
@@ -86,50 +91,92 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 
 export function Compiler() {
   const [fileSystem, setFileSystem] = useState<FileSystem>({});
-  const [activeFile, setActiveFile] = useState<ActiveFile | null>(null);
+  const [openFiles, setOpenFiles] = useState<ActiveFile[]>([]);
+  const [activeFileIndex, setActiveFileIndex] = useState(-1);
+  const activeFile = activeFileIndex !== -1 ? openFiles[activeFileIndex] : null;
+
   const [isMounted, setIsMounted] = useState(false);
   
+  const createNewFile = useCallback((activate = true) => {
+    const newFile = { folderName: 'New Files', fileName: `Untitled-${Date.now()}.js` };
+    setFileSystem(fs => {
+        const newFs = { ...fs };
+        if (!newFs[newFile.folderName]) {
+            newFs[newFile.folderName] = {};
+        }
+        newFs[newFile.folderName][newFile.fileName] = defaultCode;
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+    if (activate) {
+        setOpenFiles(of => [...of, newFile]);
+        setActiveFileIndex(openFiles.length);
+    }
+    setIsSettingsOpen(false);
+  }, [openFiles.length]);
+
   useEffect(() => {
     setIsMounted(true);
     const fs = getInitialFileSystem();
     setFileSystem(fs);
-    const saved = localStorage.getItem('activeFile');
-    if (saved) {
+
+    let initialOpenFiles: ActiveFile[] = [];
+    const savedOpenFiles = localStorage.getItem('openFiles');
+    if (savedOpenFiles) {
         try {
-            const parsedFile = JSON.parse(saved);
-            // Ensure the active file actually exists in the filesystem
-            if (fs[parsedFile.folderName]?.[parsedFile.fileName]) {
-                setActiveFile(parsedFile);
-            } else {
-                setActiveFile(null); // Or set to a default
+            const parsed = JSON.parse(savedOpenFiles);
+            if (Array.isArray(parsed)) {
+                // Filter out files that no longer exist
+                initialOpenFiles = parsed.filter(f => fs[f.folderName]?.[f.fileName] !== undefined);
             }
         } catch (e) {
-            setActiveFile(null);
+            // ignore
         }
     }
-  }, []);
+
+    if (initialOpenFiles.length === 0) {
+        // Fallback to the first file in the filesystem
+        const fallbackFolder = Object.keys(fs)[0];
+        if (fallbackFolder && fs[fallbackFolder]) {
+            const fallbackFile = Object.keys(fs[fallbackFolder])[0];
+            if (fallbackFile) {
+                initialOpenFiles = [{ folderName: fallbackFolder, fileName: fallbackFile }];
+            }
+        }
+    }
+
+    if (initialOpenFiles.length === 0) {
+        createNewFile(true);
+    } else {
+        setOpenFiles(initialOpenFiles);
+        let initialActiveIndex = -1;
+        const savedActiveIndex = localStorage.getItem('activeFileIndex');
+        if (savedActiveIndex) {
+            try {
+                const parsedIndex = parseInt(savedActiveIndex, 10);
+                if (parsedIndex >= 0 && parsedIndex < initialOpenFiles.length) {
+                    initialActiveIndex = parsedIndex;
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        if (initialActiveIndex === -1 && initialOpenFiles.length > 0) {
+            initialActiveIndex = 0;
+        }
+        
+        setActiveFileIndex(initialActiveIndex);
+    }
+
+  }, [createNewFile]);
 
   const getCodeFromState = useCallback(() => {
     if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
         return fileSystem[activeFile.folderName][activeFile.fileName];
     }
-    if (!isMounted) return ''; // Return empty string during server render or before mount
-    
-    // Fallback logic
-    if (Object.keys(fileSystem).length > 0) {
-        const fallbackFolder = Object.keys(fileSystem)[0];
-        if (Object.keys(fileSystem[fallbackFolder]).length > 0) {
-            const fallbackFile = Object.keys(fileSystem[fallbackFolder])[0];
-            if (!activeFile && isMounted) {
-                // Setting state during render is not ideal, but this is a fallback.
-                // A better approach might be a useEffect to set this.
-                setTimeout(() => setActiveFile({ folderName: fallbackFolder, fileName: fallbackFile }), 0);
-            }
-            return fileSystem[fallbackFolder][fallbackFile];
-        }
-    }
-    return defaultCode;
-  }, [activeFile, fileSystem, isMounted]);
+    return '';
+  }, [activeFile, fileSystem]);
 
   const [history, setHistory] = useState<string[]>([getCodeFromState()]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -166,22 +213,22 @@ export function Compiler() {
     }
   }, [historyIndex, history.length]);
   
-  // This effect syncs the debounced code changes to the active file in the filesystem
   useEffect(() => {
     if (debouncedCode && activeFile && isMounted) {
-        setFileSystem(fs => {
-            const newFs = { ...fs };
-            if (!newFs[activeFile.folderName]) {
-                newFs[activeFile.folderName] = {};
-            }
-            newFs[activeFile.folderName][activeFile.fileName] = debouncedCode;
-            localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
-            return newFs;
-        });
+        if (fileSystem[activeFile.folderName]?.[activeFile.fileName] !== debouncedCode) {
+            setFileSystem(fs => {
+                const newFs = { ...fs };
+                if (!newFs[activeFile.folderName]) {
+                    newFs[activeFile.folderName] = {};
+                }
+                newFs[activeFile.folderName][activeFile.fileName] = debouncedCode;
+                localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+                return newFs;
+            });
+        }
     }
-  }, [debouncedCode, activeFile, isMounted]);
+  }, [debouncedCode, activeFile, isMounted, fileSystem]);
   
-  // This effect loads the code from the active file into the editor
   useEffect(() => {
     if (!isMounted) return;
     const codeToSet = getCodeFromState();
@@ -190,17 +237,21 @@ export function Compiler() {
       setHistoryIndex(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFile, fileSystem, isMounted]);
+  }, [activeFileIndex, openFiles, fileSystem, isMounted]);
 
-  // This effect persists the active file to localStorage
   useEffect(() => {
     if (!isMounted) return;
-    if (activeFile) {
-        localStorage.setItem('activeFile', JSON.stringify(activeFile));
+    if (openFiles.length > 0) {
+        localStorage.setItem('openFiles', JSON.stringify(openFiles));
     } else {
-        localStorage.removeItem('activeFile');
+        localStorage.removeItem('openFiles');
     }
-  }, [activeFile, isMounted]);
+    if (activeFileIndex !== -1) {
+        localStorage.setItem('activeFileIndex', String(activeFileIndex));
+    } else {
+        localStorage.removeItem('activeFileIndex');
+    }
+  }, [openFiles, activeFileIndex, isMounted]);
 
   const handleRun = useCallback(async () => {
     setIsCompiling(true);
@@ -214,9 +265,10 @@ export function Compiler() {
   }, [code, settings.errorChecking]);
 
   const handleSaveRequest = useCallback(() => {
+    if (!activeFile) return;
     setSaveForm({ 
-        fileName: activeFile?.fileName || '', 
-        folderName: activeFile?.folderName || 'New Files' 
+        fileName: activeFile.fileName, 
+        folderName: activeFile.folderName
     });
     setIsSaveOpen(true);
   }, [activeFile]);
@@ -236,14 +288,6 @@ export function Compiler() {
 
     setFileSystem(fs => {
         const newFs = { ...fs };
-        
-        // If it's a rename or move, we might need to remove the old file
-        if(isNewFileOrRename && activeFile) {
-            // This is a "Save As" operation. The old implementation deleted the source file which was wrong.
-            // A true "Save As" should create a new file and leave the old one.
-            // If the user wants to rename, they should delete the old one manually.
-        }
-
         if (!newFs[newActiveFile.folderName]) {
             newFs[newActiveFile.folderName] = {};
         }
@@ -253,32 +297,48 @@ export function Compiler() {
     });
 
     if (isNewFileOrRename) {
-        setActiveFile(newActiveFile);
+        setOpenFiles(of => {
+            const newOpenFiles = [...of];
+            newOpenFiles[activeFileIndex] = newActiveFile;
+            return newOpenFiles;
+        })
     }
     
     setIsSaveOpen(false);
     toast({ title: 'Code Saved', description: `Saved as ${trimmedFolderName}/${trimmedFileName}` });
-  }, [saveForm, activeFile, code, toast]);
+  }, [saveForm, activeFile, code, toast, activeFileIndex]);
   
   const loadFile = useCallback((folderName: string, fileName: string) => {
-    setActiveFile({ folderName, fileName });
+    const fileToLoad: ActiveFile = { folderName, fileName };
+    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+
+    if (existingTabIndex !== -1) {
+        setActiveFileIndex(existingTabIndex);
+    } else {
+        setOpenFiles(of => [...of, fileToLoad]);
+        setActiveFileIndex(openFiles.length);
+    }
     setIsSettingsOpen(false);
-  }, []);
-  
-  const createNewFile = useCallback(() => {
-    const newFile = { folderName: 'New Files', fileName: `Untitled-${Date.now()}.js` };
-    setFileSystem(fs => {
-        const newFs = { ...fs };
-        if (!newFs[newFile.folderName]) {
-            newFs[newFile.folderName] = {};
+  }, [openFiles]);
+
+  const closeTab = useCallback((indexToClose: number) => {
+    setOpenFiles(of => of.filter((_, i) => i !== indexToClose));
+    
+    if (openFiles.length === 1) { // We are closing the last tab
+        setActiveFileIndex(-1);
+        createNewFile(true); // create a new welcome file
+        return;
+    }
+
+    if (indexToClose < activeFileIndex) {
+        setActiveFileIndex(i => i - 1);
+    } else if (indexToClose === activeFileIndex) {
+        if (indexToClose >= openFiles.length - 1) { // if it's the last tab
+            setActiveFileIndex(i => i - 1);
         }
-        newFs[newFile.folderName][newFile.fileName] = defaultCode;
-        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
-        return newFs;
-    });
-    setActiveFile(newFile);
-    setIsSettingsOpen(false);
-  }, []);
+        // otherwise, the next tab will shift into the current index, so no change needed
+    }
+  }, [activeFileIndex, openFiles.length, createNewFile]);
 
   const deleteFile = useCallback((folderName: string, fileName: string) => {
     setFileSystem(fs => {
@@ -293,12 +353,13 @@ export function Compiler() {
         return newFs;
     });
 
-    if (activeFile?.folderName === folderName && activeFile?.fileName === fileName) {
-        setActiveFile(null);
-        setHistory([defaultCode]);
-        setHistoryIndex(0);
+    const fileIndexToRemove = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+    
+    if (fileIndexToRemove !== -1) {
+        closeTab(fileIndexToRemove);
     }
-}, [activeFile]);
+    
+  }, [openFiles, closeTab]);
 
   if (!isMounted) {
     return null; // Or a loading spinner
@@ -312,16 +373,30 @@ export function Compiler() {
         isCompiling={isCompiling} 
         onSaveAs={handleSaveRequest} 
         activeFile={activeFile} 
+        hasActiveFile={!!activeFile}
+      />
+      <TabBar 
+        openFiles={openFiles}
+        activeFileIndex={activeFileIndex}
+        onTabClick={setActiveFileIndex}
+        onTabClose={closeTab}
+        onNewFile={createNewFile}
       />
       <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
-        <CodeEditor
-          code={code}
-          onCodeChange={setCode}
-          onUndo={undo}
-          onRedo={redo}
-          onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
-          hasActiveFile={!!activeFile}
-        />
+        {activeFile ? (
+            <CodeEditor
+                code={code}
+                onCodeChange={setCode}
+                onUndo={undo}
+                onRedo={redo}
+                onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
+                hasActiveFile={!!activeFile}
+            />
+        ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p>Open a file from the settings panel or create a new one to start coding.</p>
+            </div>
+        )}
       </div>
       <SettingsPanel
         open={isSettingsOpen}
@@ -330,7 +405,7 @@ export function Compiler() {
         onSettingsChange={setSettings}
         fileSystem={fileSystem}
         onLoadFile={loadFile}
-        onNewFile={createNewFile}
+        onNewFile={() => createNewFile(true)}
         onDeleteFile={deleteFile}
       />
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
@@ -362,7 +437,7 @@ export function Compiler() {
                 </div>
             </div>
             <DialogFooter>
-                <Button onClick={handleSave}>Save</Button>
+                <Button onClick={handleSave} disabled={!activeFile}>Save</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

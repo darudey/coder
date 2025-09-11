@@ -16,9 +16,10 @@ interface HeaderProps {
   isCompiling: boolean;
   onSaveAs: () => void;
   activeFile: ActiveFile | null;
+  hasActiveFile: boolean;
 }
 
-const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, activeFile }) => {
+const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, activeFile, hasActiveFile }) => {
   return (
     <header className="bg-background">
       <div className={cn(
@@ -39,7 +40,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
         </div>
 
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-          <Button onClick={onRun} disabled={isCompiling} className="min-w-[70px] md:min-w-[88px]">
+          <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px]">
             {isCompiling ? (
               <DotLoader />
             ) : (
@@ -49,7 +50,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
               </>
             )}
           </Button>
-          <Button variant="outline" size="icon" onClick={onSaveAs}>
+          <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile}>
             <Save className="w-4 h-4" />
             <span className="sr-only">Save As</span>
           </Button>
