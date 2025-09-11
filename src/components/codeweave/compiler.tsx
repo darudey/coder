@@ -110,17 +110,16 @@ export function Compiler() {
     });
     if (activate) {
         setOpenFiles(of => [...of, newFile]);
-        setActiveFileIndex(openFiles.length);
+        setActiveFileIndex(of.length);
     }
     setIsSettingsOpen(false);
-  }, [openFiles.length]);
+  }, []);
 
   const closeTab = useCallback((indexToClose: number) => {
     setOpenFiles(of => of.filter((_, i) => i !== indexToClose));
     
     if (openFiles.length === 1) { // We are closing the last tab
         setActiveFileIndex(-1);
-        createNewFile(true); // create a new welcome file
         return;
     }
 
@@ -132,7 +131,7 @@ export function Compiler() {
         }
         // otherwise, the next tab will shift into the current index, so no change needed
     }
-  }, [activeFileIndex, openFiles.length, createNewFile]);
+  }, [activeFileIndex, openFiles.length]);
 
   const deleteFile = useCallback((folderName: string, fileName: string) => {
     setFileSystem(fs => {
@@ -186,18 +185,7 @@ export function Compiler() {
     }
 
     if (initialOpenFiles.length === 0) {
-        const newFile = { folderName: 'New Files', fileName: `Untitled-${Date.now()}.js` };
-        setFileSystem(fs => {
-            const newFs = { ...fs };
-            if (!newFs[newFile.folderName]) {
-                newFs[newFile.folderName] = {};
-            }
-            newFs[newFile.folderName][newFile.fileName] = defaultCode;
-            localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
-            return newFs;
-        });
-        setOpenFiles([newFile]);
-        setActiveFileIndex(0);
+        createNewFile(true);
     } else {
         setOpenFiles(initialOpenFiles);
         let initialActiveIndex = -1;
@@ -342,7 +330,7 @@ export function Compiler() {
         const newFs = { ...fs };
         
         // If it's a rename, remove the old file entry
-        if (isNewFileOrRename && activeFile) {
+        if (isNewFileOrRename && activeFile && (activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName)) {
             if (newFs[activeFile.folderName]) {
                 delete newFs[activeFile.folderName][activeFile.fileName];
                 if (Object.keys(newFs[activeFile.folderName]).length === 0) {
@@ -386,6 +374,54 @@ export function Compiler() {
     setIsSettingsOpen(false);
   }, [openFiles]);
 
+  const renameFile = useCallback((index: number, newFileName: string) => {
+    const trimmedNewName = newFileName.trim();
+    if (!trimmedNewName) {
+        toast({ title: 'Error', description: 'File name cannot be empty.', variant: 'destructive' });
+        return;
+    }
+
+    const oldFile = openFiles[index];
+    const newFile = { ...oldFile, fileName: trimmedNewName };
+
+    // Check if a file with the new name already exists in the same folder
+    if (fileSystem[oldFile.folderName]?.[trimmedNewName]) {
+        toast({ title: 'Error', description: `A file named "${trimmedNewName}" already exists in this folder.`, variant: 'destructive' });
+        return;
+    }
+
+    setFileSystem(fs => {
+        const newFs = { ...fs };
+        const fileContent = newFs[oldFile.folderName]?.[oldFile.fileName] ?? '';
+        
+        // Create new file entry
+        if (!newFs[newFile.folderName]) {
+            newFs[newFile.folderName] = {};
+        }
+        newFs[newFile.folderName][newFile.fileName] = fileContent;
+
+        // Delete old file entry
+        if (newFs[oldFile.folderName]) {
+            delete newFs[oldFile.folderName][oldFile.fileName];
+            if (Object.keys(newFs[oldFile.folderName]).length === 0) {
+                delete newFs[oldFile.folderName];
+            }
+        }
+
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+
+    setOpenFiles(of => {
+        const newOpenFiles = [...of];
+        newOpenFiles[index] = newFile;
+        return newOpenFiles;
+    });
+
+    toast({ title: 'File Renamed', description: `Renamed to ${trimmedNewName}` });
+
+  }, [openFiles, fileSystem, toast]);
+
   if (!isMounted) {
     return null; // Or a loading spinner
   }
@@ -405,7 +441,8 @@ export function Compiler() {
         activeFileIndex={activeFileIndex}
         onTabClick={setActiveFileIndex}
         onTabClose={closeTab}
-        onNewFile={createNewFile}
+        onNewFile={() => createNewFile(true)}
+        onRenameFile={renameFile}
       />
       <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
         {activeFile ? (
@@ -469,5 +506,3 @@ export function Compiler() {
     </div>
   );
 }
-
-    
