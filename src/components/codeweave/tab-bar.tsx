@@ -26,7 +26,7 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
     return (
         <div className="flex items-center bg-muted/50 border-b border-border pl-2 -mt-0.5">
             <ScrollArea className="w-full whitespace-nowrap">
-                <div className="flex items-stretch h-full">
+                <div className="flex items-stretch">
                     {openFiles.map((file, index) => (
                         <button
                             key={`${file.folderName}/${file.fileName}`}
