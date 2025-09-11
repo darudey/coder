@@ -180,13 +180,15 @@ export function Compiler() {
             const fallbackFile = Object.keys(fs[fallbackFolder])[0];
             if (fallbackFile) {
                 initialOpenFiles = [{ folderName: fallbackFolder, fileName: fallbackFile }];
+            } else {
+                createNewFile(true);
             }
+        } else {
+             createNewFile(true);
         }
     }
-
-    if (initialOpenFiles.length === 0) {
-        createNewFile(true);
-    } else {
+    
+    if (initialOpenFiles.length > 0) {
         setOpenFiles(initialOpenFiles);
         let initialActiveIndex = -1;
         const savedActiveIndex = localStorage.getItem('activeFileIndex');
@@ -201,13 +203,12 @@ export function Compiler() {
             }
         }
 
-        if (initialActiveIndex === -1 && initialOpenFiles.length > 0) {
+        if (initialActiveIndex === -1) {
             initialActiveIndex = 0;
         }
         
         setActiveFileIndex(initialActiveIndex);
     }
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -315,7 +316,7 @@ export function Compiler() {
 
   const handleSave = useCallback(() => {
     const { fileName, folderName } = saveForm;
-    const trimmedFileName = fileName.trim();
+    let trimmedFileName = fileName.trim();
     const trimmedFolderName = folderName.trim();
 
     if (!trimmedFileName || !trimmedFolderName) {
@@ -323,14 +324,17 @@ export function Compiler() {
         return;
     }
     
+    if (!trimmedFileName.endsWith('.js')) {
+        trimmedFileName += '.js';
+    }
+
     const newActiveFile = { fileName: trimmedFileName, folderName: trimmedFolderName };
     const isNewFileOrRename = !activeFile || activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName;
 
     setFileSystem(fs => {
         const newFs = { ...fs };
         
-        // If it's a rename, remove the old file entry
-        if (isNewFileOrRename && activeFile && (activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName)) {
+        if (isNewFileOrRename && activeFile) {
             if (newFs[activeFile.folderName]) {
                 delete newFs[activeFile.folderName][activeFile.fileName];
                 if (Object.keys(newFs[activeFile.folderName]).length === 0) {
@@ -352,6 +356,8 @@ export function Compiler() {
             const newOpenFiles = [...of];
             if (activeFileIndex !== -1) {
                 newOpenFiles[activeFileIndex] = newActiveFile;
+            } else {
+                return [newActiveFile];
             }
             return newOpenFiles;
         })
@@ -375,16 +381,23 @@ export function Compiler() {
   }, [openFiles]);
 
   const renameFile = useCallback((index: number, newFileName: string) => {
-    const trimmedNewName = newFileName.trim();
+    let trimmedNewName = newFileName.trim();
     if (!trimmedNewName) {
         toast({ title: 'Error', description: 'File name cannot be empty.', variant: 'destructive' });
         return;
     }
 
+    if (!trimmedNewName.endsWith('.js')) {
+        trimmedNewName += '.js';
+    }
+
     const oldFile = openFiles[index];
     const newFile = { ...oldFile, fileName: trimmedNewName };
 
-    // Check if a file with the new name already exists in the same folder
+    if (oldFile.fileName === newFile.fileName && oldFile.folderName === newFile.folderName) {
+        return; // No change
+    }
+
     if (fileSystem[oldFile.folderName]?.[trimmedNewName]) {
         toast({ title: 'Error', description: `A file named "${trimmedNewName}" already exists in this folder.`, variant: 'destructive' });
         return;
@@ -394,13 +407,11 @@ export function Compiler() {
         const newFs = { ...fs };
         const fileContent = newFs[oldFile.folderName]?.[oldFile.fileName] ?? '';
         
-        // Create new file entry
         if (!newFs[newFile.folderName]) {
             newFs[newFile.folderName] = {};
         }
         newFs[newFile.folderName][newFile.fileName] = fileContent;
 
-        // Delete old file entry
         if (newFs[oldFile.folderName]) {
             delete newFs[oldFile.folderName][oldFile.fileName];
             if (Object.keys(newFs[oldFile.folderName]).length === 0) {
@@ -495,7 +506,7 @@ export function Compiler() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="fileName" className="text-right">File Name</Label>
-                    <Input id="fileName" value={saveForm.fileName} onChange={(e) => setSaveForm({...saveForm, fileName: e.target.value })} className="col-span-3" />
+                    <Input id="fileName" value={saveForm.fileName.replace(/\.js$/, '')} onChange={(e) => setSaveForm({...saveForm, fileName: e.target.value })} className="col-span-3" />
                 </div>
             </div>
             <DialogFooter>

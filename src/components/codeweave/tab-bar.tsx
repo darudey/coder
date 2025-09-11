@@ -70,7 +70,7 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
                             )}
                             onDoubleClick={() => {
                                 setEditingIndex(index);
-                                setEditingName(file.fileName);
+                                setEditingName(file.fileName.replace(/\.js$/, ''));
                             }}
                         >
                             {editingIndex === index ? (
