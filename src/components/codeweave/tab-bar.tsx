@@ -25,7 +25,7 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
 }) => {
     return (
         <div className="flex items-center bg-muted/50 border-b border-border pl-2 -mt-0.5">
-            <ScrollArea className="flex-grow whitespace-nowrap">
+            <ScrollArea className="whitespace-nowrap flex-grow">
                 <div className="flex items-stretch h-full">
                     {openFiles.map((file, index) => (
                         <button
