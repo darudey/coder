@@ -98,7 +98,28 @@ export function Compiler() {
   const [isMounted, setIsMounted] = useState(false);
   
   const createNewFile = useCallback((activate = true) => {
-    const newFile = { folderName: 'New Files', fileName: `Untitled-${Date.now()}.js` };
+    let nextFileNumber = 0;
+    const prefix = "24hrcoding";
+    const extension = ".js";
+
+    // Find the highest existing number
+    for (const folderName in fileSystem) {
+        for (const fileName in fileSystem[folderName]) {
+            if (fileName.startsWith(prefix) && fileName.endsWith(extension)) {
+                const numberPart = fileName.substring(prefix.length, fileName.length - extension.length);
+                if (/^\d+$/.test(numberPart)) {
+                    const number = parseInt(numberPart, 10);
+                    if (number >= nextFileNumber) {
+                        nextFileNumber = number + 1;
+                    }
+                }
+            }
+        }
+    }
+
+    const newFileName = `${prefix}${nextFileNumber}${extension}`;
+    const newFile = { folderName: 'New Files', fileName: newFileName };
+
     setFileSystem(fs => {
         const newFs = { ...fs };
         if (!newFs[newFile.folderName]) {
@@ -108,6 +129,7 @@ export function Compiler() {
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
+
     if (activate) {
         setOpenFiles(of => {
             const newOpenFiles = [...of, newFile];
@@ -116,7 +138,7 @@ export function Compiler() {
         });
     }
     setIsSettingsOpen(false);
-  }, []);
+  }, [fileSystem]);
 
   const closeTab = useCallback((indexToClose: number) => {
     setOpenFiles(of => of.filter((_, i) => i !== indexToClose));
@@ -338,7 +360,10 @@ export function Compiler() {
         const newFs = { ...fs };
         
         if (isNewFileOrRename && activeFile) {
-            if (newFs[activeFile.folderName]) {
+            // This is a rename or move operation
+            if (newFs[newActiveFile.folderName]?.[newActiveFile.fileName]) {
+                // Don't overwrite existing file silently
+            } else {
                 delete newFs[activeFile.folderName][activeFile.fileName];
                 if (Object.keys(newFs[activeFile.folderName]).length === 0) {
                     delete newFs[activeFile.folderName];
@@ -481,7 +506,7 @@ export function Compiler() {
         onSettingsChange={setSettings}
         fileSystem={fileSystem}
         onLoadFile={loadFile}
-        onNewFile={() => createNewFile(true)}
+        onNewFile={() => createNewFile(false)}
         onDeleteFile={deleteFile}
       />
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
@@ -520,5 +545,7 @@ export function Compiler() {
     </div>
   );
 }
+
+    
 
     
