@@ -115,6 +115,46 @@ export function Compiler() {
     setIsSettingsOpen(false);
   }, [openFiles.length]);
 
+  const closeTab = useCallback((indexToClose: number) => {
+    setOpenFiles(of => of.filter((_, i) => i !== indexToClose));
+    
+    if (openFiles.length === 1) { // We are closing the last tab
+        setActiveFileIndex(-1);
+        createNewFile(true); // create a new welcome file
+        return;
+    }
+
+    if (indexToClose < activeFileIndex) {
+        setActiveFileIndex(i => i - 1);
+    } else if (indexToClose === activeFileIndex) {
+        if (indexToClose >= openFiles.length - 1) { // if it's the last tab
+            setActiveFileIndex(i => i - 1);
+        }
+        // otherwise, the next tab will shift into the current index, so no change needed
+    }
+  }, [activeFileIndex, openFiles.length, createNewFile]);
+
+  const deleteFile = useCallback((folderName: string, fileName: string) => {
+    setFileSystem(fs => {
+        const newFs = { ...fs };
+        if (newFs[folderName]) {
+            delete newFs[folderName][fileName];
+            if (Object.keys(newFs[folderName]).length === 0) {
+                delete newFs[folderName];
+            }
+        }
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+
+    const fileIndexToRemove = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+    
+    if (fileIndexToRemove !== -1) {
+        closeTab(fileIndexToRemove);
+    }
+    
+  }, [openFiles, closeTab]);
+
   useEffect(() => {
     setIsMounted(true);
     const fs = getInitialFileSystem();
@@ -146,7 +186,18 @@ export function Compiler() {
     }
 
     if (initialOpenFiles.length === 0) {
-        createNewFile(true);
+        const newFile = { folderName: 'New Files', fileName: `Untitled-${Date.now()}.js` };
+        setFileSystem(fs => {
+            const newFs = { ...fs };
+            if (!newFs[newFile.folderName]) {
+                newFs[newFile.folderName] = {};
+            }
+            newFs[newFile.folderName][newFile.fileName] = defaultCode;
+            localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+            return newFs;
+        });
+        setOpenFiles([newFile]);
+        setActiveFileIndex(0);
     } else {
         setOpenFiles(initialOpenFiles);
         let initialActiveIndex = -1;
@@ -169,7 +220,8 @@ export function Compiler() {
         setActiveFileIndex(initialActiveIndex);
     }
 
-  }, [createNewFile]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getCodeFromState = useCallback(() => {
     if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
@@ -320,46 +372,6 @@ export function Compiler() {
     }
     setIsSettingsOpen(false);
   }, [openFiles]);
-
-  const closeTab = useCallback((indexToClose: number) => {
-    setOpenFiles(of => of.filter((_, i) => i !== indexToClose));
-    
-    if (openFiles.length === 1) { // We are closing the last tab
-        setActiveFileIndex(-1);
-        createNewFile(true); // create a new welcome file
-        return;
-    }
-
-    if (indexToClose < activeFileIndex) {
-        setActiveFileIndex(i => i - 1);
-    } else if (indexToClose === activeFileIndex) {
-        if (indexToClose >= openFiles.length - 1) { // if it's the last tab
-            setActiveFileIndex(i => i - 1);
-        }
-        // otherwise, the next tab will shift into the current index, so no change needed
-    }
-  }, [activeFileIndex, openFiles.length, createNewFile]);
-
-  const deleteFile = useCallback((folderName: string, fileName: string) => {
-    setFileSystem(fs => {
-        const newFs = { ...fs };
-        if (newFs[folderName]) {
-            delete newFs[folderName][fileName];
-            if (Object.keys(newFs[folderName]).length === 0) {
-                delete newFs[folderName];
-            }
-        }
-        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
-        return newFs;
-    });
-
-    const fileIndexToRemove = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
-    
-    if (fileIndexToRemove !== -1) {
-        closeTab(fileIndexToRemove);
-    }
-    
-  }, [openFiles, closeTab]);
 
   if (!isMounted) {
     return null; // Or a loading spinner
