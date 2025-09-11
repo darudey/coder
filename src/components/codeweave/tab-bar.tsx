@@ -32,7 +32,7 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
                             key={`${file.folderName}/${file.fileName}`}
                             onClick={() => onTabClick(index)}
                             className={cn(
-                                "flex items-center gap-2 pl-3 pr-1.5 rounded-t-md text-xs border-b-2 transition-colors py-1",
+                                "flex items-center gap-2 pl-3 pr-1.5 rounded-t-md text-xs border-b-2 transition-colors",
                                 index === activeFileIndex
                                 ? 'bg-background text-foreground border-primary'
                                 : 'text-muted-foreground border-transparent hover:bg-muted'
