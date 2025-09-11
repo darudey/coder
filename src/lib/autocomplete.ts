@@ -53,6 +53,50 @@ const jsObjects: Record<string, Suggestion[]> = {
     ],
 };
 
+const isConsonant = (char: string) => {
+    return !'aeiouAEIOU'.includes(char);
+}
+
+const fuzzyMatch = (partialWord: string, suggestion: Suggestion) => {
+    const suggestionValue = suggestion.value;
+    let score = 0;
+    let suggestionIndex = 0;
+    let consecutiveMatches = 0;
+    const lowerPartial = partialWord.toLowerCase();
+    const lowerSuggestion = suggestionValue.toLowerCase();
+
+    if (lowerSuggestion.startsWith(lowerPartial)) {
+        score += 100; // Big bonus for prefix match
+    }
+
+    for (let i = 0; i < partialWord.length; i++) {
+        const char = lowerPartial[i];
+        const index = lowerSuggestion.indexOf(char, suggestionIndex);
+
+        if (index !== -1) {
+            score += 10;
+            
+            if (isConsonant(char)) {
+                score += 15; // Bonus for consonant match
+            }
+
+            if (index === suggestionIndex) {
+                consecutiveMatches++;
+                score += 10 * consecutiveMatches;
+            } else {
+                consecutiveMatches = 0;
+            }
+            suggestionIndex = index + 1;
+        } else {
+            return 0; // If a character is not found, it's not a match
+        }
+    }
+    
+    // Penalize for length difference
+    score -= Math.abs(suggestionValue.length - partialWord.length);
+
+    return score;
+}
 
 export const getSuggestions = (code: string, cursorPosition: number): { suggestions: Suggestion[], word: string, startPos: number } => {
     const textBeforeCursor = code.slice(0, cursorPosition);
@@ -65,9 +109,11 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
         const startPos = cursorPosition - partialProperty.length;
 
         if (jsObjects[objectName]) {
-            const suggestions = jsObjects[objectName].filter(prop => 
-                prop.value.toLowerCase().startsWith(partialProperty.toLowerCase())
-            );
+             const suggestions = jsObjects[objectName]
+                .map(prop => ({ suggestion: prop, score: fuzzyMatch(partialProperty, prop) }))
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .map(item => item.suggestion);
             return { suggestions, word: partialProperty, startPos };
         }
         return { suggestions: [], word: '', startPos: 0 };
@@ -85,9 +131,12 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
         
         const allKeywords = [...keywords, ...Object.keys(jsObjects).map(k => ({ value: k, type: 'variable' as const }))];
 
-        const suggestions = allKeywords.filter(keyword =>
-            keyword.value.toLowerCase().startsWith(partialWord.toLowerCase())
-        );
+        const suggestions = allKeywords
+            .map(keyword => ({ suggestion: keyword, score: fuzzyMatch(partialWord, keyword) }))
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.suggestion);
+
 
         return { suggestions, word: partialWord, startPos };
     }
