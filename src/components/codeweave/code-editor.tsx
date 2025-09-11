@@ -8,6 +8,10 @@ import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogAction, AlertDialogCancel } from '../ui/alert-dialog';
+import { getSuggestions, type Suggestion } from '@/lib/autocomplete';
+import { AutocompleteDropdown } from './autocomplete-dropdown';
+import { getCaretCoordinates } from '@/lib/caret-position';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface CodeEditorProps {
   code: string;
@@ -92,6 +96,34 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const [fontSize, setFontSize] = useState(14); // Initial font size in pixels
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
+  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const debouncedCode = useDebounce(code, 150);
+
+  const updateSuggestions = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { suggestions, word } = getSuggestions(code, textarea.selectionStart);
+    if(suggestions.length > 0) {
+        setSuggestions(suggestions);
+        setActiveSuggestion(0);
+        const coords = getCaretCoordinates(textarea, textarea.selectionStart);
+        setSuggestionPos({
+            top: coords.top + coords.height,
+            left: coords.left - (word.length * (fontSize * 0.6)), // Approximate char width
+        });
+    } else {
+        setSuggestions([]);
+    }
+  }, [code, fontSize]);
+
+  useEffect(() => {
+    updateSuggestions();
+  }, [debouncedCode, updateSuggestions]);
+
+
   const syncScroll = useCallback(() => {
     if (textareaRef.current && gutterRef.current) {
         gutterRef.current.scrollTop = textareaRef.current.scrollTop;
@@ -142,6 +174,25 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       window.removeEventListener('resize', handleResize);
     }
   }, [code, updateLineNumbers, fontSize]);
+
+  const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { word, startPos } = getSuggestions(code, textarea.selectionStart);
+    
+    const newCode = code.substring(0, startPos) + suggestion.value + code.substring(textarea.selectionStart);
+    const newCursorPosition = startPos + suggestion.value.length;
+    
+    onCodeChange(newCode);
+    setSuggestions([]);
+
+    requestAnimationFrame(() => {
+        textarea.selectionStart = newCursorPosition;
+        textarea.selectionEnd = newCursorPosition;
+        textarea.focus();
+    });
+  }, [code, onCodeChange]);
 
   const handleKeyPress = useCallback(async (key: string) => {
     const textarea = textareaRef.current;
@@ -314,6 +365,28 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    if (suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setActiveSuggestion(prev => (prev + 1) % suggestions.length);
+          return;
+      }
+      if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
+          return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          handleSuggestionSelection(suggestions[activeSuggestion]);
+          return;
+      }
+      if (e.key === 'Escape') {
+          setSuggestions([]);
+          return;
+      }
+    }
+
     if (e.ctrlKey || e.metaKey) {
         if (e.key.toLowerCase() === 'z') {
             e.preventDefault();
@@ -365,7 +438,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         e.preventDefault();
         handleKeyPress('Tab');
     }
-  }, [onUndo, onRedo, hasActiveFile, handleKeyPress]);
+  }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection]);
 
   const showKeyboard = isKeyboardVisible;
   
@@ -427,7 +500,11 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
                     onChange={(e) => onCodeChange(e.target.value)}
                     onScroll={syncScroll}
                     onKeyDown={handleNativeKeyDown}
-                    onClick={() => setIsKeyboardVisible(true)}
+                    onClick={() => {
+                        setIsKeyboardVisible(true);
+                        updateSuggestions();
+                    }}
+                    onKeyUp={updateSuggestions}
                     placeholder="Enter your JavaScript code here..."
                     className={cn(
                     "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
@@ -436,6 +513,15 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
                     style={{...editorStyles, color: 'transparent'}}
                     spellCheck="false"
                 />
+                {suggestions.length > 0 && (
+                  <AutocompleteDropdown 
+                    suggestions={suggestions} 
+                    top={suggestionPos.top} 
+                    left={suggestionPos.left}
+                    onSelect={handleSuggestionSelection}
+                    activeIndex={activeSuggestion}
+                  />
+                )}
                 <div 
                     ref={mirrorRef}
                     aria-hidden="true"
