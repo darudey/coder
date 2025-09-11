@@ -109,8 +109,11 @@ export function Compiler() {
         return newFs;
     });
     if (activate) {
-        setOpenFiles(of => [...of, newFile]);
-        setActiveFileIndex(of.length);
+        setOpenFiles(of => {
+            const newOpenFiles = [...of, newFile];
+            setActiveFileIndex(newOpenFiles.length - 1);
+            return newOpenFiles;
+        });
     }
     setIsSettingsOpen(false);
   }, []);
@@ -517,3 +520,5 @@ export function Compiler() {
     </div>
   );
 }
+
+    
