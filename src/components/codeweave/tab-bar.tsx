@@ -26,13 +26,13 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
     return (
         <div className="flex items-center bg-muted/50 border-b border-border pl-2">
             <ScrollArea className="flex-grow whitespace-nowrap">
-                <div className="flex items-stretch h-full py-1">
+                <div className="flex items-stretch h-full">
                     {openFiles.map((file, index) => (
                         <button
                             key={`${file.folderName}/${file.fileName}`}
                             onClick={() => onTabClick(index)}
                             className={cn(
-                                "flex items-center gap-2 pl-3 pr-1.5 rounded-t-md text-xs border-b-2 transition-colors",
+                                "flex items-center gap-2 pl-3 pr-1.5 rounded-t-md text-xs border-b-2 transition-colors py-1",
                                 index === activeFileIndex
                                 ? 'bg-background text-foreground border-primary'
                                 : 'text-muted-foreground border-transparent hover:bg-muted'
