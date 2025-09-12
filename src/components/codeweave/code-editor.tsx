@@ -131,38 +131,56 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   }, []);
 
   const updateLineNumbers = useCallback(() => {
-      const ta = textareaRef.current;
-      const gutter = gutterRef.current;
-      const mirror = mirrorRef.current;
-
-      if (!ta || !gutter || !mirror) return;
-
-      mirror.style.width = ta.clientWidth + 'px';
-      
-      const lines = ta.value.split(/\r\n|\r|\n/);
-      gutter.textContent = '';
-      mirror.textContent = '';
-
-      for (let i = 0; i < lines.length; i++) {
-        const seg = document.createElement('span');
-        seg.className = 'block';
-        seg.textContent = (lines[i] === '' ? ' ' : lines[i]);
-        mirror.appendChild(seg);
-      }
-
-      const segs = mirror.children;
-      for (let i = 0; i < segs.length; i++) {
-        const h = (segs[i] as HTMLElement).offsetHeight;
+    const ta = textareaRef.current;
+    const gutter = gutterRef.current;
+    const mirror = mirrorRef.current;
+  
+    if (!ta || !gutter || !mirror) return;
+  
+    mirror.style.width = ta.clientWidth + 'px';
+  
+    const lines = ta.value.split(/\r\n|\r|\n/);
+    gutter.textContent = '';
+    mirror.textContent = '';
+  
+    let totalHeight = 0;
+  
+    for (let i = 0; i < lines.length; i++) {
+      const seg = document.createElement('span');
+      seg.className = 'block';
+      seg.textContent = (lines[i] === '' ? ' ' : lines[i]);
+      mirror.appendChild(seg);
+    }
+  
+    const segs = mirror.children;
+    for (let i = 0; i < segs.length; i++) {
+      const h = (segs[i] as HTMLElement).offsetHeight;
+      const div = document.createElement('div');
+      div.className = 'flex items-start h-full';
+      div.textContent = (i + 1).toString();
+      div.style.height = h + 'px';
+      gutter.appendChild(div);
+      totalHeight += h;
+    }
+  
+    const editorHeight = ta.clientHeight;
+    if (totalHeight < editorHeight) {
+      const lineHeight = fontSize * 1.5;
+      const remainingHeight = editorHeight - totalHeight;
+      const extraLines = Math.max(0, Math.ceil(remainingHeight / lineHeight));
+      for (let i = 0; i < extraLines; i++) {
         const div = document.createElement('div');
         div.className = 'flex items-start h-full';
-        div.textContent = (i + 1).toString();
-        div.style.height = h + 'px';
+        div.textContent = (lines.length + i + 1).toString();
+        div.style.height = lineHeight + 'px';
         gutter.appendChild(div);
       }
-      
-      gutter.style.width = (String(lines.length).length * 8 + 17) + 'px';
-      syncScroll();
-  }, [syncScroll]);
+    }
+  
+    const totalLines = gutter.children.length;
+    gutter.style.width = (String(totalLines).length * 8 + 17) + 'px';
+    syncScroll();
+  }, [syncScroll, fontSize]);
 
 
   useEffect(() => {
