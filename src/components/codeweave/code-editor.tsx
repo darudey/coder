@@ -402,10 +402,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
   const gutterStyles: React.CSSProperties = useMemo(() => ({
       ...editorStyles,
-      paddingTop: '0.5rem',
-      paddingBottom: '0.5rem',
-      paddingRight: '0.25rem',
-      paddingLeft: '0.5rem',
+      padding: '0.5rem 0.25rem 0.5rem 0.25rem',
       width: `${String(code.split('\n').length).length * (fontSize * 0.6) + (fontSize * 1.5)}px`,
   }), [editorStyles, code, fontSize]);
 
