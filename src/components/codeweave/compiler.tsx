@@ -466,7 +466,7 @@ export function Compiler() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-background">
       <Header 
         onRun={handleRun} 
         onSettings={() => setIsSettingsOpen(true)} 
@@ -483,7 +483,7 @@ export function Compiler() {
         onNewFile={() => createNewFile(true)}
         onRenameFile={renameFile}
       />
-      <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
+      <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden min-h-0">
         {activeFile ? (
             <CodeEditor
                 code={code}
@@ -545,7 +545,6 @@ export function Compiler() {
     </div>
   );
 }
-
     
 
     

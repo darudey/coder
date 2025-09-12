@@ -88,8 +88,9 @@ const getTokenClassName = (type: string) => {
 
 const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const gutterRef = useRef<HTMLDivElement>(null);
-  const mirrorRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
+  
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const [ctrlActive, setCtrlActive] = useState(false);
@@ -100,6 +101,8 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
   const [activeSuggestion, setActiveSuggestion] = useState(0);
   const debouncedCode = useDebounce(code, 150);
+
+  const getLineHeight = useCallback(() => fontSize * 1.5, [fontSize]);
 
   const updateSuggestions = useCallback(() => {
     const textarea = textareaRef.current;
@@ -124,74 +127,17 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   }, [debouncedCode, updateSuggestions]);
 
 
-  const syncScroll = useCallback(() => {
-    if (textareaRef.current && gutterRef.current) {
-        gutterRef.current.scrollTop = textareaRef.current.scrollTop;
-    }
-  }, []);
-
-  const updateLineNumbers = useCallback(() => {
-    const ta = textareaRef.current;
-    const gutter = gutterRef.current;
-    const mirror = mirrorRef.current;
-  
-    if (!ta || !gutter || !mirror) return;
-  
-    mirror.style.width = ta.clientWidth + 'px';
-  
-    const lines = ta.value.split(/\r\n|\r|\n/);
-    gutter.textContent = '';
-    mirror.textContent = '';
-  
-    let totalHeight = 0;
-  
-    for (let i = 0; i < lines.length; i++) {
-      const seg = document.createElement('span');
-      seg.className = 'block';
-      seg.textContent = (lines[i] === '' ? ' ' : lines[i]);
-      mirror.appendChild(seg);
-    }
-  
-    const segs = mirror.children;
-    for (let i = 0; i < segs.length; i++) {
-      const h = (segs[i] as HTMLElement).offsetHeight;
-      const div = document.createElement('div');
-      div.className = 'flex items-start h-full';
-      div.textContent = (i + 1).toString();
-      div.style.height = h + 'px';
-      gutter.appendChild(div);
-      totalHeight += h;
-    }
-  
-    const editorHeight = ta.clientHeight;
-    if (totalHeight < editorHeight) {
-      const lineHeight = fontSize * 1.5;
-      const remainingHeight = editorHeight - totalHeight;
-      const extraLines = Math.max(0, Math.ceil(remainingHeight / lineHeight));
-      for (let i = 0; i < extraLines; i++) {
-        const div = document.createElement('div');
-        div.className = 'flex items-start h-full';
-        div.textContent = (lines.length + i + 1).toString();
-        div.style.height = lineHeight + 'px';
-        gutter.appendChild(div);
-      }
-    }
-  
-    const totalLines = gutter.children.length;
-    gutter.style.width = (String(totalLines).length * 8 + 17) + 'px';
-    syncScroll();
-  }, [syncScroll, fontSize]);
-
-
   useEffect(() => {
-    updateLineNumbers();
-    const handleResize = () => updateLineNumbers();
+    const ta = textareaRef.current;
+    if (!ta) return;
+    
+    const handleResize = () => {
+        // No explicit action needed on resize if using flexbox correctly
+    };
+    
     window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    }
-  }, [code, updateLineNumbers, fontSize]);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
     const textarea = textareaRef.current;
@@ -366,8 +312,8 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       const keyboard = document.getElementById('coder-keyboard');
       const target = event.target as Node;
       if (
-        textareaRef.current &&
-        !textareaRef.current.contains(target) &&
+        scrollContainerRef.current &&
+        !scrollContainerRef.current.contains(target) &&
         (!keyboard || !keyboard.contains(target))
       ) {
         setIsKeyboardVisible(false);
@@ -463,20 +409,31 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const editorStyles: React.CSSProperties = useMemo(() => ({
       fontFamily: 'var(--font-code)',
       fontSize: `${fontSize}px`,
-      lineHeight: '1.5',
-      padding: '0.5rem 0.75rem',
-      whiteSpace: 'pre-wrap',
-      overflowWrap: 'anywhere',
+      lineHeight: `${getLineHeight()}px`,
+      paddingTop: '0.5rem',
+      paddingBottom: '0.5rem',
       // @ts-ignore
       tabSize: 2,
-  }), [fontSize]);
+  }), [fontSize, getLineHeight]);
+
+  const gutterStyles: React.CSSProperties = useMemo(() => ({
+      ...editorStyles,
+      paddingRight: '0.5rem',
+      width: `${String(code.split('\n').length).length * 8 + 24}px`,
+  }), [editorStyles, code]);
+
+  const codeContainerStyles: React.CSSProperties = useMemo(() => ({
+    ...editorStyles,
+    paddingLeft: '0.75rem',
+  }), [editorStyles]);
   
   const highlightedCode = useMemo(() => {
     const lines = code.split('\n');
+    const lineHeight = getLineHeight();
     return (
       <>
         {lines.map((line, lineIndex) => (
-            <div key={lineIndex} className="min-h-[21px]" style={{minHeight: `${fontSize * 1.5}px`}}>
+            <div key={lineIndex} className="min-h-[21px]" style={{minHeight: `${lineHeight}px`}}>
               {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
                   <span key={tokenIndex} className={getTokenClassName(token.type)}>
                     {token.value}
@@ -486,71 +443,64 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         ))}
       </>
     );
-  }, [code, fontSize]);
+  }, [code, getLineHeight]);
+
+  const lineNumbers = useMemo(() => {
+      const lines = code.split('\n').length;
+      return Array.from({length: lines}, (_, i) => i + 1).join('\n');
+  }, [code])
 
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-        <CardContent className="flex flex-col flex-grow p-0 bg-white dark:bg-gray-800">
-          <div className="flex flex-grow h-full">
-            <div 
-              ref={gutterRef} 
-              className="box-border p-2 pr-1 text-right text-gray-500 bg-gray-100 border-r border-gray-200 select-none overflow-y-auto overflow-x-hidden dark:bg-gray-900 dark:border-gray-700"
-              style={{
-                fontFamily: 'var(--font-code)',
-                fontSize: editorStyles.fontSize,
-                lineHeight: editorStyles.lineHeight,
-              }}
-            >
-            </div>
-            <div className="relative flex-grow h-full">
-                <div
-                    aria-hidden="true"
-                    className="absolute inset-0 m-0 pointer-events-none"
-                    style={editorStyles}
+        <CardContent className="flex flex-col flex-grow p-0 bg-white dark:bg-gray-800 h-full min-h-0">
+          <div ref={scrollContainerRef} className="flex-grow overflow-auto h-full">
+            <div ref={contentWrapperRef} className="relative flex">
+                <pre
+                  aria-hidden="true"
+                  className="box-border text-right text-gray-500 bg-gray-100 select-none dark:bg-gray-900 dark:border-gray-700"
+                  style={gutterStyles}
                 >
-                    {highlightedCode}
-                </div>
-                <Textarea
-                    ref={textareaRef}
-                    value={code}
-                    inputMode={isMobile ? 'none' : 'text'}
-                    onChange={(e) => onCodeChange(e.target.value)}
-                    onScroll={syncScroll}
-                    onKeyDown={handleNativeKeyDown}
-                    onClick={() => {
-                        setIsKeyboardVisible(true);
-                        updateSuggestions();
-                    }}
-                    onKeyUp={updateSuggestions}
-                    placeholder="Enter your JavaScript code here..."
-                    className={cn(
-                    "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
-                    "bg-transparent relative z-10"
+                    {lineNumbers}
+                </pre>
+
+                <div className="relative flex-grow h-full">
+                    <pre
+                        aria-hidden="true"
+                        className="absolute inset-0 m-0 pointer-events-none"
+                        style={codeContainerStyles}
+                    >
+                        {highlightedCode}
+                    </pre>
+                    <Textarea
+                        ref={textareaRef}
+                        value={code}
+                        inputMode={isMobile ? 'none' : 'text'}
+                        onChange={(e) => onCodeChange(e.target.value)}
+                        onKeyDown={handleNativeKeyDown}
+                        onClick={() => {
+                            setIsKeyboardVisible(true);
+                            updateSuggestions();
+                        }}
+                        onKeyUp={updateSuggestions}
+                        placeholder="Enter your JavaScript code here..."
+                        className={cn(
+                        "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
+                        "bg-transparent relative z-10"
+                        )}
+                        style={{...codeContainerStyles, color: 'transparent', whiteSpace: 'pre', overflowWrap: 'normal'}}
+                        spellCheck="false"
+                    />
+                    {suggestions.length > 0 && (
+                      <AutocompleteDropdown 
+                        suggestions={suggestions} 
+                        top={suggestionPos.top} 
+                        left={suggestionPos.left}
+                        onSelect={handleSuggestionSelection}
+                        activeIndex={activeSuggestion}
+                      />
                     )}
-                    style={{...editorStyles, color: 'transparent'}}
-                    spellCheck="false"
-                />
-                {suggestions.length > 0 && (
-                  <AutocompleteDropdown 
-                    suggestions={suggestions} 
-                    top={suggestionPos.top} 
-                    left={suggestionPos.left}
-                    onSelect={handleSuggestionSelection}
-                    activeIndex={activeSuggestion}
-                  />
-                )}
-                <div 
-                    ref={mirrorRef}
-                    aria-hidden="true"
-                    className="absolute top-0 left-0 invisible pointer-events-none"
-                    style={{
-                      ...editorStyles,
-                      whiteSpace: 'pre-wrap',
-                      overflowWrap: 'anywhere',
-                      boxSizing: 'border-box'
-                    }}
-                ></div>
+                </div>
             </div>
           </div>
         </CardContent>
