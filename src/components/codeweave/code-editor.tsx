@@ -404,9 +404,10 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       ...editorStyles,
       paddingTop: '0.5rem',
       paddingBottom: '0.5rem',
-      paddingRight: '0.5rem',
-      width: `${String(code.split('\n').length).length * 8 + 24}px`,
-  }), [editorStyles, code]);
+      paddingRight: '0.25rem',
+      paddingLeft: '0.5rem',
+      width: `${String(code.split('\n').length).length * (fontSize * 0.6) + (fontSize * 1.5)}px`,
+  }), [editorStyles, code, fontSize]);
 
   const codeContainerStyles: React.CSSProperties = useMemo(() => ({
     ...editorStyles,
@@ -522,5 +523,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
+
+    
 
     
