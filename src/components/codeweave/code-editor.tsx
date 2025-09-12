@@ -88,7 +88,6 @@ const getTokenClassName = (type: string) => {
 
 const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentWrapperRef = useRef<HTMLDivElement>(null);
   
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -125,19 +124,6 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   useEffect(() => {
     updateSuggestions();
   }, [debouncedCode, updateSuggestions]);
-
-
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    
-    const handleResize = () => {
-        // No explicit action needed on resize if using flexbox correctly
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
     const textarea = textareaRef.current;
@@ -312,8 +298,8 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       const keyboard = document.getElementById('coder-keyboard');
       const target = event.target as Node;
       if (
-        scrollContainerRef.current &&
-        !scrollContainerRef.current.contains(target) &&
+        contentWrapperRef.current &&
+        !contentWrapperRef.current.contains(target) &&
         (!keyboard || !keyboard.contains(target))
       ) {
         setIsKeyboardVisible(false);
@@ -410,20 +396,22 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       fontFamily: 'var(--font-code)',
       fontSize: `${fontSize}px`,
       lineHeight: `${getLineHeight()}px`,
-      paddingTop: '0.5rem',
-      paddingBottom: '0.5rem',
       // @ts-ignore
       tabSize: 2,
   }), [fontSize, getLineHeight]);
 
   const gutterStyles: React.CSSProperties = useMemo(() => ({
       ...editorStyles,
+      paddingTop: '0.5rem',
+      paddingBottom: '0.5rem',
       paddingRight: '0.5rem',
       width: `${String(code.split('\n').length).length * 8 + 24}px`,
   }), [editorStyles, code]);
 
   const codeContainerStyles: React.CSSProperties = useMemo(() => ({
     ...editorStyles,
+    paddingTop: '0.5rem',
+    paddingBottom: '0.5rem',
     paddingLeft: '0.75rem',
   }), [editorStyles]);
   
@@ -441,66 +429,67 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
                 ))}
             </div>
         ))}
+        {/* Spacer to allow scrolling past the last line */}
+        <div style={{ height: '50vh' }} />
       </>
     );
   }, [code, getLineHeight]);
 
   const lineNumbers = useMemo(() => {
       const lines = code.split('\n').length;
-      return Array.from({length: lines}, (_, i) => i + 1).join('\n');
+      return Array.from({length: lines}, (_, i) => i + 1).join('\n') + '\n';
   }, [code])
 
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden shadow-lg">
-        <CardContent className="flex flex-col flex-grow p-0 bg-white dark:bg-gray-800 h-full min-h-0">
-          <div ref={scrollContainerRef} className="flex-grow overflow-auto h-full">
-            <div ref={contentWrapperRef} className="relative flex">
-                <pre
-                  aria-hidden="true"
-                  className="box-border text-right text-gray-500 bg-gray-100 select-none dark:bg-gray-900 dark:border-gray-700"
-                  style={gutterStyles}
-                >
-                    {lineNumbers}
-                </pre>
+        <CardContent className="flex flex-col flex-grow p-0 bg-white dark:bg-gray-800 h-full min-h-0 overflow-auto">
+          <div ref={contentWrapperRef} className="relative flex w-full">
+            <pre
+              aria-hidden="true"
+              className="box-border text-right text-gray-500 bg-gray-100 select-none dark:bg-gray-900 dark:border-gray-700"
+              style={gutterStyles}
+            >
+              {lineNumbers}
+            </pre>
 
-                <div className="relative flex-grow h-full">
-                    <pre
-                        aria-hidden="true"
-                        className="absolute inset-0 m-0 pointer-events-none"
-                        style={codeContainerStyles}
-                    >
-                        {highlightedCode}
-                    </pre>
-                    <Textarea
-                        ref={textareaRef}
-                        value={code}
-                        inputMode={isMobile ? 'none' : 'text'}
-                        onChange={(e) => onCodeChange(e.target.value)}
-                        onKeyDown={handleNativeKeyDown}
-                        onClick={() => {
-                            setIsKeyboardVisible(true);
-                            updateSuggestions();
-                        }}
-                        onKeyUp={updateSuggestions}
-                        placeholder="Enter your JavaScript code here..."
-                        className={cn(
-                        "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
-                        "bg-transparent relative z-10"
-                        )}
-                        style={{...codeContainerStyles, color: 'transparent', whiteSpace: 'pre', overflowWrap: 'normal'}}
-                        spellCheck="false"
-                    />
-                    {suggestions.length > 0 && (
-                      <AutocompleteDropdown 
-                        suggestions={suggestions} 
-                        top={suggestionPos.top} 
-                        left={suggestionPos.left}
-                        onSelect={handleSuggestionSelection}
-                        activeIndex={activeSuggestion}
-                      />
-                    )}
-                </div>
+            <div className="relative flex-grow h-full">
+              <pre
+                aria-hidden="true"
+                className="absolute inset-0 m-0 pointer-events-none"
+                style={codeContainerStyles}
+              >
+                {highlightedCode}
+              </pre>
+              <Textarea
+                ref={textareaRef}
+                value={code}
+                inputMode={isMobile ? 'none' : 'text'}
+                onChange={(e) => onCodeChange(e.target.value)}
+                onKeyDown={handleNativeKeyDown}
+                onClick={() => {
+                  setIsKeyboardVisible(true);
+                  updateSuggestions();
+                }}
+                onKeyUp={updateSuggestions}
+                placeholder="Enter your JavaScript code here..."
+                className={cn(
+                  "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
+                  "bg-transparent relative z-10",
+                  "overflow-hidden" // Important: The textarea itself should not scroll
+                )}
+                style={{ ...codeContainerStyles, color: 'transparent', whiteSpace: 'pre', overflowWrap: 'normal' }}
+                spellCheck="false"
+              />
+              {suggestions.length > 0 && (
+                <AutocompleteDropdown
+                  suggestions={suggestions}
+                  top={suggestionPos.top}
+                  left={suggestionPos.left}
+                  onSelect={handleSuggestionSelection}
+                  activeIndex={activeSuggestion}
+                />
+              )}
             </div>
           </div>
         </CardContent>
@@ -513,19 +502,19 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       </div>
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the current file.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                    onDeleteFile();
-                    setShowDeleteConfirm(false);
-                }}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the current file.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              onDeleteFile();
+              setShowDeleteConfirm(false);
+            }}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
