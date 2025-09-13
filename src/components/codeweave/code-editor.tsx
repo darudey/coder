@@ -90,6 +90,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const [ctrlActive, setCtrlActive] = useState(false);
@@ -125,8 +126,9 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
 
   const syncScroll = useCallback(() => {
-    if (textareaRef.current && gutterRef.current) {
-        gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+    if (textareaRef.current && gutterRef.current && editorContainerRef.current) {
+        const scrollTop = textareaRef.current.scrollTop;
+        gutterRef.current.scrollTop = scrollTop;
     }
   }, []);
 
@@ -136,6 +138,8 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       const mirror = mirrorRef.current;
 
       if (!ta || !gutter || !mirror) return;
+
+      const scrollTop = ta.scrollTop;
 
       mirror.style.width = ta.clientWidth + 'px';
       
@@ -161,8 +165,10 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       }
       
       gutter.style.width = (String(lines.length).length * 8 + 17) + 'px';
-      syncScroll();
-  }, [syncScroll]);
+      
+      ta.scrollTop = scrollTop;
+      gutter.scrollTop = scrollTop;
+  }, []);
 
 
   useEffect(() => {
@@ -174,6 +180,36 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       window.removeEventListener('resize', handleResize);
     }
   }, [code, updateLineNumbers, fontSize]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea || !isMobile) return;
+
+    const handleFocus = () => {
+      setTimeout(() => {
+        const caretPos = getCaretCoordinates(textarea, textarea.selectionStart);
+        const textareaRect = textarea.getBoundingClientRect();
+        
+        // Position relative to viewport
+        const caretViewportTop = textareaRect.top + caretPos.top;
+
+        // If caret is in the bottom 60% of the screen, scroll it up
+        if (caretViewportTop > window.innerHeight * 0.4) {
+            const scrollAmount = caretViewportTop - (window.innerHeight * 0.3);
+            window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+        }
+      }, 100); // Delay to allow keyboard to appear
+    };
+    
+    textarea.addEventListener('focus', handleFocus);
+    textarea.addEventListener('keyup', handleFocus);
+
+    return () => {
+      textarea.removeEventListener('focus', handleFocus);
+      textarea.removeEventListener('keyup', handleFocus);
+    };
+
+  }, [isMobile, code]);
 
   const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
     const textarea = textareaRef.current;
@@ -472,9 +508,9 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
   return (
     <>
-      <Card className="flex flex-col h-full overflow-hidden shadow-lg">
+      <Card className="flex flex-col h-full overflow-hidden shadow-lg min-h-[70vh]">
         <CardContent className="flex flex-col flex-grow p-0 bg-white dark:bg-gray-800">
-          <div className="flex flex-grow h-full">
+          <div ref={editorContainerRef} className="flex flex-grow h-full">
             <div 
               ref={gutterRef} 
               className="box-border p-2 pr-1 text-right text-gray-500 bg-gray-100 border-r border-gray-200 select-none overflow-y-auto overflow-x-hidden dark:bg-gray-900 dark:border-gray-700"

@@ -466,24 +466,26 @@ export function Compiler() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      <Header 
-        onRun={handleRun} 
-        onSettings={() => setIsSettingsOpen(true)} 
-        isCompiling={isCompiling} 
-        onSaveAs={handleSaveRequest} 
-        activeFile={activeFile} 
-        hasActiveFile={!!activeFile}
-      />
-      <TabBar 
-        openFiles={openFiles}
-        activeFileIndex={activeFileIndex}
-        onTabClick={setActiveFileIndex}
-        onTabClose={closeTab}
-        onNewFile={() => createNewFile(true)}
-        onRenameFile={renameFile}
-      />
-      <div className="flex-grow p-4 grid grid-cols-1 gap-4 overflow-hidden">
+    <div className="bg-background">
+      <div className="sticky top-0 z-20 bg-background">
+        <Header 
+          onRun={handleRun} 
+          onSettings={() => setIsSettingsOpen(true)} 
+          isCompiling={isCompiling} 
+          onSaveAs={handleSaveRequest} 
+          activeFile={activeFile} 
+          hasActiveFile={!!activeFile}
+        />
+        <TabBar 
+          openFiles={openFiles}
+          activeFileIndex={activeFileIndex}
+          onTabClick={setActiveFileIndex}
+          onTabClose={closeTab}
+          onNewFile={() => createNewFile(true)}
+          onRenameFile={renameFile}
+        />
+      </div>
+      <div className="p-4 grid grid-cols-1 gap-4">
         {activeFile ? (
             <CodeEditor
                 code={code}
@@ -545,7 +547,5 @@ export function Compiler() {
     </div>
   );
 }
-
-    
 
     
