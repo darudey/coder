@@ -186,24 +186,21 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     if (!textarea || !isMobile) return;
 
     const handleFocus = () => {
-      setTimeout(() => {
-        const caretPos = getCaretCoordinates(textarea, textarea.selectionStart);
-        const textareaRect = textarea.getBoundingClientRect();
-        
-        // Position relative to viewport
-        const caretViewportTop = textareaRect.top + caretPos.top;
+        setTimeout(() => {
+            const caretPos = getCaretCoordinates(textarea, textarea.selectionStart);
+            const visibleBottom = textarea.scrollTop + textarea.clientHeight;
+            const caretBottom = caretPos.top + caretPos.height;
 
-        // If caret is in the bottom 60% of the screen, scroll it up
-        if (caretViewportTop > window.innerHeight * 0.4) {
-            const scrollAmount = caretViewportTop - (window.innerHeight * 0.3);
-            window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
-        }
-      }, 100); // Delay to allow keyboard to appear
+            if (caretBottom > visibleBottom * 0.9) { // If caret is in the bottom 90%
+                const scrollAmount = caretBottom - (textarea.clientHeight * 0.5); // scroll to middle
+                textarea.scrollTo({ top: scrollAmount, behavior: 'smooth' });
+            }
+        }, 100);
     };
     
     textarea.addEventListener('focus', handleFocus);
     textarea.addEventListener('keyup', handleFocus);
-
+    
     return () => {
       textarea.removeEventListener('focus', handleFocus);
       textarea.removeEventListener('keyup', handleFocus);
@@ -602,4 +599,5 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
 
+    
     
