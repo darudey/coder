@@ -7,7 +7,15 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetFooter,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import type { FC } from 'react';
@@ -17,8 +25,9 @@ import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { File, Folder, Plus, Trash2, Moon, Sun } from 'lucide-react';
+import { File, Folder, Plus, Trash2, Moon, Sun, Info } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { AboutContent } from './about-content';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -44,6 +53,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const [theme, setTheme] = useState('light');
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
@@ -188,6 +198,25 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                 </ScrollArea>
             </div>
         </div>
+
+        <SheetFooter className="mt-4">
+            <Dialog open={isAboutOpen} onOpenChange={setIsAboutOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                    <Info className="mr-2 h-4 w-4" />
+                    About 24HrCoding
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl h-4/5 flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>About 24HrCoding</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="flex-grow pr-6 -mr-6">
+                    <AboutContent />
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+        </SheetFooter>
 
       </SheetContent>
     </Sheet>
