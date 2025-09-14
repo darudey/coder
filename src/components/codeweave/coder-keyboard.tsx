@@ -11,6 +11,9 @@ interface CoderKeyboardProps {
   onKeyPress: (key: string) => void;
   ctrlActive?: boolean;
   onHide: () => void;
+  isSuggestionsOpen: boolean;
+  onNavigateSuggestions: (direction: 'next' | 'prev') => void;
+  onSelectSuggestion: () => void;
 }
 
 const keyboardLayout = [
@@ -27,7 +30,14 @@ const symbolMap: { [key: string]: string } = {
   '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|', ';': ':', "'": '<', ',': '<', '.': '>', '/': '?',
 };
 
-export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, onHide }) => {
+export const CoderKeyboard: FC<CoderKeyboardProps> = ({ 
+    onKeyPress, 
+    ctrlActive, 
+    onHide,
+    isSuggestionsOpen,
+    onNavigateSuggestions,
+    onSelectSuggestion,
+}) => {
   const [shift, setShift] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const spacebarInteraction = useRef({
@@ -54,19 +64,31 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
     const deltaX = clientX - lastX;
 
     if (Math.abs(deltaX) > threshold) {
-      if (deltaX > 0) {
-        onKeyPress('ArrowRight');
-      } else {
-        onKeyPress('ArrowLeft');
-      }
-      spacebarInteraction.current.lastX = clientX;
-      spacebarInteraction.current.didMove = true;
+        if (isSuggestionsOpen) {
+            if (deltaX > 0) {
+                onNavigateSuggestions('next');
+            } else {
+                onNavigateSuggestions('prev');
+            }
+        } else {
+            if (deltaX > 0) {
+                onKeyPress('ArrowRight');
+            } else {
+                onKeyPress('ArrowLeft');
+            }
+        }
+        spacebarInteraction.current.lastX = clientX;
+        spacebarInteraction.current.didMove = true;
     }
   };
   
   const handleSpacebarUp = () => {
     if (spacebarInteraction.current.isDragging && !spacebarInteraction.current.didMove) {
-      onKeyPress(' ');
+        if (isSuggestionsOpen) {
+            onSelectSuggestion();
+        } else {
+            onKeyPress(' ');
+        }
     }
     spacebarInteraction.current.isDragging = false;
     spacebarInteraction.current.didMove = false;
@@ -165,7 +187,7 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
                 )}
                 {...buttonProps}
               >
-                {isSpace ? 'Space' : displayKey}
+                {isSpace ? (isSuggestionsOpen ? 'Select' : 'Space') : displayKey}
               </Button>
             );
           })}
@@ -174,3 +196,5 @@ export const CoderKeyboard: FC<CoderKeyboardProps> = ({ onKeyPress, ctrlActive, 
     </div>
   );
 };
+
+    

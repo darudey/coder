@@ -227,6 +227,15 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     });
   }, [code, onCodeChange]);
 
+  const handleNavigateSuggestions = useCallback((direction: 'next' | 'prev') => {
+      if (suggestions.length === 0) return;
+      if (direction === 'next') {
+          setActiveSuggestion(prev => (prev + 1) % suggestions.length);
+      } else {
+          setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
+      }
+  }, [suggestions.length]);
+
   const handleKeyPress = useCallback(async (key: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -574,7 +583,14 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
         showKeyboard ? "translate-y-0" : "translate-y-full"
       )}>
-        <CoderKeyboard onKeyPress={handleKeyPress} ctrlActive={ctrlActive} onHide={() => setIsKeyboardVisible(false)} />
+        <CoderKeyboard 
+            onKeyPress={handleKeyPress} 
+            ctrlActive={ctrlActive} 
+            onHide={() => setIsKeyboardVisible(false)}
+            isSuggestionsOpen={suggestions.length > 0}
+            onNavigateSuggestions={handleNavigateSuggestions}
+            onSelectSuggestion={() => handleSuggestionSelection(suggestions[activeSuggestion])}
+        />
       </div>
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
@@ -600,4 +616,6 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 export const CodeEditor = React.memo(MemoizedCodeEditor);
 
     
+    
+
     
