@@ -14,6 +14,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
+import { Switch } from '../ui/switch';
 
 const defaultCode = `// Welcome to 24HrCoding!
 // Use the settings panel to save and load your creations.
@@ -323,6 +324,7 @@ export function Compiler() {
   const handleRun = useCallback(async () => {
     setIsCompiling(true);
     setIsResultOpen(true);
+    setOutput(null); // Clear previous output
     let result: RunResult | null = null;
     
     if (settings.errorChecking) {
@@ -523,7 +525,19 @@ export function Compiler() {
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
         <DialogContent className="max-w-2xl h-3/4 flex flex-col">
           <DialogHeader>
-            <DialogTitle>Result</DialogTitle>
+            <div className="flex justify-between items-center">
+              <DialogTitle>Result</DialogTitle>
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="error-checking-toggle" className="text-sm font-medium">
+                  AI Error Check
+                </Label>
+                <Switch
+                  id="error-checking-toggle"
+                  checked={settings.errorChecking}
+                  onCheckedChange={(value) => setSettings({ ...settings, errorChecking: value })}
+                />
+              </div>
+            </div>
           </DialogHeader>
           <div className="flex-grow overflow-hidden">
             <OutputDisplay output={output} isCompiling={isCompiling} isAiChecking={isAiChecking} />
