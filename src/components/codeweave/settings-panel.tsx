@@ -57,9 +57,8 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const initialTheme = storedTheme || systemTheme;
-    setTheme(initialTheme);
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? 'dark' : 'light';
+    setTheme(storedTheme || systemTheme);
   }, []);
   
   useEffect(() => {
