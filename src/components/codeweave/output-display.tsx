@@ -10,6 +10,7 @@ import { DotLoader } from './dot-loader';
 interface OutputDisplayProps {
   output: RunResult | null;
   isCompiling: boolean;
+  isAiChecking: boolean;
 }
 
 const renderStaticAnalysisError = (output: string) => {
@@ -39,13 +40,23 @@ const renderStaticAnalysisError = (output: string) => {
 const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   output,
   isCompiling,
+  isAiChecking,
 }) => {
   const renderOutput = () => {
     if (isCompiling) {
       return (
         <div className="flex items-center justify-center h-full">
-          <DotLoader className="w-12 text-primary" />
-          <p className="ml-4 text-muted-foreground">Running code...</p>
+            {isAiChecking ? (
+                <>
+                    <p className="mr-4 text-muted-foreground">AI checking your error bro</p>
+                    <DotLoader className="w-12 text-primary" />
+                </>
+            ) : (
+                <>
+                    <DotLoader className="w-12 text-primary" />
+                    <p className="ml-4 text-muted-foreground">Running code...</p>
+                </>
+            )}
         </div>
       );
     }
@@ -59,10 +70,8 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 
     return (
       <pre
-        className={`p-4 text-sm whitespace-pre-wrap font-code h-full overflow-wrap-anywhere ${
-          output.type === 'error' ? 'text-destructive' : 'text-foreground'
-        }`}
-        style={{ overflowWrap: 'anywhere' }}
+        className={`p-4 text-sm whitespace-pre-wrap font-code h-full`}
+        style={{ overflowWrap: 'anywhere', color: output.type === 'error' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}
       >
         {output.output}
       </pre>
@@ -79,5 +88,3 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 };
 
 export const OutputDisplay = React.memo(MemoizedOutputDisplay);
-
-    

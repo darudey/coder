@@ -250,6 +250,7 @@ export function Compiler() {
   const debouncedCode = useDebounce(code, 500);
   
   const [isCompiling, setIsCompiling] = useState(false);
+  const [isAiChecking, setIsAiChecking] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({ errorChecking: false });
   const [output, setOutput] = useState<RunResult | null>(null);
@@ -322,7 +323,14 @@ export function Compiler() {
   const handleRun = useCallback(async () => {
     setIsCompiling(true);
     setIsResultOpen(true);
-    let result = settings.errorChecking ? await checkCodeForErrors(code) : null;
+    let result: RunResult | null = null;
+    
+    if (settings.errorChecking) {
+      setIsAiChecking(true);
+      result = await checkCodeForErrors(code);
+      setIsAiChecking(false);
+    }
+
     if (!result) {
         result = await runCodeOnClient(code);
     }
@@ -518,7 +526,7 @@ export function Compiler() {
             <DialogTitle>Result</DialogTitle>
           </DialogHeader>
           <div className="flex-grow overflow-hidden">
-            <OutputDisplay output={output} isCompiling={isCompiling} />
+            <OutputDisplay output={output} isCompiling={isCompiling} isAiChecking={isAiChecking} />
           </div>
         </DialogContent>
       </Dialog>
