@@ -17,7 +17,7 @@ const renderStaticAnalysisError = (output: string) => {
     const errorSections = output.replace('Static Analysis Errors:\n\n', '').split('\n\n---\n\n');
     
     return (
-        <div className="p-4 text-sm font-code text-destructive">
+        <div className="p-4 text-sm font-code text-green-600">
             <h3 className="font-bold text-base mb-4">Static Analysis Errors</h3>
             {errorSections.map((section, index) => {
                 const summaryMatch = section.match(/Summary: (.*)/);
