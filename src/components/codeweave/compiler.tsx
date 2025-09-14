@@ -97,6 +97,7 @@ export function Compiler() {
   const activeFile = activeFileIndex !== -1 ? openFiles[activeFileIndex] : null;
 
   const [isMounted, setIsMounted] = useState(false);
+  const { toast } = useToast();
   
   const createNewFile = useCallback((activate = true) => {
     let nextFileNumber = 0;
@@ -258,7 +259,6 @@ export function Compiler() {
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [saveForm, setSaveForm] = useState({ fileName: '', folderName: '' });
-  const { toast } = useToast();
 
   const setCode = useCallback((newCode: string, fromHistory = false) => {
     if (!fromHistory) {
@@ -471,6 +471,21 @@ export function Compiler() {
 
   }, [openFiles, fileSystem, toast]);
 
+  const handleAiCheckToggle = (value: boolean) => {
+    if (value) {
+        const apiKey = localStorage.getItem('gemini-api-key');
+        if (!apiKey) {
+            toast({
+                title: 'Gemini API Key Required',
+                description: 'Please add your Gemini API key in the settings panel to use this feature.',
+                variant: 'destructive',
+            });
+            return;
+        }
+    }
+    setSettings({ ...settings, errorChecking: value });
+  };
+
   if (!isMounted) {
     return null; // Or a loading spinner
   }
@@ -515,8 +530,6 @@ export function Compiler() {
       <SettingsPanel
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
-        settings={settings}
-        onSettingsChange={setSettings}
         fileSystem={fileSystem}
         onLoadFile={loadFile}
         onNewFile={() => createNewFile(false)}
@@ -534,7 +547,7 @@ export function Compiler() {
                 <Switch
                   id="error-checking-toggle"
                   checked={settings.errorChecking}
-                  onCheckedChange={(value) => setSettings({ ...settings, errorChecking: value })}
+                  onCheckedChange={handleAiCheckToggle}
                 />
               </div>
             </div>
@@ -570,3 +583,4 @@ export function Compiler() {
     </div>
   );
 }
+

@@ -19,7 +19,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import type { FC } from 'react';
-import type { Settings, FileSystem } from './compiler';
+import type { FileSystem } from './compiler';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
@@ -32,8 +32,6 @@ import { AboutContent } from './about-content';
 interface SettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  settings: Settings;
-  onSettingsChange: (settings: Settings) => void;
   fileSystem: FileSystem;
   onLoadFile: (folderName: string, fileName: string) => void;
   onNewFile: () => void;
@@ -43,8 +41,6 @@ interface SettingsPanelProps {
 export const SettingsPanel: FC<SettingsPanelProps> = ({
   open,
   onOpenChange,
-  settings,
-  onSettingsChange,
   fileSystem,
   onLoadFile,
   onNewFile,
