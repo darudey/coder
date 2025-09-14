@@ -500,6 +500,7 @@ export function Compiler() {
                 <p>Open a file from the settings panel or create a new one to start coding.</p>
             </div>
         )}
+        <div className="h-[75vh]" />
       </div>
       <SettingsPanel
         open={isSettingsOpen}
@@ -547,5 +548,3 @@ export function Compiler() {
     </div>
   );
 }
-
-    
