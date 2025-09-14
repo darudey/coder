@@ -59,9 +59,10 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 
     return (
       <pre
-        className={`p-4 text-sm whitespace-pre-wrap font-code h-full ${
+        className={`p-4 text-sm whitespace-pre-wrap font-code h-full overflow-wrap-anywhere ${
           output.type === 'error' ? 'text-destructive' : 'text-foreground'
         }`}
+        style={{ overflowWrap: 'anywhere' }}
       >
         {output.output}
       </pre>
