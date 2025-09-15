@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File } from 'lucide-react';
+import { Play, Settings, Save, File, Share2 } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -15,11 +15,12 @@ interface HeaderProps {
   onSettings: () => void;
   isCompiling: boolean;
   onSaveAs: () => void;
+  onShare: () => void;
   activeFile: ActiveFile | null;
   hasActiveFile: boolean;
 }
 
-const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, activeFile, hasActiveFile }) => {
+const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, onShare, activeFile, hasActiveFile }) => {
   return (
     <header className="bg-background">
       <div className={cn(
@@ -49,6 +50,10 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
                 <span className="ml-1.5 hidden sm:inline">Run</span>
               </>
             )}
+          </Button>
+          <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile}>
+            <Share2 className="w-4 h-4" />
+            <span className="sr-only">Share</span>
           </Button>
           <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile}>
             <Save className="w-4 h-4" />

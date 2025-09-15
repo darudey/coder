@@ -2,7 +2,10 @@
 'use server';
 
 import { errorCheck } from '@/ai/flows/error-checking';
+import { db } from '@/lib/firebase';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import fs from 'fs/promises';
+import { customAlphabet } from 'nanoid';
 import path from 'path';
 
 export interface RunResult {
@@ -34,5 +37,39 @@ export async function checkCodeForErrors(code: string): Promise<RunResult | null
             output: `AI Error Check Failed: ${e.message}`,
             type: 'error',
         };
+    }
+}
+
+export async function shareCode(code: string): Promise<{id: string} | {error: string}> {
+    try {
+        const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
+        const shareId = nanoid();
+        
+        await addDoc(collection(db, "shares"), {
+            id: shareId,
+            code: code,
+            createdAt: serverTimestamp(),
+        });
+
+        return { id: shareId };
+    } catch (e: any) {
+        console.error(e);
+        return { error: 'Failed to share code. Please try again.' };
+    }
+}
+
+export async function getSharedCode(id: string): Promise<string | null> {
+    try {
+        const docRef = doc(db, "shares", id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            return docSnap.data().code;
+        } else {
+            return null;
+        }
+    } catch (e: any) {
+        console.error(e);
+        return null;
     }
 }

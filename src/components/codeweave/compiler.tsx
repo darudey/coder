@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { checkCodeForErrors, type RunResult } from '@/app/actions';
+import { checkCodeForErrors, shareCode, type RunResult } from '@/app/actions';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
@@ -15,6 +15,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
+import { Copy } from 'lucide-react';
 
 const defaultCode = `// Welcome to 24HrCoding!
 // Use the settings panel to save and load your creations.
@@ -260,6 +261,10 @@ export function Compiler() {
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [saveForm, setSaveForm] = useState({ fileName: '', folderName: '' });
 
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
+
   const setCode = useCallback((newCode: string, fromHistory = false) => {
     if (!fromHistory) {
       const newHistory = history.slice(0, historyIndex + 1);
@@ -348,6 +353,26 @@ export function Compiler() {
     });
     setIsSaveOpen(true);
   }, [activeFile]);
+
+  const handleShare = useCallback(async () => {
+    if (!code) return;
+    setIsSharing(true);
+    setShareDialogOpen(true);
+    const result = await shareCode(code);
+    if ('id' in result) {
+        const url = `${window.location.origin}/s/${result.id}`;
+        setShareLink(url);
+    } else {
+        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+        setShareLink('');
+    }
+    setIsSharing(false);
+  }, [code, toast]);
+
+  const handleCopyShareLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    toast({ title: 'Copied!', description: 'Share link copied to clipboard.' });
+  };
 
   const handleSave = useCallback(() => {
     const { fileName, folderName } = saveForm;
@@ -498,6 +523,7 @@ export function Compiler() {
           onSettings={() => setIsSettingsOpen(true)} 
           isCompiling={isCompiling} 
           onSaveAs={handleSaveRequest} 
+          onShare={handleShare}
           activeFile={activeFile} 
           hasActiveFile={!!activeFile}
         />
@@ -578,6 +604,31 @@ export function Compiler() {
             <DialogFooter>
                 <Button onClick={handleSave} disabled={!activeFile}>Save</Button>
             </DialogFooter>
+        </DialogContent>
+      </Dialog>
+       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share Code</DialogTitle>
+            <DialogDescription>
+              Anyone with this link can view your code.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2 pt-2">
+            {isSharing ? (
+                <div className="flex items-center justify-center w-full">
+                    <DotLoader /> 
+                    <span className="ml-2">Generating link...</span>
+                </div>
+            ) : (
+              <>
+                <Input value={shareLink} readOnly />
+                <Button onClick={handleCopyShareLink} size="icon" className="shrink-0">
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
