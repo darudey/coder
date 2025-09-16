@@ -335,7 +335,11 @@ export function Compiler() {
     
     if (settings.errorChecking) {
       setIsAiChecking(true);
-      result = await checkCodeForErrors(code);
+      // This will be replaced by error explanation logic
+      result = await runCodeOnClient(code);
+      if (result.type === 'error') {
+        // Here we'd call the new AI action
+      }
       setIsAiChecking(false);
     }
 
@@ -356,10 +360,13 @@ export function Compiler() {
   }, [activeFile]);
 
   const handleShare = useCallback(async () => {
-    if (!code) return;
+    if (!activeFile) return;
+    const codeToShare = fileSystem[activeFile.folderName][activeFile.fileName];
+    if (!codeToShare) return;
+    
     setIsSharing(true);
     setShareDialogOpen(true);
-    const result = await shareCode(code);
+    const result = await shareCode(codeToShare);
     if ('id' in result) {
         const url = `${window.location.origin}/s/${result.id}`;
         setShareLink(url);
@@ -368,7 +375,7 @@ export function Compiler() {
         setShareLink('');
     }
     setIsSharing(false);
-  }, [code, toast]);
+  }, [activeFile, fileSystem, toast]);
 
   const handleCopyShareLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -376,6 +383,8 @@ export function Compiler() {
   };
 
   const handleSave = useCallback(() => {
+    if (!activeFile) return;
+    
     const { fileName, folderName } = saveForm;
     let trimmedFileName = fileName.trim();
     const trimmedFolderName = folderName.trim();
@@ -390,20 +399,20 @@ export function Compiler() {
     }
 
     const newActiveFile = { fileName: trimmedFileName, folderName: trimmedFolderName };
-    const isNewFileOrRename = !activeFile || activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName;
+    const isNewFileOrRename = activeFile.fileName !== newActiveFile.fileName || activeFile.folderName !== newActiveFile.folderName;
 
     setFileSystem(fs => {
         const newFs = { ...fs };
         
-        if (isNewFileOrRename && activeFile) {
-            // This is a rename or move operation
+        if (isNewFileOrRename) {
             if (newFs[newActiveFile.folderName]?.[newActiveFile.fileName]) {
-                // Don't overwrite existing file silently
-            } else {
-                delete newFs[activeFile.folderName][activeFile.fileName];
-                if (Object.keys(newFs[activeFile.folderName]).length === 0) {
-                    delete newFs[activeFile.folderName];
-                }
+                 toast({ title: 'Error', description: 'A file with that name already exists in the destination folder.', variant: 'destructive' });
+                 return fs;
+            }
+            // This is a rename or move operation, so remove the old file entry
+            delete newFs[activeFile.folderName][activeFile.fileName];
+            if (Object.keys(newFs[activeFile.folderName]).length === 0) {
+                delete newFs[activeFile.folderName];
             }
         }
 
@@ -418,11 +427,7 @@ export function Compiler() {
     if (isNewFileOrRename) {
         setOpenFiles(of => {
             const newOpenFiles = [...of];
-            if (activeFileIndex !== -1) {
-                newOpenFiles[activeFileIndex] = newActiveFile;
-            } else {
-                return [newActiveFile];
-            }
+            newOpenFiles[activeFileIndex] = newActiveFile;
             return newOpenFiles;
         })
     }
