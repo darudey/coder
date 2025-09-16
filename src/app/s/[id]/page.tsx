@@ -1,10 +1,6 @@
-'use client';
-
 import { getSharedCode } from "@/app/actions";
 import { Compiler } from "@/components/codeweave/compiler";
-import { DotLoader } from "@/components/codeweave/dot-loader";
 import { notFound } from "next/navigation";
-import { useEffect, useState } from "react";
 
 interface SharePageProps {
     params: {
@@ -12,36 +8,16 @@ interface SharePageProps {
     }
 }
 
-// This is now a client component to allow for full interactivity.
-export default function SharePage({ params }: SharePageProps) {
-    const [initialCode, setInitialCode] = useState<string | null | undefined>(undefined);
+// This is now a Server Component that fetches data and passes it to a Client Component.
+export default async function SharePage({ params }: SharePageProps) {
+    const initialCode = await getSharedCode(params.id);
 
-    useEffect(() => {
-        const fetchCode = async () => {
-            const code = await getSharedCode(params.id);
-            if (code === null) {
-                notFound();
-            } else {
-                setInitialCode(code);
-            }
-        };
-
-        fetchCode();
-    }, [params]);
-
-    if (initialCode === undefined) {
-        return (
-            <main className="bg-background min-h-screen flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <DotLoader className="w-12 text-primary" />
-                    <p className="text-muted-foreground">Loading shared code...</p>
-                </div>
-            </main>
-        );
+    if (initialCode === null) {
+        notFound();
     }
     
-    // We use a key to force the Compiler to re-mount when the initialCode is loaded.
-    // We also pass the initialCode to a new prop on the Compiler.
+    // The Compiler component is a Client Component, but we can pass server-fetched
+    // data to it as props. We use a `key` to ensure it re-mounts with the new code.
     return (
         <main className="bg-background min-h-screen">
             <Compiler key={params.id} initialCode={initialCode} />
