@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { checkCodeForErrors, shareCode, type RunResult } from '@/app/actions';
+import { shareCode } from '@/app/actions';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
@@ -26,6 +27,11 @@ function greet(name) {
 
 console.log(greet('World'));
 `;
+
+export interface RunResult {
+    output: string;
+    type: 'result' | 'error';
+}
 
 export interface Settings {
   errorChecking: boolean;
@@ -360,19 +366,29 @@ export function Compiler() {
   }, [activeFile]);
 
   const handleShare = useCallback(async () => {
-    if (!activeFile) return;
-    const codeToShare = fileSystem[activeFile.folderName][activeFile.fileName];
-    if (!codeToShare) return;
+    if (!activeFile) {
+        toast({ title: 'Error', description: 'Please open a file to share.', variant: 'destructive' });
+        return;
+    }
+    const codeToShare = fileSystem[activeFile.folderName]?.[activeFile.fileName];
+    if (!codeToShare) {
+        toast({ title: 'Error', description: 'Could not find code for the active file.', variant: 'destructive' });
+        return;
+    }
     
     setIsSharing(true);
     setShareDialogOpen(true);
+    setShareLink('');
+
     const result = await shareCode(codeToShare);
+    
     if ('id' in result) {
         const url = `${window.location.origin}/s/${result.id}`;
         setShareLink(url);
     } else {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
         setShareLink('');
+        setShareDialogOpen(false); // Close dialog on error
     }
     setIsSharing(false);
   }, [activeFile, fileSystem, toast]);
@@ -629,7 +645,7 @@ export function Compiler() {
             ) : (
               <>
                 <Input value={shareLink} readOnly />
-                <Button onClick={handleCopyShareLink} size="icon" className="shrink-0">
+                <Button onClick={handleCopyShareLink} size="icon" className="shrink-0" disabled={!shareLink}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </>
@@ -640,3 +656,5 @@ export function Compiler() {
     </div>
   );
 }
+
+    

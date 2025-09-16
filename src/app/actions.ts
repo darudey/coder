@@ -6,11 +6,6 @@ import { addDoc, collection } from 'firebase/firestore/lite';
 import { doc, getDoc } from 'firebase/firestore';
 
 
-export interface RunResult {
-  output: string;
-  type: 'result' | 'error';
-}
-
 export async function shareCode(code: string): Promise<{id: string} | {error: string}> {
     try {
         const docRef = await addDoc(collection(db, "shares"), {
@@ -39,3 +34,5 @@ export async function getSharedCode(id: string): Promise<string | null> {
         return null;
     }
 }
+
+    
