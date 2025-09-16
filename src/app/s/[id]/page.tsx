@@ -15,10 +15,11 @@ interface SharePageProps {
 // This is now a client component to allow for full interactivity.
 export default function SharePage({ params }: SharePageProps) {
     const [initialCode, setInitialCode] = useState<string | null | undefined>(undefined);
+    const { id } = params;
 
     useEffect(() => {
         const fetchCode = async () => {
-            const code = await getSharedCode(params.id);
+            const code = await getSharedCode(id);
             if (code === null) {
                 notFound();
             } else {
@@ -27,7 +28,7 @@ export default function SharePage({ params }: SharePageProps) {
         };
 
         fetchCode();
-    }, [params.id]);
+    }, [id]);
 
     if (initialCode === undefined) {
         return (
@@ -44,7 +45,7 @@ export default function SharePage({ params }: SharePageProps) {
     // We also pass the initialCode to a new prop on the Compiler.
     return (
         <main className="bg-background min-h-screen">
-            <Compiler key={params.id} initialCode={initialCode} />
+            <Compiler key={id} initialCode={initialCode} />
         </main>
     );
 }
