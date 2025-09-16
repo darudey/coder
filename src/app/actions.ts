@@ -3,10 +3,8 @@
 
 import { errorCheck } from '@/ai/flows/error-checking';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
-import fs from 'fs/promises';
+import { addDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { customAlphabet } from 'nanoid';
-import path from 'path';
 
 export interface RunResult {
   output: string;
@@ -48,7 +46,6 @@ export async function shareCode(code: string): Promise<{id: string} | {error: st
         await addDoc(collection(db, "shares"), {
             id: shareId,
             code: code,
-            createdAt: serverTimestamp(),
         });
 
         return { id: shareId };
@@ -60,11 +57,12 @@ export async function shareCode(code: string): Promise<{id: string} | {error: st
 
 export async function getSharedCode(id: string): Promise<string | null> {
     try {
-        const docRef = doc(db, "shares", id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            return docSnap.data().code;
+        const q = query(collection(db, "shares"), where("id", "==", id));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+            // Assuming IDs are unique, we take the first document.
+            return querySnapshot.docs[0].data().code;
         } else {
             return null;
         }

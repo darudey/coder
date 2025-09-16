@@ -3,6 +3,7 @@ import { getSharedCode } from "@/app/actions";
 import { CodeEditor } from "@/components/codeweave/code-editor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { notFound } from "next/navigation";
+import { unstable_noStore as noStore } from 'next/cache';
 
 interface SharePageProps {
     params: {
@@ -12,6 +13,7 @@ interface SharePageProps {
 
 // This is a server component to fetch the code
 export default async function SharePage({ params }: SharePageProps) {
+    noStore();
     const code = await getSharedCode(params.id);
 
     if (code === null) {
@@ -43,4 +45,3 @@ export default async function SharePage({ params }: SharePageProps) {
         </main>
     );
 }
-

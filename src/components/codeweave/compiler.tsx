@@ -16,6 +16,7 @@ import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
 import { Copy } from 'lucide-react';
+import { DotLoader } from './dot-loader';
 
 const defaultCode = `// Welcome to 24HrCoding!
 // Use the settings panel to save and load your creations.
@@ -634,4 +635,3 @@ export function Compiler() {
     </div>
   );
 }
-
