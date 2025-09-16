@@ -3,8 +3,7 @@
 
 import { errorCheck } from '@/ai/flows/error-checking';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { customAlphabet } from 'nanoid';
+import { addDoc, collection, doc, getDoc } from 'firebase/firestore';
 
 export interface RunResult {
   output: string;
@@ -40,15 +39,11 @@ export async function checkCodeForErrors(code: string): Promise<RunResult | null
 
 export async function shareCode(code: string): Promise<{id: string} | {error: string}> {
     try {
-        const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10);
-        const shareId = nanoid();
-        
-        await addDoc(collection(db, "shares"), {
-            id: shareId,
+        const docRef = await addDoc(collection(db, "shares"), {
             code: code,
         });
 
-        return { id: shareId };
+        return { id: docRef.id };
     } catch (e: any) {
         console.error(e);
         return { error: 'Failed to share code. Please try again.' };
@@ -57,12 +52,11 @@ export async function shareCode(code: string): Promise<{id: string} | {error: st
 
 export async function getSharedCode(id: string): Promise<string | null> {
     try {
-        const q = query(collection(db, "shares"), where("id", "==", id));
-        const querySnapshot = await getDocs(q);
+        const docRef = doc(db, "shares", id);
+        const docSnap = await getDoc(docRef);
         
-        if (!querySnapshot.empty) {
-            // Assuming IDs are unique, we take the first document.
-            return querySnapshot.docs[0].data().code;
+        if (docSnap.exists()) {
+            return docSnap.data().code;
         } else {
             return null;
         }
