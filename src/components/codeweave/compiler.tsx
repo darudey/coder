@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -48,10 +46,19 @@ export interface ActiveFile {
     fileName: string;
 }
 
-const getInitialFileSystem = (): FileSystem => {
+interface CompilerProps {
+  initialCode?: string | null;
+}
+
+const getInitialFileSystem = (initialCode?: string | null): FileSystem => {
     if (typeof window === 'undefined') {
-        return { 'Examples': { 'Welcome.js': defaultCode } };
+        return { 'Examples': { 'Welcome.js': initialCode || defaultCode } };
     }
+    
+    if (initialCode) {
+        return { 'Shared': { 'Shared-Code.js': initialCode } };
+    }
+
     const saved = localStorage.getItem('codeFileSystem');
     if (saved) {
         try {
@@ -98,7 +105,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-export function Compiler() {
+export function Compiler({ initialCode }: CompilerProps) {
   const [fileSystem, setFileSystem] = useState<FileSystem>({});
   const [openFiles, setOpenFiles] = useState<ActiveFile[]>([]);
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
@@ -191,22 +198,29 @@ export function Compiler() {
 
   useEffect(() => {
     setIsMounted(true);
-    const fs = getInitialFileSystem();
+    const fs = getInitialFileSystem(initialCode);
     setFileSystem(fs);
 
     let initialOpenFiles: ActiveFile[] = [];
-    const savedOpenFiles = localStorage.getItem('openFiles');
-    if (savedOpenFiles) {
-        try {
-            const parsed = JSON.parse(savedOpenFiles);
-            if (Array.isArray(parsed)) {
-                // Filter out files that no longer exist
-                initialOpenFiles = parsed.filter(f => fs[f.folderName]?.[f.fileName] !== undefined);
+    
+    if (initialCode) {
+        // If we have initial code, always start with that file open.
+        initialOpenFiles = [{ folderName: 'Shared', fileName: 'Shared-Code.js' }];
+    } else {
+        const savedOpenFiles = localStorage.getItem('openFiles');
+        if (savedOpenFiles) {
+            try {
+                const parsed = JSON.parse(savedOpenFiles);
+                if (Array.isArray(parsed)) {
+                    // Filter out files that no longer exist
+                    initialOpenFiles = parsed.filter(f => fs[f.folderName]?.[f.fileName] !== undefined);
+                }
+            } catch (e) {
+                // ignore
             }
-        } catch (e) {
-            // ignore
         }
     }
+
 
     if (initialOpenFiles.length === 0) {
         // Fallback to the first file in the filesystem
@@ -225,27 +239,26 @@ export function Compiler() {
     
     if (initialOpenFiles.length > 0) {
         setOpenFiles(initialOpenFiles);
-        let initialActiveIndex = -1;
-        const savedActiveIndex = localStorage.getItem('activeFileIndex');
-        if (savedActiveIndex) {
-            try {
-                const parsedIndex = parseInt(savedActiveIndex, 10);
-                if (parsedIndex >= 0 && parsedIndex < initialOpenFiles.length) {
-                    initialActiveIndex = parsedIndex;
+        let initialActiveIndex = 0;
+        
+        if (!initialCode) {
+            const savedActiveIndex = localStorage.getItem('activeFileIndex');
+            if (savedActiveIndex) {
+                try {
+                    const parsedIndex = parseInt(savedActiveIndex, 10);
+                    if (parsedIndex >= 0 && parsedIndex < initialOpenFiles.length) {
+                        initialActiveIndex = parsedIndex;
+                    }
+                } catch (e) {
+                    // ignore
                 }
-            } catch (e) {
-                // ignore
             }
-        }
-
-        if (initialActiveIndex === -1) {
-            initialActiveIndex = 0;
         }
         
         setActiveFileIndex(initialActiveIndex);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialCode]);
 
   const getCodeFromState = useCallback(() => {
     if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
@@ -302,12 +315,15 @@ export function Compiler() {
                     newFs[activeFile.folderName] = {};
                 }
                 newFs[activeFile.folderName][activeFile.fileName] = debouncedCode;
-                localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+                // Only save to localStorage if not from a shared link
+                if (!initialCode) {
+                    localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+                }
                 return newFs;
             });
         }
     }
-  }, [debouncedCode, activeFile, isMounted, fileSystem]);
+  }, [debouncedCode, activeFile, isMounted, fileSystem, initialCode]);
   
   useEffect(() => {
     if (!isMounted) return;
@@ -320,7 +336,7 @@ export function Compiler() {
   }, [activeFileIndex, openFiles, fileSystem, isMounted]);
 
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || initialCode) return;
     if (openFiles.length > 0) {
         localStorage.setItem('openFiles', JSON.stringify(openFiles));
     } else {
@@ -331,7 +347,7 @@ export function Compiler() {
     } else {
         localStorage.removeItem('activeFileIndex');
     }
-  }, [openFiles, activeFileIndex, isMounted]);
+  }, [openFiles, activeFileIndex, isMounted, initialCode]);
 
   const handleRun = useCallback(async () => {
     setIsCompiling(true);
@@ -367,11 +383,11 @@ export function Compiler() {
 
   const handleShare = useCallback(async () => {
     if (!activeFile) {
-        toast({ title: 'Error', description: 'Please open a file to share.', variant: 'destructive' });
+        toast({ title: 'Error', description: 'No active file to share.', variant: 'destructive' });
         return;
     }
     const codeToShare = fileSystem[activeFile.folderName]?.[activeFile.fileName];
-    if (!codeToShare) {
+    if (codeToShare === undefined) {
         toast({ title: 'Error', description: 'Could not find code for the active file.', variant: 'destructive' });
         return;
     }
@@ -656,5 +672,3 @@ export function Compiler() {
     </div>
   );
 }
-
-    

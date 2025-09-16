@@ -1,9 +1,10 @@
+'use client';
 
 import { getSharedCode } from "@/app/actions";
-import { CodeEditor } from "@/components/codeweave/code-editor";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Compiler } from "@/components/codeweave/compiler";
+import { DotLoader } from "@/components/codeweave/dot-loader";
 import { notFound } from "next/navigation";
-import { unstable_noStore as noStore } from 'next/cache';
+import { useEffect, useState } from "react";
 
 interface SharePageProps {
     params: {
@@ -11,37 +12,39 @@ interface SharePageProps {
     }
 }
 
-// This is a server component to fetch the code
-export default async function SharePage({ params }: SharePageProps) {
-    noStore();
-    const code = await getSharedCode(params.id);
+// This is now a client component to allow for full interactivity.
+export default function SharePage({ params }: SharePageProps) {
+    const [initialCode, setInitialCode] = useState<string | null | undefined>(undefined);
 
-    if (code === null) {
-        notFound();
+    useEffect(() => {
+        const fetchCode = async () => {
+            const code = await getSharedCode(params.id);
+            if (code === null) {
+                notFound();
+            } else {
+                setInitialCode(code);
+            }
+        };
+
+        fetchCode();
+    }, [params.id]);
+
+    if (initialCode === undefined) {
+        return (
+            <main className="bg-background min-h-screen flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <DotLoader className="w-12 text-primary" />
+                    <p className="text-muted-foreground">Loading shared code...</p>
+                </div>
+            </main>
+        );
     }
     
+    // We use a key to force the Compiler to re-mount when the initialCode is loaded.
+    // We also pass the initialCode to a new prop on the Compiler.
     return (
-        <main className="bg-background min-h-screen p-4 md:p-8">
-            <div className="max-w-4xl mx-auto">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Shared Code</CardTitle>
-                        <CardDescription>This is a read-only view of a shared code snippet.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                       <div className="h-[70vh]">
-                         <CodeEditor 
-                            code={code}
-                            onCodeChange={() => {}}
-                            onUndo={() => {}}
-                            onRedo={() => {}}
-                            onDeleteFile={() => {}}
-                            hasActiveFile={false}
-                         />
-                       </div>
-                    </CardContent>
-                </Card>
-            </div>
+        <main className="bg-background min-h-screen">
+            <Compiler key={params.id} initialCode={initialCode} />
         </main>
     );
 }
