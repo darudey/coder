@@ -2,8 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { addDoc, collection } from 'firebase/firestore/lite';
-import { doc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc } from 'firebase/firestore';
 
 
 export async function shareCode(code: string): Promise<{id: string} | {error: string}> {
@@ -34,5 +33,3 @@ export async function getSharedCode(id: string): Promise<string | null> {
         return null;
     }
 }
-
-    
