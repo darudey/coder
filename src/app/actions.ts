@@ -2,7 +2,9 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { addDoc, collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection } from 'firebase/firestore/lite';
+import { doc, getDoc } from 'firebase/firestore';
+
 
 export interface RunResult {
   output: string;
