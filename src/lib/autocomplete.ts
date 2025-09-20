@@ -207,6 +207,7 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
         }
 
         const wordsInCode = [...new Set(code.match(/\b[a-zA-Z_]\w*\b/g) || [])]
+            .filter(word => word.length >= 3) // Exclude short words
             .filter(word => !keywords.some(kw => kw.value === word)) // Exclude existing keywords
             .map(word => ({ value: word, type: 'variable' as const }));
         
