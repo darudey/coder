@@ -24,14 +24,14 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
   return (
     <header className="bg-background">
       <div className={cn(
-        "flex items-center p-2 md:px-3 gap-2",
+        "flex items-center justify-between p-2 md:px-3 gap-2",
       )}>
         <div className="flex items-center gap-2 shrink-0">
           <LogoIcon className="w-6 h-6" />
           <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
         </div>
         
-        <div className="flex-1 flex justify-center min-w-0">
+        <div className="flex-1 flex justify-center min-w-0 px-2">
           {activeFile && (
               <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground truncate bg-muted px-3 py-1.5 rounded-md">
                   <File className="w-4 h-4 shrink-0" />
@@ -51,18 +51,20 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
               </>
             )}
           </Button>
-          <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile}>
-            <Share2 className="w-4 h-4" />
-            <span className="sr-only">Share</span>
-          </Button>
-          <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile}>
-            <Save className="w-4 h-4" />
-            <span className="sr-only">Save As</span>
-          </Button>
-          <Button variant="outline" size="icon" onClick={onSettings}>
-            <Settings className="w-4 h-4" />
-            <span className="sr-only">Settings</span>
-          </Button>
+          <div className="flex items-center gap-1.5 md:gap-2">
+              <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile}>
+                <Share2 className="w-4 h-4" />
+                <span className="sr-only">Share</span>
+              </Button>
+              <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile}>
+                <Save className="w-4 h-4" />
+                <span className="sr-only">Save As</span>
+              </Button>
+              <Button variant="outline" size="icon" onClick={onSettings} className="ml-2">
+                <Settings className="w-4 h-4" />
+                <span className="sr-only">Settings</span>
+              </Button>
+          </div>
         </div>
       </div>
       <Separator />
@@ -73,3 +75,4 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
 export const Header = React.memo(MemoizedHeader);
 
     
+
