@@ -294,7 +294,7 @@ export function Compiler({ initialCode }: CompilerProps) {
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(newHistory => newHistory + 1);
+      setHistoryIndex(historyIndex + 1);
     }
   }, [historyIndex, history.length]);
   
@@ -332,7 +332,7 @@ export function Compiler({ initialCode }: CompilerProps) {
       setHistoryIndex(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFile, fileSystem, isMounted]);
+  }, [activeFile, isMounted]);
 
   useEffect(() => {
     if (!isMounted || initialCode) return;
