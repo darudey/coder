@@ -261,13 +261,6 @@ export function Compiler({ initialCode }: CompilerProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCode]);
 
-  const getCodeFromState = useCallback(() => {
-    if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
-        return fileSystem[activeFile.folderName][activeFile.fileName];
-    }
-    return '';
-  }, [activeFile, fileSystem]);
-
   const [history, setHistory] = useState<string[]>(['']);
   const [historyIndex, setHistoryIndex] = useState(0);
   const code = history[historyIndex];
@@ -286,13 +279,11 @@ export function Compiler({ initialCode }: CompilerProps) {
   const [shareLink, setShareLink] = useState('');
   const [isSharing, setIsSharing] = useState(false);
 
-  const setCode = useCallback((newCode: string, fromHistory = false) => {
-    if (!fromHistory) {
-      const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(newCode);
-      setHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-    }
+  const setCode = useCallback((newCode: string) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newCode);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
   }, [history, historyIndex]);
 
   const undo = useCallback(() => {
@@ -328,13 +319,20 @@ export function Compiler({ initialCode }: CompilerProps) {
   
   useEffect(() => {
     if (!isMounted) return;
-    const codeToSet = getCodeFromState();
-    if(codeToSet !== code) {
-      setHistory([codeToSet]);
+
+    if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
+      const codeToSet = fileSystem[activeFile.folderName][activeFile.fileName];
+      if (codeToSet !== code) {
+        setHistory([codeToSet]);
+        setHistoryIndex(0);
+      }
+    } else if (!activeFile && code !== '') {
+      // No active file, clear the editor
+      setHistory(['']);
       setHistoryIndex(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFileIndex, openFiles, fileSystem, isMounted, getCodeFromState]);
+  }, [activeFile, fileSystem, isMounted]);
 
   useEffect(() => {
     if (!isMounted || initialCode) return;
@@ -578,7 +576,7 @@ export function Compiler({ initialCode }: CompilerProps) {
       <div className="p-4 grid grid-cols-1 gap-4">
         {activeFile ? (
             <CodeEditor
-                code={code}
+                code={code || ''}
                 onCodeChange={setCode}
                 onUndo={undo}
                 onRedo={redo}
@@ -673,5 +671,3 @@ export function Compiler({ initialCode }: CompilerProps) {
     </div>
   );
 }
-
-    
