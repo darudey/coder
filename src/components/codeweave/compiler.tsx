@@ -279,12 +279,23 @@ export function Compiler({ initialCode }: CompilerProps) {
   const [shareLink, setShareLink] = useState('');
   const [isSharing, setIsSharing] = useState(false);
 
-  const setCode = useCallback((newCode: string) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newCode);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  }, [history, historyIndex]);
+  const setCode = useCallback((newCode: string, fromHistory = false) => {
+    if (fromHistory) {
+      setHistory(h => {
+        const newHistory = [...h];
+        newHistory[historyIndex] = newCode;
+        return newHistory;
+      });
+      return;
+    }
+    
+    setHistory(h => {
+      const newHistory = h.slice(0, historyIndex + 1);
+      newHistory.push(newCode);
+      return newHistory;
+    });
+    setHistoryIndex(i => i + 1);
+  }, [historyIndex]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -319,12 +330,12 @@ export function Compiler({ initialCode }: CompilerProps) {
   
   useEffect(() => {
     if (!isMounted) return;
-
     if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
       const codeToSet = fileSystem[activeFile.folderName][activeFile.fileName];
+      // Only update if the code is actually different to avoid cycles and overwrites.
       if (codeToSet !== code) {
-        setHistory([codeToSet]);
-        setHistoryIndex(0);
+          setHistory([codeToSet]);
+          setHistoryIndex(0);
       }
     } else if (!activeFile && code !== '') {
       // No active file, clear the editor
@@ -601,10 +612,10 @@ export function Compiler({ initialCode }: CompilerProps) {
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
         <DialogContent className="max-w-2xl h-3/4 flex flex-col">
           <DialogHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
               <DialogTitle>Result</DialogTitle>
               <div className="flex items-center space-x-2">
-                <Label htmlFor="error-checking-toggle" className="text-sm font-medium">
+                <Label htmlFor="error-checking-toggle" className="text-sm font-medium flex-shrink-0">
                   AI Error Check
                 </Label>
                 <Switch
