@@ -24,7 +24,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
   return (
     <header className="bg-background">
       <div className={cn(
-        "flex items-center justify-between py-2 px-4 gap-2",
+        "flex items-center justify-between py-2 px-2 gap-2",
       )}>
         <div className="flex items-center gap-2 shrink-0">
           <LogoIcon className="w-6 h-6" />
@@ -40,7 +40,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 md:gap-2 shrink-0 pr-2">
           <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px]">
             {isCompiling ? (
               <DotLoader />
@@ -75,6 +75,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
 export const Header = React.memo(MemoizedHeader);
 
     
+
 
 
 
