@@ -51,7 +51,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
               </>
             )}
           </Button>
-          <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile}>
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
@@ -60,7 +60,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
                 <Save className="w-4 h-4" />
                 <span className="sr-only">Save As</span>
               </Button>
-              <Button variant="outline" size="icon" onClick={onSettings} className="ml-2">
+              <Button variant="outline" size="icon" onClick={onSettings}>
                 <Settings className="w-4 h-4" />
                 <span className="sr-only">Settings</span>
               </Button>
@@ -75,4 +75,5 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
 export const Header = React.memo(MemoizedHeader);
 
     
+
 
