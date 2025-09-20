@@ -205,11 +205,16 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
         if (partialWord.length === 0) {
             return { suggestions: [], word: '', startPos: 0 };
         }
+
+        const wordsInCode = [...new Set(code.match(/\b[a-zA-Z_]\w*\b/g) || [])]
+            .filter(word => !keywords.some(kw => kw.value === word)) // Exclude existing keywords
+            .map(word => ({ value: word, type: 'variable' as const }));
         
         const allKeywords = [
             ...keywords, 
             ...globalFunctions,
-            ...Object.keys(jsObjects).map(k => ({ value: k, type: 'variable' as const }))
+            ...Object.keys(jsObjects).map(k => ({ value: k, type: 'variable' as const })),
+            ...wordsInCode,
         ];
 
         const suggestions = allKeywords
