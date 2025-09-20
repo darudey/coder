@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -267,7 +268,7 @@ export function Compiler({ initialCode }: CompilerProps) {
     return '';
   }, [activeFile, fileSystem]);
 
-  const [history, setHistory] = useState<string[]>([getCodeFromState()]);
+  const [history, setHistory] = useState<string[]>(['']);
   const [historyIndex, setHistoryIndex] = useState(0);
   const code = history[historyIndex];
   const debouncedCode = useDebounce(code, 500);
@@ -333,7 +334,7 @@ export function Compiler({ initialCode }: CompilerProps) {
       setHistoryIndex(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFileIndex, openFiles, fileSystem, isMounted]);
+  }, [activeFileIndex, openFiles, fileSystem, isMounted, getCodeFromState]);
 
   useEffect(() => {
     if (!isMounted || initialCode) return;
@@ -672,3 +673,5 @@ export function Compiler({ initialCode }: CompilerProps) {
     </div>
   );
 }
+
+    
