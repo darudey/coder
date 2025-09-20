@@ -24,7 +24,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
   return (
     <header className="bg-background">
       <div className={cn(
-        "flex items-center justify-between p-2 md:px-3 gap-2",
+        "flex items-center justify-between p-2 gap-2",
       )}>
         <div className="flex items-center gap-2 shrink-0">
           <LogoIcon className="w-6 h-6" />
@@ -75,6 +75,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
 export const Header = React.memo(MemoizedHeader);
 
     
+
 
 
 
