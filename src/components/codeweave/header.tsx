@@ -41,7 +41,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
         </div>
 
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0 pr-2">
-          <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px]">
+          <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
             {isCompiling ? (
               <DotLoader />
             ) : (
@@ -52,15 +52,15 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
             )}
           </Button>
           <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile}>
+              <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
               </Button>
-              <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile}>
+              <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile} className="h-8 w-8">
                 <Save className="w-4 h-4" />
                 <span className="sr-only">Save As</span>
               </Button>
-              <Button variant="outline" size="icon" onClick={onSettings}>
+              <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
                 <Settings className="w-4 h-4" />
                 <span className="sr-only">Settings</span>
               </Button>
@@ -75,6 +75,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
 export const Header = React.memo(MemoizedHeader);
 
     
+
 
 
 
