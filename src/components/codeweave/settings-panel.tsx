@@ -28,6 +28,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { File, Folder, Plus, Trash2, Moon, Sun, Info } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { AboutContent } from './about-content';
+import { useSettings } from '@/hooks/use-settings';
+import { Slider } from '../ui/slider';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -48,28 +50,9 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
-  const [theme, setTheme] = useState('light');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const { settings, setSettings, theme, toggleTheme } = useSettings();
 
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? 'dark' : 'light';
-    setTheme(storedTheme || systemTheme);
-  }, []);
-  
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
-  
   useEffect(() => {
     if (open) {
       const storedApiKey = localStorage.getItem('gemini-api-key');
@@ -113,9 +96,26 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
           </SheetDescription>
         </SheetHeader>
         <div className="grid gap-6 py-6">
+          <div className="grid gap-3">
+              <h3 className="text-lg font-semibold">Appearance</h3>
+              <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                      <Label htmlFor="font-size-slider">Font Size</Label>
+                      <span className="text-sm text-muted-foreground">{settings.editorFontSize}px</span>
+                  </div>
+                  <Slider
+                      id="font-size-slider"
+                      min={10}
+                      max={24}
+                      step={1}
+                      value={[settings.editorFontSize]}
+                      onValueChange={(value) => setSettings({ ...settings, editorFontSize: value[0] })}
+                  />
+              </div>
+          </div>
            <div className="grid gap-3">
             <Label htmlFor="api-key" className="flex flex-col gap-1">
-                <span>Gemini API Key</span>
+                <span className="font-semibold text-lg">Gemini API Key</span>
                 <span className="font-normal text-sm text-muted-foreground">
                     Enter your key to use AI features. It will be saved in your browser.
                 </span>

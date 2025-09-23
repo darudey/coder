@@ -12,6 +12,7 @@ import { getSuggestions, type Suggestion } from '@/lib/autocomplete';
 import { AutocompleteDropdown } from './autocomplete-dropdown';
 import { getCaretCoordinates } from '@/lib/caret-position';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useSettings } from '@/hooks/use-settings';
 
 interface CodeEditorProps {
   code: string;
@@ -94,8 +95,9 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const isMobile = useIsMobile();
   const [ctrlActive, setCtrlActive] = useState(false);
-  const [fontSize, setFontSize] = useState(14); // Initial font size in pixels
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { settings } = useSettings();
+  const fontSize = settings.editorFontSize;
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
@@ -440,16 +442,6 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
             onRedo();
             return;
         }
-        if (e.key === '=') { // For Ctrl +
-            e.preventDefault();
-            setFontSize(fs => Math.min(fs + 1, 40));
-            return;
-        }
-        if (e.key === '-') { // For Ctrl -
-            e.preventDefault();
-            setFontSize(fs => Math.max(fs - 1, 8));
-            return;
-        }
         if (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'x') {
             // If no text is selected, select the whole line
             if (textarea.selectionStart === textarea.selectionEnd) {
@@ -486,14 +478,14 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   
   const editorStyles: React.CSSProperties = useMemo(() => ({
       fontFamily: 'var(--font-code)',
-      fontSize: `${fontSize}px`,
+      fontSize: 'var(--editor-font-size)',
       lineHeight: '1.5',
       padding: '0.5rem 0.75rem',
       whiteSpace: 'pre-wrap',
       overflowWrap: 'anywhere',
       // @ts-ignore
       tabSize: 2,
-  }), [fontSize]);
+  }), []);
   
   const highlightedCode = useMemo(() => {
     const lines = code.split('\n');
@@ -614,8 +606,3 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
-
-    
-    
-
-    
