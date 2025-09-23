@@ -25,7 +25,7 @@ import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { File, Folder, Plus, Trash2, Moon, Sun, Info } from 'lucide-react';
+import { File, Folder, Plus, Trash2, Moon, Sun, Info, Palette } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { AboutContent } from './about-content';
 import { useSettings } from '@/hooks/use-settings';
@@ -95,25 +95,35 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
             Configure compiler features and manage your saved code.
           </SheetDescription>
         </SheetHeader>
-        <div className="grid gap-6 py-6">
-          <div className="grid gap-3">
-              <h3 className="text-lg font-semibold">Appearance</h3>
-              <div className="grid gap-4">
-                  <div className="flex items-center justify-between">
-                      <Label htmlFor="font-size-slider">Font Size</Label>
-                      <span className="text-sm text-muted-foreground">{settings.editorFontSize}px</span>
-                  </div>
-                  <Slider
-                      id="font-size-slider"
-                      min={10}
-                      max={24}
-                      step={1}
-                      value={[settings.editorFontSize]}
-                      onValueChange={(value) => setSettings({ ...settings, editorFontSize: value[0] })}
-                  />
-              </div>
-          </div>
-           <div className="grid gap-3">
+        <div className="grid gap-4 py-6">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="appearance">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    <span className="font-semibold text-lg">Appearance</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid gap-4 pt-4">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="font-size-slider">Font Size</Label>
+                        <span className="text-sm text-muted-foreground">{settings.editorFontSize}px</span>
+                    </div>
+                    <Slider
+                        id="font-size-slider"
+                        min={10}
+                        max={24}
+                        step={1}
+                        value={[settings.editorFontSize]}
+                        onValueChange={(value) => setSettings({ ...settings, editorFontSize: value[0] })}
+                    />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+           <div className="grid gap-3 pt-4">
             <Label htmlFor="api-key" className="flex flex-col gap-1">
                 <span className="font-semibold text-lg">Gemini API Key</span>
                 <span className="font-normal text-sm text-muted-foreground">
