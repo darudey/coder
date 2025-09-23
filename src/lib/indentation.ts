@@ -1,6 +1,6 @@
 
 
-const INDENT_CHAR = '    '; // 4 spaces
+const INDENT_CHAR = '    ';
 
 function getCurrentLine(code: string, cursorPosition: number): string {
     const textBeforeCursor = code.substring(0, cursorPosition);
@@ -14,22 +14,27 @@ function getLineIndentation(line: string): string {
 }
 
 export function getSmartIndentation(code: string, cursorPosition: number): { indent: string, insertClosingBrace: boolean } {
-    const currentLine = getCurrentLine(code, cursorPosition);
     const lineBeforeCursor = code.substring(0, cursorPosition);
     const textAfterCursor = code.substring(cursorPosition);
-
+    
+    const prevLine = lineBeforeCursor.substring(0, lineBeforeCursor.lastIndexOf('\n'));
+    const currentLine = prevLine.substring(prevLine.lastIndexOf('\n') + 1);
+    
     let indent = getLineIndentation(currentLine);
     let insertClosingBrace = false;
-
+    
     const trimmedLineBefore = lineBeforeCursor.trimEnd();
 
+    // Rule: If previous line ends with an opening brace, indent.
     if (trimmedLineBefore.endsWith('{') || trimmedLineBefore.endsWith('(') || trimmedLineBefore.endsWith('[')) {
         indent += INDENT_CHAR;
-        if (trimmedLineBefore.endsWith('{')) {
-            const nextChar = textAfterCursor.trim().charAt(0);
-            if (nextChar !== '}') {
-                insertClosingBrace = true;
-            }
+        // Also check if we should auto-insert a closing brace.
+        const openingBrace = trimmedLineBefore.slice(-1);
+        const closingMap: {[key: string]: string} = {'{': '}', '(': ')', '[': ']'};
+        const expectedClosingBrace = closingMap[openingBrace];
+        
+        if (!textAfterCursor.trim().startsWith(expectedClosingBrace)) {
+            insertClosingBrace = true;
         }
     }
     
