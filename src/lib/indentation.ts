@@ -1,6 +1,6 @@
 
 
-const INDENT_CHAR = '  '; // 2 spaces
+const INDENT_CHAR = '    '; // 4 spaces
 
 function getCurrentLine(code: string, cursorPosition: number): string {
     const textBeforeCursor = code.substring(0, cursorPosition);
