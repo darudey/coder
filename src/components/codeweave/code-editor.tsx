@@ -15,6 +15,7 @@ import { getCaretCoordinates } from '@/lib/caret-position';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useSettings } from '@/hooks/use-settings';
 import { getSmartIndentation } from '@/lib/indentation';
+import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
 
 interface CodeEditorProps {
   code: string;
@@ -23,70 +24,6 @@ interface CodeEditorProps {
   onRedo: () => void;
   onDeleteFile: () => void;
   hasActiveFile: boolean;
-}
-
-const parseCode = (code: string) => {
-  const tokens = [];
-  const keywordRegex = /\b(function|return|const|let|var|if|else|for|while|switch|case|break|continue|new|this|true|false|null|undefined|typeof|instanceof|console|log)\b/g;
-  const stringRegex = /(".*?"|'.*?'|`.*?`)/g;
-  const numberRegex = /\b\d+(\.\d+)?\b/g;
-  const commentRegex = /(\/\/.*|\/\*[\s\S]*?\*\/)/g;
-  const operatorRegex = /([+\-*/%<>=!&|?:;,.(){}[\]])/g;
-
-  const allRegex = new RegExp(`(${keywordRegex.source}|${stringRegex.source}|${numberRegex.source}|${commentRegex.source}|${operatorRegex.source})`, 'g');
-
-  let lastIndex = 0;
-  let match;
-
-  while ((match = allRegex.exec(code)) !== null) {
-    const textBefore = code.slice(lastIndex, match.index);
-    if (textBefore) {
-      tokens.push({ type: 'default', value: textBefore });
-    }
-
-    const matchedValue = match[0];
-    let type = 'default';
-    if (keywordRegex.test(matchedValue)) type = 'keyword';
-    else if (stringRegex.test(matchedValue)) type = 'string';
-    else if (commentRegex.test(matchedValue)) type = 'comment';
-    else if (numberRegex.test(matchedValue)) type = 'number';
-    else if (operatorRegex.test(matchedValue)) type = 'operator';
-    
-    // Have to reset regex state after manual test
-    keywordRegex.lastIndex = 0;
-    stringRegex.lastIndex = 0;
-    commentRegex.lastIndex = 0;
-    numberRegex.lastIndex = 0;
-    operatorRegex.lastIndex = 0;
-    
-    tokens.push({ type, value: matchedValue });
-    lastIndex = match.index + matchedValue.length;
-  }
-
-  const textAfter = code.slice(lastIndex);
-  if (textAfter) {
-    tokens.push({ type: 'default', value: textAfter });
-  }
-  
-  return tokens;
-};
-
-
-const getTokenClassName = (type: string) => {
-  switch (type) {
-    case 'keyword':
-      return 'text-blue-600';
-    case 'string':
-      return 'text-green-600';
-    case 'comment':
-      return 'text-gray-500 italic';
-    case 'number':
-      return 'text-purple-600';
-    case 'operator':
-      return 'text-red-500';
-    default:
-      return 'text-black dark:text-gray-300';
-  }
 }
 
 const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile }) => {
@@ -247,7 +184,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    const { textToInsert, newCursorPosition } = getSmartIndentation(code, start);
+    const { textToInsert, newCursorPosition } = getSmartIndentation(code, start, end);
     
     const newCode = code.substring(0, start) + textToInsert + code.substring(end);
     onCodeChange(newCode);
