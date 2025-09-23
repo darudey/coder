@@ -20,7 +20,7 @@ export function getSmartIndentation(code: string, cursorPosition: number): { ind
     if (trimmedLineBefore.endsWith('{')) {
         const nextChar = textAfterCursor.trim().charAt(0);
         
-        // If the next character is a closing brace, create a new indented line between them.
+        // If the next character is already a closing brace, create a new indented line between them.
         if (nextChar === '}') {
             return { indent: currentIndent + INDENT_CHAR, closingBraceIndentation: currentIndent };
         }
