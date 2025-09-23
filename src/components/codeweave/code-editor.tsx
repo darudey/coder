@@ -247,14 +247,13 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    const { indent, insertClosingBrace } = getSmartIndentation(code, start);
+    const { indent, closingBraceIndentation } = getSmartIndentation(code, start);
 
     let textToInsert = '\n' + indent;
     let newCursorPosition = start + textToInsert.length;
 
-    if (insertClosingBrace) {
-      const closingBrace = code.substring(end).trim().startsWith('}') ? '' : `\n${indent.slice(2)}}`;
-      textToInsert += closingBrace;
+    if (closingBraceIndentation !== null) {
+      textToInsert += '\n' + closingBraceIndentation + '}';
     }
     
     const newCode = code.substring(0, start) + textToInsert + code.substring(end);
@@ -270,6 +269,11 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const handleKeyPress = useCallback(async (key: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+
+    if (key === 'Enter') {
+        handleEnterPress();
+        return;
+    }
 
     if (key === 'Ctrl') {
         setCtrlActive(prev => !prev);
@@ -351,11 +355,6 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-
-    if (key === 'Enter') {
-        handleEnterPress();
-        return;
-    }
 
     let newCode = code;
     let newCursorPosition = start;
@@ -439,6 +438,12 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleEnterPress();
+      return;
+    }
+
     if (suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -461,12 +466,6 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
           setSuggestions([]);
           return;
       }
-    }
-
-     if (e.key === 'Enter') {
-        e.preventDefault();
-        handleEnterPress();
-        return;
     }
 
     if (e.ctrlKey || e.metaKey) {
