@@ -18,6 +18,7 @@ export function getSmartIndentation(code: string, cursorPosition: number): { ind
 
     // Rule: If previous line ends with an opening brace, indent.
     if (trimmedLineBefore.endsWith('{')) {
+        // Check if the next non-whitespace character is already a closing brace.
         const nextChar = textAfterCursor.trim().charAt(0);
         
         // If the next character is already a closing brace, create a new indented line between them.
