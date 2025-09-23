@@ -1,4 +1,5 @@
 
+
 const INDENT_CHAR = '  '; // 2 spaces
 
 function getCurrentLine(code: string, cursorPosition: number): string {
