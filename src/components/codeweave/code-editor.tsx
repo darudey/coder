@@ -247,14 +247,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    const { indent, closingBraceIndentation } = getSmartIndentation(code, start);
-
-    let textToInsert = '\n' + indent;
-    let newCursorPosition = start + textToInsert.length;
-
-    if (closingBraceIndentation !== null) {
-      textToInsert += '\n' + closingBraceIndentation + '}';
-    }
+    const { textToInsert, newCursorPosition } = getSmartIndentation(code, start);
     
     const newCode = code.substring(0, start) + textToInsert + code.substring(end);
     onCodeChange(newCode);

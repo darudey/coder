@@ -7,7 +7,12 @@ function getLineIndentation(line: string): string {
     return match ? match[0] : '';
 }
 
-export function getSmartIndentation(code: string, cursorPosition: number): { indent: string, closingBraceIndentation: string | null } {
+export interface SmartIndentResult {
+    textToInsert: string;
+    newCursorPosition: number;
+}
+
+export function getSmartIndentation(code: string, cursorPosition: number): SmartIndentResult {
     const textBeforeCursor = code.substring(0, cursorPosition);
     const textAfterCursor = code.substring(cursorPosition);
     
@@ -15,22 +20,21 @@ export function getSmartIndentation(code: string, cursorPosition: number): { ind
     const currentIndent = getLineIndentation(lineBefore);
 
     const trimmedLineBefore = lineBefore.trimEnd();
+    const trimmedTextAfter = textAfterCursor.trimStart();
 
-    // Rule: If previous line ends with an opening brace, indent.
-    if (trimmedLineBefore.endsWith('{')) {
-        // Check if the next non-whitespace character is already a closing brace.
-        const nextChar = textAfterCursor.trim().charAt(0);
+    // Rule: If previous line ends with an opening brace, and the line after the cursor starts with a closing brace.
+    if (trimmedLineBefore.endsWith('{') && trimmedTextAfter.startsWith('}')) {
+        const indent = currentIndent + INDENT_CHAR;
         
-        // If the next character is already a closing brace, create a new indented line between them.
-        if (nextChar === '}') {
-            return { indent: currentIndent + INDENT_CHAR, closingBraceIndentation: currentIndent };
-        }
-        
-        // Otherwise, just indent the new line.
-        return { indent: currentIndent + INDENT_CHAR, closingBraceIndentation: null };
+        const textToInsert = '\n' + indent + '\n' + currentIndent;
+        const newCursorPosition = cursorPosition + indent.length + 1; // +1 for the newline
+
+        return { textToInsert, newCursorPosition };
     }
+
+    // Default Rule: For all other cases, just insert a new line with the current indentation.
+    const textToInsert = '\n' + currentIndent;
+    const newCursorPosition = cursorPosition + textToInsert.length;
     
-    // Default Rule: For all other cases (e.g., pressing enter on an empty or existing line)
-    // mirror the current line's indentation.
-    return { indent: currentIndent, closingBraceIndentation: null };
+    return { textToInsert, newCursorPosition };
 }
