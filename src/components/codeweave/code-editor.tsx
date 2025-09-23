@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Textarea } from '@/components/ui/textarea';
@@ -13,6 +14,7 @@ import { AutocompleteDropdown } from './autocomplete-dropdown';
 import { getCaretCoordinates } from '@/lib/caret-position';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useSettings } from '@/hooks/use-settings';
+import { getSmartIndentation } from '@/lib/indentation';
 
 interface CodeEditorProps {
   code: string;
@@ -238,6 +240,33 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       }
   }, [suggestions.length]);
 
+  const handleEnterPress = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    const { indent, insertClosingBrace } = getSmartIndentation(code, start);
+
+    let textToInsert = '\n' + indent;
+    let newCursorPosition = start + textToInsert.length;
+
+    if (insertClosingBrace) {
+      const closingBrace = code.substring(end).trim().startsWith('}') ? '' : `\n${indent.slice(2)}}`;
+      textToInsert += closingBrace;
+    }
+    
+    const newCode = code.substring(0, start) + textToInsert + code.substring(end);
+    onCodeChange(newCode);
+    
+    requestAnimationFrame(() => {
+        textarea.selectionStart = newCursorPosition;
+        textarea.selectionEnd = newCursorPosition;
+        textarea.focus();
+    });
+}, [code, onCodeChange]);
+
   const handleKeyPress = useCallback(async (key: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -323,6 +352,11 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
+    if (key === 'Enter') {
+        handleEnterPress();
+        return;
+    }
+
     let newCode = code;
     let newCursorPosition = start;
 
@@ -345,10 +379,6 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
           newCode = code.substring(0, start) + code.substring(end);
           newCursorPosition = start;
         }
-        break;
-      case 'Enter':
-        newCode = code.substring(0, start) + '\n' + code.substring(end);
-        newCursorPosition = start + 1;
         break;
       case 'Tab':
         newCode = code.substring(0, start) + '  ' + code.substring(end);
@@ -385,7 +415,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       textarea.selectionEnd = newCursorPosition;
       textarea.focus();
     });
-  }, [code, onCodeChange, onUndo, onRedo, ctrlActive, hasActiveFile]);
+  }, [code, onCodeChange, onUndo, onRedo, ctrlActive, hasActiveFile, handleEnterPress]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -421,14 +451,22 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
           return;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
-          e.preventDefault();
-          handleSuggestionSelection(suggestions[activeSuggestion]);
-          return;
+          if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSuggestionSelection(suggestions[activeSuggestion]);
+              return;
+          }
       }
       if (e.key === 'Escape') {
           setSuggestions([]);
           return;
       }
+    }
+
+     if (e.key === 'Enter') {
+        e.preventDefault();
+        handleEnterPress();
+        return;
     }
 
     if (e.ctrlKey || e.metaKey) {
@@ -470,9 +508,13 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
     if (e.key === 'Tab') {
         e.preventDefault();
-        handleKeyPress('Tab');
+        if (suggestions.length > 0) {
+            handleSuggestionSelection(suggestions[activeSuggestion]);
+        } else {
+            handleKeyPress('Tab');
+        }
     }
-  }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection]);
+  }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress]);
 
   const showKeyboard = isKeyboardVisible;
   

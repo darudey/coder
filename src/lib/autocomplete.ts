@@ -218,14 +218,15 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
             ...wordsInCode,
         ];
 
-        const suggestions = allKeywords
+        const uniqueSuggestions = allKeywords
             .map(keyword => ({ suggestion: keyword, score: fuzzyMatch(partialWord, keyword) }))
             .filter(item => item.score > 0)
             .sort((a, b) => b.score - a.score)
-            .map(item => item.suggestion);
+            .map(item => item.suggestion)
+            .filter((value, index, self) => self.findIndex(s => s.value === value.value) === index);
 
 
-        return { suggestions, word: partialWord, startPos };
+        return { suggestions: uniqueSuggestions, word: partialWord, startPos };
     }
 
     return { suggestions: [], word: '', startPos: 0 };
