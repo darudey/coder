@@ -34,8 +34,8 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   if (variant === 'minimal') {
     return (
       <header className="bg-background">
-        <div className={cn("flex items-center justify-end py-2 px-2 gap-2")}>
-           <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
+        <div className={cn("flex items-center justify-between py-2 px-2 gap-2")}>
+          <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
             {isCompiling ? (
               <DotLoader />
             ) : (
@@ -45,6 +45,20 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
               </>
             )}
           </Button>
+           <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
+                <Share2 className="w-4 h-4" />
+                <span className="sr-only">Share</span>
+              </Button>
+              <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile} className="h-8 w-8">
+                <Save className="w-4 h-4" />
+                <span className="sr-only">Save As</span>
+              </Button>
+              <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
+                <Settings className="w-4 h-4" />
+                <span className="sr-only">Settings</span>
+              </Button>
+          </div>
         </div>
         <Separator />
       </header>
@@ -105,6 +119,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 export const Header = React.memo(MemoizedHeader);
 
     
+
 
 
 
