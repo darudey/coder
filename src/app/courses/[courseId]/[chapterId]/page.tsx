@@ -41,8 +41,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 flex flex-col h-[calc(100vh-4rem)]">
-      <header className="mb-4">
+    <div className="container mx-auto flex flex-col h-[calc(100vh-4rem)]">
+      <header className="mb-4 px-4 md:px-8">
         <Button asChild variant="outline" size="sm" className="mb-2">
           <Link href={`/courses/${course.id}`}>
             <ChevronLeft className="w-4 h-4 mr-2" />
