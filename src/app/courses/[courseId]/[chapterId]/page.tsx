@@ -54,9 +54,9 @@ export default function ChapterPage({ params }: ChapterPageProps) {
       </header>
 
       <Carousel className="w-full flex-grow">
-        <CarouselContent className="h-full">
-          <CarouselItem className="h-full">
-            <div className="p-1 h-full">
+        <CarouselContent className="h-full -ml-4">
+          <CarouselItem className="h-full pl-4">
+            <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3">
@@ -72,8 +72,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                 </Card>
             </div>
           </CarouselItem>
-          <CarouselItem className="h-full">
-             <div className="p-1 h-full">
+          <CarouselItem className="h-full pl-4">
+             <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3">
@@ -87,8 +87,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                 </Card>
             </div>
           </CarouselItem>
-          <CarouselItem className="h-full">
-            <div className="p-1 h-full">
+          <CarouselItem className="h-full pl-4">
+            <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3">
@@ -104,8 +104,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                 </Card>
             </div>
           </CarouselItem>
-           <CarouselItem className="h-full">
-            <div className="p-1 h-full">
+           <CarouselItem className="h-full pl-4">
+            <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3">
