@@ -49,7 +49,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
             Back to {course.title}
           </Link>
         </Button>
-        <h1 className="text-xl font-bold tracking-tight">{topic.title}</h1>
+        <h1 className="text-lg font-bold tracking-tight">{topic.title}</h1>
         <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
       </header>
 
@@ -59,7 +59,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
             <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
+                        <CardTitle className="flex items-center gap-3 text-base">
                             <Video className="w-5 h-5 text-primary" />
                             Lecture Video
                         </CardTitle>
@@ -76,7 +76,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
              <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
+                        <CardTitle className="flex items-center gap-3 text-base">
                             <StickyNote className="w-5 h-5 text-primary" />
                             Notes
                         </CardTitle>
@@ -91,7 +91,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
             <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
+                        <CardTitle className="flex items-center gap-3 text-base">
                             <Code className="w-5 h-5 text-primary" />
                             Syntax Example
                         </CardTitle>
@@ -108,7 +108,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
             <div className="h-full">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-3">
+                        <CardTitle className="flex items-center gap-3 text-base">
                             <BrainCircuit className="w-5 h-5 text-primary" />
                             Practice
                         </CardTitle>

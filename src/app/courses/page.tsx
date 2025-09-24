@@ -8,7 +8,7 @@ export default function CoursesPage() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Courses</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Courses</h1>
         <p className="text-muted-foreground mt-2">
           Start your journey into web development. Choose a course to begin.
         </p>
