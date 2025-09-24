@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Video, StickyNote, Code, BrainCircuit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Compiler } from '@/components/codeweave/compiler';
 import {
   Carousel,
@@ -97,7 +96,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                             Syntax Example
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-grow overflow-auto">
+                    <CardContent className="flex-grow overflow-auto p-0">
                         <div className="h-full min-h-[400px]">
                             <Compiler initialCode={topic.syntax} />
                         </div>
@@ -114,7 +113,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                             Practice
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-grow overflow-auto">
+                    <CardContent className="flex-grow overflow-auto p-0">
                        <div className="h-full min-h-[400px]">
                             <Compiler initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} />
                         </div>
