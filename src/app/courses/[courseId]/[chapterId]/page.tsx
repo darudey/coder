@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, Video, StickyNote } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CodeEditor } from '@/components/codeweave/code-editor';
+import { CourseCodeEditor } from '@/components/codeweave/course-code-editor';
 
 interface ChapterPageProps {
   params: {
@@ -79,14 +79,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         </div>
         <div className="h-[calc(100vh-12rem)] min-h-[400px]">
             <h3 className="text-xl font-semibold mb-4">Syntax Example</h3>
-            <CodeEditor
-                code={topic.syntax}
-                onCodeChange={() => {}}
-                onUndo={() => {}}
-                onRedo={() => {}}
-                onDeleteFile={() => {}}
-                hasActiveFile={false}
-            />
+            <CourseCodeEditor initialCode={topic.syntax} />
         </div>
       </div>
     </div>
