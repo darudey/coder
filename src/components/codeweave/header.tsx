@@ -18,9 +18,39 @@ interface HeaderProps {
   onShare: () => void;
   activeFile: ActiveFile | null;
   hasActiveFile: boolean;
+  variant?: 'default' | 'minimal';
 }
 
-const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling, onSaveAs, onShare, activeFile, hasActiveFile }) => {
+const MemoizedHeader: React.FC<HeaderProps> = ({ 
+  onRun, 
+  onSettings, 
+  isCompiling, 
+  onSaveAs, 
+  onShare, 
+  activeFile, 
+  hasActiveFile,
+  variant = 'default' 
+}) => {
+  if (variant === 'minimal') {
+    return (
+      <header className="bg-background">
+        <div className={cn("flex items-center justify-end py-2 px-2 gap-2")}>
+           <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
+            {isCompiling ? (
+              <DotLoader />
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                <span className="ml-1.5 hidden sm:inline">Run</span>
+              </>
+            )}
+          </Button>
+        </div>
+        <Separator />
+      </header>
+    )
+  }
+
   return (
     <header className="bg-background">
       <div className={cn(
@@ -75,6 +105,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({ onRun, onSettings, isCompiling,
 export const Header = React.memo(MemoizedHeader);
 
     
+
 
 
 

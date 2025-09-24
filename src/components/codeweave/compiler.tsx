@@ -49,6 +49,7 @@ export interface ActiveFile {
 
 interface CompilerProps {
   initialCode?: string | null;
+  variant?: 'default' | 'minimal';
 }
 
 const getInitialFileSystem = (initialCode?: string | null): FileSystem => {
@@ -106,7 +107,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-export function Compiler({ initialCode }: CompilerProps) {
+export function Compiler({ initialCode, variant = 'default' }: CompilerProps) {
   const [fileSystem, setFileSystem] = useState<FileSystem>({});
   const [openFiles, setOpenFiles] = useState<ActiveFile[]>([]);
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
@@ -574,15 +575,18 @@ export function Compiler({ initialCode }: CompilerProps) {
           onShare={handleShare}
           activeFile={activeFile} 
           hasActiveFile={!!activeFile}
+          variant={variant}
         />
-        <TabBar 
-          openFiles={openFiles}
-          activeFileIndex={activeFileIndex}
-          onTabClick={setActiveFileIndex}
-          onTabClose={closeTab}
-          onNewFile={() => createNewFile(true)}
-          onRenameFile={renameFile}
-        />
+        {variant === 'default' && (
+          <TabBar 
+            openFiles={openFiles}
+            activeFileIndex={activeFileIndex}
+            onTabClick={setActiveFileIndex}
+            onTabClose={closeTab}
+            onNewFile={() => createNewFile(true)}
+            onRenameFile={renameFile}
+          />
+        )}
       </div>
       <div className="p-4 grid grid-cols-1 gap-4">
         {activeFile ? (

@@ -98,7 +98,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                     </CardHeader>
                     <CardContent className="flex-grow overflow-auto p-0">
                         <div className="h-full min-h-[400px]">
-                            <Compiler initialCode={topic.syntax} />
+                            <Compiler initialCode={topic.syntax} variant="minimal" />
                         </div>
                     </CardContent>
                 </Card>
