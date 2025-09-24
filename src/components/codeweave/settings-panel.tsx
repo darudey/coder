@@ -91,7 +91,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
               <span className="sr-only">Toggle theme</span>
             </Button>
           </div>
-          <SheetDescription>
+          <SheetDescription className="text-xs text-muted-foreground/80">
             Configure compiler features and manage your saved code.
           </SheetDescription>
         </SheetHeader>
