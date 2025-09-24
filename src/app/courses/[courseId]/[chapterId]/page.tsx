@@ -49,7 +49,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
             Back to {course.title}
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">{topic.title}</h1>
+        <h1 className="text-xl font-bold tracking-tight">{topic.title}</h1>
         <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
       </header>
 
