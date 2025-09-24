@@ -14,7 +14,7 @@ export default function ProfilePage() {
                     <User className="w-12 h-12" />
                 </AvatarFallback>
             </Avatar>
-            <CardTitle className="text-3xl font-bold">User Profile</CardTitle>
+            <CardTitle className="text-2xl font-bold">User Profile</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
