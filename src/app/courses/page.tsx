@@ -9,7 +9,7 @@ export default function CoursesPage() {
     <div className="container mx-auto p-4 md:p-8">
       <header className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Courses</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-2 text-sm">
           Start your journey into web development. Choose a course to begin.
         </p>
       </header>
@@ -25,7 +25,7 @@ export default function CoursesPage() {
                 <CardTitle>{course.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-sm">{course.description}</p>
+                <p className="text-muted-foreground text-xs">{course.description}</p>
               </CardContent>
             </Card>
           </Link>
