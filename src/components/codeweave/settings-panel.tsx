@@ -25,7 +25,7 @@ import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { File, Folder, Plus, Trash2, Moon, Sun, Info, Palette } from 'lucide-react';
+import { File, Folder, Plus, Trash2, Moon, Sun, Info, Palette, KeyRound } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { AboutContent } from './about-content';
 import { useSettings } from '@/hooks/use-settings';
@@ -95,13 +95,13 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
             Configure compiler features and manage your saved code.
           </SheetDescription>
         </SheetHeader>
-        <div className="grid gap-4 py-6">
-          <Accordion type="single" collapsible className="w-full">
+        <div className="grid gap-2 py-6">
+          <Accordion type="single" collapsible className="w-full" defaultValue="appearance">
             <AccordionItem value="appearance">
               <AccordionTrigger>
                 <div className="flex items-center gap-2">
                     <Palette className="h-4 w-4" />
-                    <span className="font-semibold text-lg">Appearance</span>
+                    <span className="font-semibold text-base">Appearance</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent>
@@ -121,29 +121,37 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                 </div>
               </AccordionContent>
             </AccordionItem>
+             <AccordionItem value="api-key">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                    <KeyRound className="h-4 w-4" />
+                    <span className="font-semibold text-base">Gemini API Key</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                 <div className="grid gap-3 pt-4">
+                    <Label htmlFor="api-key" className="flex flex-col gap-1">
+                        <span className="font-normal text-sm text-muted-foreground">
+                            Enter your key to use AI features. It will be saved in your browser.
+                        </span>
+                    </Label>
+                    <div className="flex gap-2">
+                        <Input
+                            id="api-key"
+                            type="password"
+                            placeholder="Your Gemini API Key"
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                        />
+                        <Button onClick={handleSaveApiKey}>Save</Button>
+                    </div>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                      Generate API Key
+                    </a>
+                  </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
-
-           <div className="grid gap-3 pt-4">
-            <Label htmlFor="api-key" className="flex flex-col gap-1">
-                <span className="font-semibold text-lg">Gemini API Key</span>
-                <span className="font-normal text-sm text-muted-foreground">
-                    Enter your key to use AI features. It will be saved in your browser.
-                </span>
-            </Label>
-            <div className="flex gap-2">
-                <Input
-                    id="api-key"
-                    type="password"
-                    placeholder="Your Gemini API Key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                />
-                <Button onClick={handleSaveApiKey}>Save</Button>
-            </div>
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
-              Generate API Key
-            </a>
-          </div>
         </div>
 
         <div className="flex-grow flex flex-col min-h-0">
