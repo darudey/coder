@@ -5,7 +5,7 @@ import { courses as initialCourses, type Course, type Chapter, type Topic, type 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play, ChevronRight, Save, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useReducer, useEffect } from 'react';
@@ -20,10 +20,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
-import { EmbeddedCompiler } from '@/components/codeweave/embedded-compiler';
 
 // This is a simplified reducer for state management
-function topicReducer(state: Topic, action: { type: string; payload: any }) {
+function topicReducer(state: Topic, action: { type: string; payload: any }) : Topic {
   switch (action.type) {
     case 'SET_FIELD':
       return { ...state, [action.payload.field]: action.payload.value };
@@ -35,6 +34,35 @@ function topicReducer(state: Topic, action: { type: string; payload: any }) {
       return { ...state, practice: [...state.practice, { id: nanoid(), question: '', initialCode: '', expectedOutput: '' }] };
     case 'DELETE_PRACTICE_QUESTION':
         return {...state, practice: state.practice.filter((_, i) => i !== action.payload.index)};
+    
+    case 'ADD_NOTE_SEGMENT': {
+        const { type, index } = action.payload;
+        const newSegment: NoteSegment = { type, content: '' };
+        const newNotes = [...state.notes];
+        newNotes.splice(index + 1, 0, newSegment);
+        return { ...state, notes: newNotes };
+    }
+    case 'UPDATE_NOTE_SEGMENT': {
+        const { index, content } = action.payload;
+        const newNotes = state.notes.map((segment, i) => 
+            i === index ? { ...segment, content } : segment
+        );
+        return { ...state, notes: newNotes };
+    }
+    case 'DELETE_NOTE_SEGMENT': {
+        const newNotes = state.notes.filter((_, i) => i !== action.payload.index);
+        return { ...state, notes: newNotes };
+    }
+    case 'MOVE_NOTE_SEGMENT': {
+        const { index, direction } = action.payload;
+        const newNotes = [...state.notes];
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= newNotes.length) return state;
+        const [movedItem] = newNotes.splice(index, 1);
+        newNotes.splice(newIndex, 0, movedItem);
+        return { ...state, notes: newNotes };
+    }
+
     default:
       return state;
   }
@@ -170,20 +198,70 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                         <CardHeader>
                             <CardTitle className="text-sm">Topic Notes</CardTitle>
                         </CardHeader>
-                        <CardContent className="overflow-auto p-6">
-                            <div className="prose dark:prose-invert max-w-none">
-                                {/* This is a placeholder for a rich text editor */}
-                                <Label>Notes Content (HTML or Markdown)</Label>
-                                <Textarea 
-                                    className="min-h-[400px] font-mono"
-                                    value={topic.notes?.map(n => n.content).join('\n---\n') || ''}
-                                    onChange={(e) => handleFieldChange('notes', [{type: 'html', content: e.target.value}])}
-                                />
-                                <Button variant="outline" size="sm" className="mt-2">
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Embed Compiler
-                                </Button>
-                            </div>
+                        <CardContent className="space-y-4">
+                            {(topic.notes || []).map((segment, index) => (
+                                <div key={index} className="relative group border rounded-md p-4">
+                                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dispatch({ type: 'MOVE_NOTE_SEGMENT', payload: { index, direction: 'up' } })} disabled={index === 0}>
+                                            <ArrowUp className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dispatch({ type: 'MOVE_NOTE_SEGMENT', payload: { index, direction: 'down' } })} disabled={index === topic.notes.length - 1}>
+                                            <ArrowDown className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dispatch({ type: 'DELETE_NOTE_SEGMENT', payload: { index } })}>
+                                            <Trash2 className="w-4 h-4 text-destructive" />
+                                        </Button>
+                                    </div>
+
+                                    {segment.type === 'html' ? (
+                                        <div className="space-y-2">
+                                            <Label>Text Content (HTML/Markdown)</Label>
+                                            <Textarea
+                                                className="min-h-[120px] font-sans"
+                                                value={segment.content}
+                                                onChange={(e) => dispatch({ type: 'UPDATE_NOTE_SEGMENT', payload: { index, content: e.target.value } })}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label>Code Block</Label>
+                                            <div className="min-h-[120px]">
+                                                <Compiler
+                                                    initialCode={segment.content}
+                                                    onCodeChange={(code) => dispatch({ type: 'UPDATE_NOTE_SEGMENT', payload: { index, content: code } })}
+                                                    variant="minimal"
+                                                    hideHeader
+                                                    key={`note-compiler-${index}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="absolute bottom-[-16px] left-1/2 -translate-x-1/2 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
+                                            <Button variant="ghost" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index } })}}>
+                                                <Plus className="w-3 h-3 mr-1" /> Text
+                                            </Button>
+                                            <Button variant="ghost" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index } })}}>
+                                                <Plus className="w-3 h-3 mr-1" /> Code
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                             {(topic.notes?.length || 0) === 0 && (
+                                <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-md">
+                                    <p>No content yet. Add your first block.</p>
+                                     <div className="flex items-center justify-center gap-2 mt-2">
+                                        <Button variant="outline" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index: -1 } })}}>
+                                            <Plus className="w-3 h-3 mr-1" /> Add Text
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index: -1 } })}}>
+                                            <Plus className="w-3 h-3 mr-1" /> Add Code
+                                        </Button>
+                                    </div>
+                                </div>
+                             )}
                         </CardContent>
                     </Card>
                 </TabsContent>
