@@ -1,4 +1,6 @@
 
+'use client';
+
 import { courses } from '@/lib/courses-data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -13,6 +15,13 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import React from 'react';
+
 
 interface ChapterPageProps {
   params: {
@@ -29,7 +38,6 @@ export default function ChapterPage({ params }: ChapterPageProps) {
     notFound();
   }
 
-  // Find the topic to display. For now, we'll just display the first topic of the chapter.
   const topic = chapter.topics[0];
 
   if (!topic) {
@@ -105,21 +113,27 @@ export default function ChapterPage({ params }: ChapterPageProps) {
             </div>
           </CarouselItem>
            <CarouselItem className="h-full pl-4">
-            <div className="h-full">
-                <Card className="h-full flex flex-col">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-3 text-sm">
-                            <BrainCircuit className="w-5 h-5 text-primary" />
-                            Practice
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex-grow overflow-auto p-0">
-                       <div className="h-full min-h-[400px]">
+                <Dialog>
+                    <Card className="h-full flex flex-col">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-3 text-sm">
+                                <BrainCircuit className="w-5 h-5 text-primary" />
+                                Practice
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-grow flex flex-col items-center justify-center text-center">
+                            <p className="text-muted-foreground mb-4">Ready to try it yourself? Open the code editor to start practicing.</p>
+                             <DialogTrigger asChild>
+                                <Button>Start Practice</Button>
+                             </DialogTrigger>
+                        </CardContent>
+                    </Card>
+                    <DialogContent className="w-screen h-screen max-w-full max-h-full p-0 m-0 rounded-none border-0">
+                        <div className="h-full w-full bg-background">
                             <Compiler initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} variant="minimal" />
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    </DialogContent>
+                </Dialog>
           </CarouselItem>
         </CarouselContent>
         <CarouselPrevious className="ml-12" />
