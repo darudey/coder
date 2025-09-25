@@ -60,7 +60,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
   return (
     <>
       {(activeTab === 'syntax' || activeTab === 'practice') && (
-        <Button onClick={handleRunCode} disabled={isCompiling} className="fixed top-6 right-4 z-50 h-9 px-4">
+        <Button onClick={handleRunCode} disabled={isCompiling} className="fixed top-[56px] right-4 z-50 h-9 px-4">
             {isCompiling ? (
                 <DotLoader />
             ) : (
