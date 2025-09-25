@@ -18,6 +18,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import React from 'react';
@@ -129,6 +131,9 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                         </CardContent>
                     </Card>
                     <DialogContent className="w-screen h-screen max-w-full max-h-full p-0 m-0 rounded-none border-0">
+                        <DialogHeader className="sr-only">
+                            <DialogTitle>Practice Editor</DialogTitle>
+                        </DialogHeader>
                         <div className="h-full w-full bg-background">
                             <Compiler initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} variant="minimal" />
                         </div>
