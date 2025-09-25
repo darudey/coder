@@ -63,17 +63,17 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
         const mirror = mirrorRef.current;
         const wrapper = editorWrapperRef.current;
         if (!ta || !gutter || !mirror || !wrapper) return;
-
+    
         const lines = ta.value.split('\n');
         gutter.innerHTML = '';
         mirror.innerHTML = '';
-
+    
         lines.forEach(line => {
             const lineEl = document.createElement('div');
             lineEl.textContent = line || ' ';
             mirror.appendChild(lineEl);
         });
-
+    
         let totalHeight = 0;
         Array.from(mirror.children).forEach((child, i) => {
             const h = (child as HTMLElement).offsetHeight;
@@ -84,14 +84,19 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
             gutterLine.style.height = `${h}px`;
             gutter.appendChild(gutterLine);
         });
-
+    
         const newGutterWidth = (String(lines.length).length * 8 + 16);
         gutter.style.width = `${newGutterWidth}px`;
         ta.style.paddingLeft = `${newGutterWidth + 8}px`;
 
-        const newHeight = Math.max(totalHeight, 21); // min height
+        const computedStyle = getComputedStyle(ta);
+        const paddingTop = parseFloat(computedStyle.paddingTop);
+        const paddingBottom = parseFloat(computedStyle.paddingBottom);
+        const totalPadding = paddingTop + paddingBottom;
+    
+        const newHeight = Math.max(totalHeight + totalPadding, 21);
         wrapper.style.height = `${newHeight}px`;
-
+    
     }, []);
 
     useLayoutEffect(() => {
