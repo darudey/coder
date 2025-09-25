@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -50,6 +50,19 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
     const [output, setOutput] = useState<RunResult | null>(null);
     const [isCompiling, setIsCompiling] = useState(false);
     const outputRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const resizeTextarea = () => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    }
+
+    useLayoutEffect(() => {
+        resizeTextarea();
+    }, [code]);
 
     const handleRun = useCallback(async () => {
         setIsCompiling(true);
@@ -66,9 +79,12 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
         <div className="my-4 border rounded-lg overflow-hidden not-prose bg-background">
             <div className="relative group">
                 <Textarea
+                    ref={textareaRef}
                     value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="font-code text-sm rounded-none border-0 border-b focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[100px] bg-white dark:bg-gray-800"
+                    onChange={(e) => {
+                        setCode(e.target.value);
+                    }}
+                    className="font-code text-sm rounded-none border-0 border-b focus-visible:ring-0 focus-visible:ring-offset-0 bg-white dark:bg-gray-800 overflow-hidden resize-none"
                     spellCheck="false"
                 />
                 <Button 
@@ -111,4 +127,3 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
         </div>
     );
 };
-
