@@ -238,10 +238,10 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
 
                                     <div className="absolute bottom-[-16px] left-1/2 -translate-x-1/2 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
-                                            <Button variant="ghost" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index } })}>
+                                            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index } })}>
                                                 <Plus className="w-3 h-3 mr-1" /> Text
                                             </Button>
-                                            <Button variant="ghost" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index } })}>
+                                            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index } })}>
                                                 <Plus className="w-3 h-3 mr-1" /> Code
                                             </Button>
                                         </div>
@@ -252,10 +252,10 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                                 <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-md">
                                     <p>No content yet. Add your first block.</p>
                                      <div className="flex items-center justify-center gap-2 mt-2">
-                                        <Button variant="outline" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index: -1 } })}>
+                                        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index: -1 } })}>
                                             <Plus className="w-3 h-3 mr-1" /> Add Text
                                         </Button>
-                                        <Button variant="outline" size="sm" onClick={()={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index: -1 } })}>
+                                        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index: -1 } })}>
                                             <Plus className="w-3 h-3 mr-1" /> Add Code
                                         </Button>
                                     </div>
@@ -369,4 +369,5 @@ declare module '@/components/codeweave/compiler' {
     }
 }
 
+    
     
