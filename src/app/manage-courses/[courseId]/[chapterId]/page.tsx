@@ -48,7 +48,8 @@ interface ManageTopicPageProps {
   };
 }
 
-export default function ManageTopicPage({ params }: ManageTopicPageProps) {
+export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageProps) {
+  const params = React.use(paramsProp);
   const { toast } = useToast();
   const course = initialCourses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
