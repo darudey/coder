@@ -9,13 +9,6 @@ import { ChevronLeft, Video, StickyNote, Code, BrainCircuit } from 'lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler } from '@/components/codeweave/compiler';
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel"
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -23,6 +16,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import React from 'react';
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+  } from "@/components/ui/tabs"
 
 
 interface ChapterPageProps {
@@ -51,8 +50,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   }
 
   return (
-    <div className="container mx-auto flex flex-col h-[calc(100vh-4rem)]">
-      <header className="mb-4 px-4 md:px-8">
+    <div className="container mx-auto flex flex-col h-[calc(100vh-4rem)] p-4 md:p-8">
+      <header className="mb-4">
         <Button asChild variant="outline" size="sm" className="mb-2">
           <Link href={`/courses/${course.id}`}>
             <ChevronLeft className="w-4 h-4 mr-2" />
@@ -63,10 +62,14 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
       </header>
 
-      <Carousel className="w-full flex-grow">
-        <CarouselContent className="h-full -ml-4">
-          <CarouselItem className="h-full pl-4">
-            <div className="h-full">
+        <Tabs defaultValue="video" className="flex flex-col flex-grow">
+            <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
+                <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
+                <TabsTrigger value="syntax"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>
+                <TabsTrigger value="practice"><BrainCircuit className="w-4 h-4 mr-2" />Practice</TabsTrigger>
+            </TabsList>
+            <TabsContent value="video" className="flex-grow mt-4">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3 text-sm">
@@ -80,10 +83,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-          </CarouselItem>
-          <CarouselItem className="h-full pl-4">
-             <div className="h-full">
+            </TabsContent>
+            <TabsContent value="notes" className="flex-grow mt-4">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3 text-sm">
@@ -91,15 +92,13 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                             Notes
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-grow overflow-auto">
+                    <CardContent className="flex-grow overflow-auto p-6">
                         <div dangerouslySetInnerHTML={{ __html: topic.notes }} className="prose dark:prose-invert max-w-none" />
                     </CardContent>
                 </Card>
-            </div>
-          </CarouselItem>
-          <CarouselItem className="h-full pl-4">
-            <div className="h-full">
-                <Card className="h-full flex flex-col">
+            </TabsContent>
+            <TabsContent value="syntax" className="flex-grow mt-4">
+                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3 text-sm">
                             <Code className="w-5 h-5 text-primary" />
@@ -112,9 +111,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-          </CarouselItem>
-           <CarouselItem className="h-full pl-4">
+            </TabsContent>
+            <TabsContent value="practice" className="flex-grow mt-4">
                 <Dialog>
                     <Card className="h-full flex flex-col">
                         <CardHeader>
@@ -139,11 +137,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                         </div>
                     </DialogContent>
                 </Dialog>
-          </CarouselItem>
-        </CarouselContent>
-        <CarouselPrevious className="ml-12" />
-        <CarouselNext className="mr-12" />
-      </Carousel>
+            </TabsContent>
+        </Tabs>
     </div>
   );
 }
