@@ -24,7 +24,8 @@ interface ChapterPageProps {
   };
 }
 
-export default function ChapterPage({ params }: ChapterPageProps) {
+export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
+  const params = React.use(paramsProp);
   const course = courses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
 
