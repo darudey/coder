@@ -73,7 +73,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
       )}
       <div className="flex flex-col h-[calc(100vh-4rem)] py-4 md:py-8">
         <header className="mb-4 px-4 md:px-8">
-          <Button asChild variant="outline" size="sm" className="mb-2">
+          <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
             <Link href={`/courses/${course.id}`}>
               <ChevronLeft className="w-4 h-4 mr-2" />
               Back to {course.title}
