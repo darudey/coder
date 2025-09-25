@@ -32,6 +32,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
   const syntaxCompilerRef = useRef<CompilerRef>(null);
   const practiceCompilerRef = useRef<CompilerRef>(null);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [activeTab, setActiveTab] = useState('video');
 
   if (!course || !chapter) {
     notFound();
@@ -39,7 +40,8 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
 
   const topic = chapter.topics[0];
 
-  const handleRunCode = async (ref: React.RefObject<CompilerRef>) => {
+  const handleRunCode = async () => {
+    const ref = activeTab === 'syntax' ? syntaxCompilerRef : practiceCompilerRef;
     if (ref.current) {
         setIsCompiling(true);
         await ref.current.run();
@@ -56,19 +58,32 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] py-4 md:py-8">
-      <header className="mb-4 px-4 md:px-8">
-        <Button asChild variant="outline" size="sm" className="mb-2">
-          <Link href={`/courses/${course.id}`}>
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Back to {course.title}
-          </Link>
+    <>
+      {(activeTab === 'syntax' || activeTab === 'practice') && (
+        <Button onClick={handleRunCode} disabled={isCompiling} className="fixed top-4 right-4 z-50 h-9 px-4">
+            {isCompiling ? (
+                <DotLoader />
+            ) : (
+                <>
+                    <Play className="w-4 h-4" />
+                    <span className="ml-1.5 hidden sm:inline">Run</span>
+                </>
+            )}
         </Button>
-        <h1 className="text-base font-bold tracking-tight">{topic.title}</h1>
-        <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
-      </header>
+      )}
+      <div className="flex flex-col h-[calc(100vh-4rem)] py-4 md:py-8">
+        <header className="mb-4 px-4 md:px-8">
+          <Button asChild variant="outline" size="sm" className="mb-2">
+            <Link href={`/courses/${course.id}`}>
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back to {course.title}
+            </Link>
+          </Button>
+          <h1 className="text-base font-bold tracking-tight">{topic.title}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
+        </header>
 
-        <Tabs defaultValue="video" className="flex flex-col flex-grow">
+        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video" className="flex flex-col flex-grow">
             <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
@@ -104,16 +119,6 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                 </Card>
             </TabsContent>
             <TabsContent value="syntax" className="flex-grow mt-4 relative">
-                 <Button onClick={() => handleRunCode(syntaxCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-20 h-8 px-3">
-                    {isCompiling ? (
-                        <DotLoader />
-                    ) : (
-                        <>
-                            <Play className="w-4 h-4" />
-                            <span className="ml-1.5 hidden sm:inline">Run</span>
-                        </>
-                    )}
-                 </Button>
                  <Card className="h-full flex flex-col rounded-none border-x-0">
                     <CardContent className="flex-grow overflow-auto p-0">
                         <div className="h-full min-h-[400px]">
@@ -123,16 +128,6 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                 </Card>
             </TabsContent>
             <TabsContent value="practice" className="flex-grow mt-4 relative">
-                <Button onClick={() => handleRunCode(practiceCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-20 h-8 px-3">
-                    {isCompiling ? (
-                        <DotLoader />
-                    ) : (
-                        <>
-                            <Play className="w-4 h-4" />
-                            <span className="ml-1.5 hidden sm:inline">Run</span>
-                        </>
-                    )}
-                 </Button>
                 <Card className="h-full flex flex-col rounded-none border-x-0">
                     <CardContent className="flex-grow overflow-auto p-0">
                         <div className="h-full min-h-[400px]">
@@ -142,6 +137,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                 </Card>
             </TabsContent>
         </Tabs>
-    </div>
+      </div>
+    </>
   );
 }
