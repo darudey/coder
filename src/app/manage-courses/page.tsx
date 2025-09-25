@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { courses } from '@/lib/courses-data';
+import { courses as initialCourses, type Course } from '@/lib/courses-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,20 +30,48 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { nanoid } from 'nanoid';
 
 export default function ManageCoursesPage() {
+  const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
-  const [newCourse, setNewCourse] = useState({ name: '', description: '' });
+  const [newCourse, setNewCourse] = useState({ title: '', description: '' });
+  const { toast } = useToast();
 
   const handleDelete = (courseId: string) => {
-    // Placeholder for delete logic
-    console.log("Deleting course:", courseId);
+    setCourses(prevCourses => prevCourses.filter(course => course.id !== courseId));
+    toast({
+        title: "Course Deleted",
+        description: "The course has been removed.",
+    });
   }
 
   const handleCreateCourse = () => {
-    // Placeholder for create logic
-    console.log("Creating new course:", newCourse);
-    setNewCourse({ name: '', description: '' });
+    if (!newCourse.title || !newCourse.description) {
+        toast({
+            title: "Missing Information",
+            description: "Please fill out both the name and description.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const newCourseData: Course = {
+        id: nanoid(),
+        title: newCourse.title,
+        description: newCourse.description,
+        chapters: [],
+    };
+    
+    setCourses(prevCourses => [...prevCourses, newCourseData]);
+    
+    toast({
+        title: "Course Created",
+        description: `"${newCourse.title}" has been successfully added.`,
+    });
+
+    setNewCourse({ title: '', description: '' });
     setIsAddCourseOpen(false);
   }
 
@@ -75,8 +103,8 @@ export default function ManageCoursesPage() {
                         <Label htmlFor="course-name" className="text-right">Name</Label>
                         <Input
                             id="course-name"
-                            value={newCourse.name}
-                            onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                            value={newCourse.title}
+                            onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
                             className="col-span-3"
                             placeholder="e.g., Advanced JavaScript"
                         />
