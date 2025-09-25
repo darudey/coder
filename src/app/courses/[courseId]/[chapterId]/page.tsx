@@ -79,8 +79,8 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
               Back to {course.title}
             </Link>
           </Button>
-          <h1 className="text-base font-bold tracking-tight">{topic.title}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
+          <h1 className="text-sm font-bold tracking-tight">{topic.title}</h1>
+          <p className="text-muted-foreground text-xs mt-1">{chapter.title}</p>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video" className="flex flex-col flex-grow">
