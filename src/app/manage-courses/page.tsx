@@ -1,8 +1,8 @@
 
 'use client';
 
+import { useState } from 'react';
 import { courses } from '@/lib/courses-data';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,11 +17,34 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 export default function ManageCoursesPage() {
+  const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
+  const [newCourse, setNewCourse] = useState({ name: '', description: '' });
+
   const handleDelete = (courseId: string) => {
     // Placeholder for delete logic
     console.log("Deleting course:", courseId);
+  }
+
+  const handleCreateCourse = () => {
+    // Placeholder for create logic
+    console.log("Creating new course:", newCourse);
+    setNewCourse({ name: '', description: '' });
+    setIsAddCourseOpen(false);
   }
 
   return (
@@ -33,10 +56,50 @@ export default function ManageCoursesPage() {
             Create, edit, and manage your interactive courses here.
             </p>
         </div>
-        <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Add New Course
-        </Button>
+        <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add New Course
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add New Course</DialogTitle>
+                    <DialogDescription>
+                        Fill in the details for your new course below.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="course-name" className="text-right">Name</Label>
+                        <Input
+                            id="course-name"
+                            value={newCourse.name}
+                            onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                            className="col-span-3"
+                            placeholder="e.g., Advanced JavaScript"
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="course-description" className="text-right">Description</Label>
+                        <Textarea
+                            id="course-description"
+                            value={newCourse.description}
+                            onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+                            className="col-span-3"
+                            placeholder="A brief summary of the course content."
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleCreateCourse}>Create Course</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
