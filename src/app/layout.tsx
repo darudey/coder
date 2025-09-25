@@ -5,7 +5,7 @@ import './globals.css';
 import { SettingsProvider } from '@/hooks/use-settings';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Home, Book, BrainCircuit, User, Menu } from 'lucide-react';
+import { Home, Book, BrainCircuit, User, Menu, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/', label: 'Compiler', icon: Home },
   { href: '/courses', label: 'Courses', icon: Book },
   { href: '/practice', label: 'Practice', icon: BrainCircuit },
+  { href: '/manage-courses', label: 'Manage Courses', icon: Edit3 },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
