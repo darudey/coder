@@ -213,13 +213,15 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {course.chapters.map((chapter) => (
             <Card key={chapter.id} className="h-full flex flex-col">
-              <CardHeader className="flex-grow">
-                <CardTitle className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-primary/80"/>
-                    {chapter.title}
-                </CardTitle>
-                 <p className="text-muted-foreground text-sm font-normal pt-2 line-clamp-2">{chapter.description}</p>
-              </CardHeader>
+              <Link href={`/manage-courses/${course.id}/${chapter.id}`} className="flex-grow group">
+                <CardHeader className="flex-grow group-hover:bg-muted/50 transition-colors">
+                  <CardTitle className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-primary/80"/>
+                      {chapter.title}
+                  </CardTitle>
+                  <p className="text-muted-foreground text-sm font-normal pt-2 line-clamp-2">{chapter.description}</p>
+                </CardHeader>
+              </Link>
               <CardContent>
                  <div className="flex gap-2 mt-4">
                       <Button variant="outline" size="sm" className="w-full" onClick={() => handleOpenEditDialog(chapter)}>
@@ -294,5 +296,3 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
     </>
   );
 }
-
-  
