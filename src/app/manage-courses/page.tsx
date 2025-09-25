@@ -32,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
+import Link from 'next/link';
 
 export default function ManageCoursesPage() {
   const [courses, setCourses] = useState<Course[]>(initialCourses);
@@ -170,14 +171,18 @@ export default function ManageCoursesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
           <Card key={course.id} className="h-full flex flex-col">
-              <CardHeader className="flex flex-row items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-md">
-                    <BookOpen className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle>{course.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-grow flex flex-col">
-                <p className="text-muted-foreground text-xs flex-grow">{course.description}</p>
+              <Link href={`/manage-courses/${course.id}`} className="flex-grow group">
+                <CardHeader className="flex flex-row items-center gap-4 group-hover:bg-muted/50 transition-colors">
+                  <div className="bg-primary/10 p-3 rounded-md">
+                      <BookOpen className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle>{course.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="group-hover:bg-muted/50 transition-colors pt-0">
+                  <p className="text-muted-foreground text-xs">{course.description}</p>
+                </CardContent>
+              </Link>
+              <CardContent className="pt-0">
                 <div className="flex gap-2 mt-4">
                     <Button variant="outline" size="sm" className="w-full" onClick={() => handleOpenEditDialog(course)}>
                         <Pencil className="w-4 h-4 mr-2" />
