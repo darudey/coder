@@ -34,34 +34,83 @@ export const courses: Course[] = [
                 topics: [
                     {
                         id: 'declaring-variables',
-                        title: 'Declaring Variables',
+                        title: 'Variables & Constants in JavaScript',
                         notes: `
-                            <p>In JavaScript, variables are used to store data values. Before you use a variable, you need to declare it.</p>
-                            <p>JavaScript provides three keywords for declaring variables:</p>
+                            <h4>What is a variable?</h4>
+                            <p>A variable is a container for storing data. Think of it as a box with a name, where you can put a value and use it later.</p>
+                            <p>In JS, you can declare variables with:</p>
+                            <ol>
+                                <li><b>var</b>
+                                    <ul>
+                                        <li>Old way (before 2015).</li>
+                                        <li>Function-scoped, not block-scoped.</li>
+                                        <li>Hoisted (accessible before declaration, but gives undefined).</li>
+                                        <li>Avoid in modern code.</li>
+                                    </ul>
+                                </li>
+                                <li><b>let</b>
+                                    <ul>
+                                        <li>Introduced in ES6 (2015).</li>
+                                        <li>Block-scoped → only exists inside {}.</li>
+                                        <li>Value can be reassigned.</li>
+                                        <li>Most commonly used.</li>
+                                    </ul>
+                                </li>
+                                <li><b>const</b>
+                                    <ul>
+                                        <li>Block-scoped like let.</li>
+                                        <li>Value cannot be reassigned.</li>
+                                        <li>Must be initialized at the time of declaration.</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                            <hr class="my-4">
+                            <h4>Rules for Naming Variables</h4>
+                            <p><b>Allowed:</b></p>
                             <ul>
-                                <li><strong>var:</strong> The oldest keyword. It has function scope and can be re-declared and updated. Its usage is generally discouraged in modern JavaScript.</li>
-                                <li><strong>let:</strong> Introduced in ES6 (2015). It has block scope, cannot be re-declared within the same scope, but can be updated.</li>
-                                <li><strong>const:</strong> Also introduced in ES6. It has block scope, cannot be re-declared or updated. It must be initialized at the time of declaration.</li>
+                                <li>Letters, numbers, _, $</li>
+                                <li>Must not start with a number</li>
+                                <li>Case-sensitive (myName ≠ myname)</li>
+                                <li>Can’t use reserved words (let, class, function, etc.)</li>
                             </ul>
-                            <p>Block scope means the variable is only accessible within the block of code (e.g., inside an <code>if</code> statement or a <code>for</code> loop) where it is defined.</p>
+                            <pre><code class="language-js">let firstName = "John";  // ✅ camelCase (best practice)
+let _id = 101;           // ✅ allowed
+let $price = 499;        // ✅ allowed
+let 1student = "Ram";    // ❌ Error</code></pre>
+                            <hr class="my-4">
+                            <h4>Best Practices</h4>
+                            <ul>
+                                <li>Use <code>const</code> by default → safer.</li>
+                                <li>Use <code>let</code> when value needs to change.</li>
+                                <li>Avoid <code>var</code>.</li>
+                                <li>Use meaningful names (not x, y, z unless temporary).</li>
+                            </ul>
+                            <hr class="my-4">
+                            <h4>Practice Exercises</h4>
+                            <ol>
+                                <li>Create variables for your name, age, and city. Print them.</li>
+                                <li>Try changing a <code>let</code> variable → works.</li>
+                                <li>Try changing a <code>const</code> variable → see the error.</li>
+                                <li>What happens if you declare <code>var x = 10;</code> inside a block {} and print it outside?</li>
+                                <li><b>Bonus:</b> Test case sensitivity:
+                                    <pre><code class="language-js">let myName = "A";\nlet MyName = "B";\nconsole.log(myName, MyName);</code></pre>
+                                </li>
+                            </ol>
                         `,
                         syntax: `
-// Using let (preferred for variables that will change)
-let age = 30;
-age = 31; // This is allowed
-console.log('Age:', age);
+// var (not recommended anymore)
+var name = "Chandan";
+console.log(name); // Chandan
 
-// Using const (preferred for constants)
-const name = 'Alice';
-// name = 'Bob'; // This would cause an error
-console.log('Name:', name);
+// let
+let age = 21;
+age = 22; // ✅ reassignment allowed
+console.log(age); // 22
 
-// Block Scope Example
-if (true) {
-  let blockScopedVar = 'I am inside the block';
-  console.log(blockScopedVar);
-}
-// console.log(blockScopedVar); // This would cause a ReferenceError
+// const
+const country = "India";
+// country = "USA"; // ❌ Error: Assignment to constant variable
+console.log(country); // India
 `
                     }
                 ]
