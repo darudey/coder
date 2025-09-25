@@ -71,9 +71,9 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
             )}
         </Button>
       )}
-      <div className="flex flex-col h-screen">
-        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video" className="flex flex-col flex-grow">
-            <header className="sticky top-0 bg-background z-30 mb-4 px-4 md:px-8 pt-4 md:pt-8">
+      <div className="flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
+            <header className="mb-4 px-4 md:px-8 pt-4 md:pt-8">
               <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
                 <Link href={`/courses/${course.id}`}>
                   <ChevronLeft className="w-4 h-4 mr-2" />
@@ -83,13 +83,13 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
               <h1 className="text-sm font-bold tracking-tight">{topic.title}</h1>
               <p className="text-muted-foreground text-xs mt-1">{chapter.title}</p>
             </header>
-            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-[108px] md:top-[124px] bg-background z-30">
+            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
                 <TabsTrigger value="syntax"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>
                 <TabsTrigger value="practice"><BrainCircuit className="w-4 h-4 mr-2" />Practice</TabsTrigger>
             </TabsList>
-            <div className="flex-grow pb-8">
+            <div className="pb-8">
                 <TabsContent value="video" className="mt-4 px-4 md:px-8">
                     <Card>
                         <CardHeader>
