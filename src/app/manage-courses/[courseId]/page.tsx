@@ -9,6 +9,16 @@ import { FileText, ChevronLeft, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -36,8 +46,6 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
   const router = useRouter();
   const { toast } = useToast();
 
-  // Since we can't easily pass state between pages without a global manager,
-  // we'll fetch the course from the initial data and manage its state locally.
   const [course, setCourse] = useState<Course | undefined>(() => 
     initialCourses.find((c) => c.id === params.courseId)
   );
@@ -45,12 +53,16 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
   const [isAddChapterOpen, setIsAddChapterOpen] = useState(false);
   const [newChapter, setNewChapter] = useState({ title: '', description: '' });
 
-  if (!course) {
-    // This will be caught by the notFound() in server components,
-    // but good practice to handle in client too.
-    useEffect(() => {
+  const [isEditChapterOpen, setIsEditChapterOpen] = useState(false);
+  const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
+
+  useEffect(() => {
+    if (!course) {
       notFound();
-    }, []);
+    }
+  }, [course]);
+
+  if (!course) {
     return null;
   }
   
@@ -90,90 +102,196 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
     setIsAddChapterOpen(false);
   }
 
+  const handleOpenEditDialog = (chapter: Chapter) => {
+    setEditingChapter(chapter);
+    setIsEditChapterOpen(true);
+  }
+
+  const handleUpdateChapter = () => {
+    if (!editingChapter) return;
+
+    if (!editingChapter.title || !editingChapter.description) {
+        toast({
+            title: "Missing Information",
+            description: "Title and description cannot be empty.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    setCourse(prevCourse => {
+        if (!prevCourse) return prevCourse;
+        const updatedChapters = prevCourse.chapters.map(ch =>
+            ch.id === editingChapter.id ? editingChapter : ch
+        );
+        return { ...prevCourse, chapters: updatedChapters };
+    });
+
+    toast({
+        title: "Chapter Updated",
+        description: `"${editingChapter.title}" has been successfully updated.`,
+    });
+
+    setEditingChapter(null);
+    setIsEditChapterOpen(false);
+  }
+
+  const handleDeleteChapter = (chapterId: string) => {
+    setCourse(prevCourse => {
+      if (!prevCourse) return prevCourse;
+      const updatedChapters = prevCourse.chapters.filter(ch => ch.id !== chapterId);
+      return { ...prevCourse, chapters: updatedChapters };
+    });
+    toast({
+      title: "Chapter Deleted",
+      description: "The chapter has been removed from the course.",
+    });
+  }
+
+
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      <header className="mb-8 flex justify-between items-center">
-        <div>
-            <Button asChild variant="outline" size="sm" className="mb-4">
-            <Link href="/manage-courses">
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Back to Courses
-            </Link>
-            </Button>
-            <h1 className="text-lg font-bold tracking-tight">Manage Chapters for: {course.title}</h1>
-            <p className="text-muted-foreground mt-2 text-sm">{course.description}</p>
+    <>
+      <div className="container mx-auto p-4 md:p-8">
+        <header className="mb-8 flex justify-between items-center">
+          <div>
+              <Button asChild variant="outline" size="sm" className="mb-4">
+              <Link href="/manage-courses">
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Back to Courses
+              </Link>
+              </Button>
+              <h1 className="text-lg font-bold tracking-tight">Manage Chapters for: {course.title}</h1>
+              <p className="text-muted-foreground mt-2 text-sm">{course.description}</p>
+          </div>
+          <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
+              <DialogTrigger asChild>
+                  <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New Chapter
+                  </Button>
+              </DialogTrigger>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Add New Chapter</DialogTitle>
+                      <DialogDescription>
+                          Fill in the details for your new chapter below.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="chapter-title" className="text-right">Title</Label>
+                          <Input
+                              id="chapter-title"
+                              value={newChapter.title}
+                              onChange={(e) => setNewChapter({ ...newChapter, title: e.target.value })}
+                              className="col-span-3"
+                              placeholder="e.g., Introduction to Functions"
+                          />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="chapter-description" className="text-right">Description</Label>
+                          <Textarea
+                              id="chapter-description"
+                              value={newChapter.description}
+                              onChange={(e) => setNewChapter({ ...newChapter, description: e.target.value })}
+                              className="col-span-3"
+                              placeholder="What will users learn in this chapter?"
+                          />
+                      </div>
+                  </div>
+                  <DialogFooter>
+                      <DialogClose asChild>
+                          <Button variant="outline">Cancel</Button>
+                      </DialogClose>
+                      <Button onClick={handleCreateChapter}>Create Chapter</Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {course.chapters.map((chapter) => (
+            <Card key={chapter.id} className="h-full flex flex-col">
+              <CardHeader className="flex-grow">
+                <CardTitle className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-primary/80"/>
+                    {chapter.title}
+                </CardTitle>
+                 <p className="text-muted-foreground text-sm font-normal pt-2 line-clamp-2">{chapter.description}</p>
+              </CardHeader>
+              <CardContent>
+                 <div className="flex gap-2 mt-4">
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => handleOpenEditDialog(chapter)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" className="w-full">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete this chapter.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteChapter(chapter.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-        <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add New Chapter
-                </Button>
-            </DialogTrigger>
+      </div>
+      
+      {editingChapter && (
+        <Dialog open={isEditChapterOpen} onOpenChange={setIsEditChapterOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Add New Chapter</DialogTitle>
+                    <DialogTitle>Edit Chapter</DialogTitle>
                     <DialogDescription>
-                        Fill in the details for your new chapter below.
+                        Update the details for your chapter below.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="chapter-title" className="text-right">Title</Label>
+                        <Label htmlFor="edit-chapter-title" className="text-right">Title</Label>
                         <Input
-                            id="chapter-title"
-                            value={newChapter.title}
-                            onChange={(e) => setNewChapter({ ...newChapter, title: e.target.value })}
+                            id="edit-chapter-title"
+                            value={editingChapter.title}
+                            onChange={(e) => setEditingChapter({ ...editingChapter, title: e.target.value })}
                             className="col-span-3"
-                            placeholder="e.g., Introduction to Functions"
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="chapter-description" className="text-right">Description</Label>
+                        <Label htmlFor="edit-chapter-description" className="text-right">Description</Label>
                         <Textarea
-                            id="chapter-description"
-                            value={newChapter.description}
-                            onChange={(e) => setNewChapter({ ...newChapter, description: e.target.value })}
+                            id="edit-chapter-description"
+                            value={editingChapter.description}
+                            onChange={(e) => setEditingChapter({ ...editingChapter, description: e.target.value })}
                             className="col-span-3"
-                            placeholder="What will users learn in this chapter?"
                         />
                     </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsEditChapterOpen(false)}>Cancel</Button>
                     </DialogClose>
-                    <Button onClick={handleCreateChapter}>Create Chapter</Button>
+                    <Button onClick={handleUpdateChapter}>Save Changes</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {course.chapters.map((chapter) => (
-          <Card key={chapter.id} className="h-full flex flex-col">
-            <CardHeader className="flex-grow">
-              <CardTitle className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-primary/80"/>
-                  {chapter.title}
-              </CardTitle>
-               <p className="text-muted-foreground text-sm font-normal pt-2 line-clamp-2">{chapter.description}</p>
-            </CardHeader>
-            <CardContent>
-               <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="w-full">
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" className="w-full">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                    </Button>
-                </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+      )}
+    </>
   );
 }
+
+  
