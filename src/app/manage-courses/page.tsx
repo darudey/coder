@@ -37,6 +37,10 @@ export default function ManageCoursesPage() {
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [newCourse, setNewCourse] = useState({ title: '', description: '' });
+  
+  const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+
   const { toast } = useToast();
 
   const handleDelete = (courseId: string) => {
@@ -74,6 +78,39 @@ export default function ManageCoursesPage() {
     setNewCourse({ title: '', description: '' });
     setIsAddCourseOpen(false);
   }
+
+  const handleOpenEditDialog = (course: Course) => {
+    setEditingCourse(course);
+    setIsEditCourseOpen(true);
+  }
+
+  const handleUpdateCourse = () => {
+    if (!editingCourse) return;
+
+    if (!editingCourse.title || !editingCourse.description) {
+        toast({
+            title: "Missing Information",
+            description: "Name and description cannot be empty.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    setCourses(prevCourses => 
+        prevCourses.map(course => 
+            course.id === editingCourse.id ? editingCourse : course
+        )
+    );
+
+    toast({
+        title: "Course Updated",
+        description: `"${editingCourse.title}" has been successfully updated.`,
+    });
+
+    setEditingCourse(null);
+    setIsEditCourseOpen(false);
+  }
+
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -142,7 +179,7 @@ export default function ManageCoursesPage() {
               <CardContent className="flex-grow flex flex-col">
                 <p className="text-muted-foreground text-xs flex-grow">{course.description}</p>
                 <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="w-full">
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => handleOpenEditDialog(course)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Edit
                     </Button>
@@ -171,6 +208,45 @@ export default function ManageCoursesPage() {
             </Card>
         ))}
       </div>
+
+       {editingCourse && (
+        <Dialog open={isEditCourseOpen} onOpenChange={setIsEditCourseOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Course</DialogTitle>
+                    <DialogDescription>
+                        Update the details for your course below.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="edit-course-name" className="text-right">Name</Label>
+                        <Input
+                            id="edit-course-name"
+                            value={editingCourse.title}
+                            onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
+                            className="col-span-3"
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="edit-course-description" className="text-right">Description</Label>
+                        <Textarea
+                            id="edit-course-description"
+                            value={editingCourse.description}
+                            onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
+                            className="col-span-3"
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline" onClick={() => setIsEditCourseOpen(false)}>Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleUpdateCourse}>Save Changes</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
