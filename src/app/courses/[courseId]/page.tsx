@@ -32,8 +32,8 @@ export default function CoursePage({ params: paramsProp }: CoursePageProps) {
             Back to Courses
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">{course.title}</h1>
-        <p className="text-muted-foreground mt-2">{course.description}</p>
+        <h1 className="text-lg font-bold tracking-tight">{course.title}</h1>
+        <p className="text-muted-foreground mt-2 text-sm">{course.description}</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
