@@ -5,16 +5,17 @@ import { courses } from '@/lib/courses-data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Compiler } from '@/components/codeweave/compiler';
-import React from 'react';
+import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
+import React, { useRef, useState } from 'react';
 import {
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger,
   } from "@/components/ui/tabs"
+import { DotLoader } from '@/components/codeweave/dot-loader';
 
 
 interface ChapterPageProps {
@@ -28,12 +29,23 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
   const params = React.use(paramsProp);
   const course = courses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
+  const syntaxCompilerRef = useRef<CompilerRef>(null);
+  const practiceCompilerRef = useRef<CompilerRef>(null);
+  const [isCompiling, setIsCompiling] = useState(false);
 
   if (!course || !chapter) {
     notFound();
   }
 
   const topic = chapter.topics[0];
+
+  const handleRunCode = async (ref: React.RefObject<CompilerRef>) => {
+    if (ref.current) {
+        setIsCompiling(true);
+        await ref.current.run();
+        setIsCompiling(false);
+    }
+  }
 
   if (!topic) {
     return (
@@ -91,32 +103,40 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="syntax" className="flex-grow mt-4">
+            <TabsContent value="syntax" className="flex-grow mt-4 relative">
+                 <Button onClick={() => handleRunCode(syntaxCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-10 h-8 px-3">
+                    {isCompiling ? (
+                        <DotLoader />
+                    ) : (
+                        <>
+                            <Play className="w-4 h-4" />
+                            <span className="ml-1.5 hidden sm:inline">Run</span>
+                        </>
+                    )}
+                 </Button>
                  <Card className="h-full flex flex-col rounded-none border-x-0">
-                    <CardHeader className="px-4 md:px-8">
-                        <CardTitle className="flex items-center gap-3 text-sm">
-                            <Code className="w-5 h-5 text-primary" />
-                            Syntax Example
-                        </CardTitle>
-                    </CardHeader>
                     <CardContent className="flex-grow overflow-auto p-0">
                         <div className="h-full min-h-[400px]">
-                            <Compiler initialCode={topic.syntax} variant="minimal" />
+                            <Compiler ref={syntaxCompilerRef} initialCode={topic.syntax} variant="minimal" hideHeader />
                         </div>
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="practice" className="flex-grow mt-4">
+            <TabsContent value="practice" className="flex-grow mt-4 relative">
+                <Button onClick={() => handleRunCode(practiceCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-10 h-8 px-3">
+                    {isCompiling ? (
+                        <DotLoader />
+                    ) : (
+                        <>
+                            <Play className="w-4 h-4" />
+                            <span className="ml-1.5 hidden sm:inline">Run</span>
+                        </>
+                    )}
+                 </Button>
                 <Card className="h-full flex flex-col rounded-none border-x-0">
-                    <CardHeader className="px-4 md:px-8">
-                        <CardTitle className="flex items-center gap-3 text-sm">
-                            <BrainCircuit className="w-5 h-5 text-primary" />
-                            Practice
-                        </CardTitle>
-                    </CardHeader>
                     <CardContent className="flex-grow overflow-auto p-0">
                         <div className="h-full min-h-[400px]">
-                           <Compiler initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} variant="minimal" />
+                           <Compiler ref={practiceCompilerRef} initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} variant="minimal" hideHeader />
                         </div>
                     </CardContent>
                 </Card>

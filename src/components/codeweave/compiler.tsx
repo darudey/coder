@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { shareCode } from '@/app/actions';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
@@ -50,6 +50,11 @@ export interface ActiveFile {
 interface CompilerProps {
   initialCode?: string | null;
   variant?: 'default' | 'minimal';
+  hideHeader?: boolean;
+}
+
+export interface CompilerRef {
+    run: () => Promise<void>;
 }
 
 const getInitialFileSystem = (initialCode?: string | null): FileSystem => {
@@ -107,7 +112,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-export function Compiler({ initialCode, variant = 'default' }: CompilerProps) {
+const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false }, ref) => {
   const [fileSystem, setFileSystem] = useState<FileSystem>({});
   const [openFiles, setOpenFiles] = useState<ActiveFile[]>([]);
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
@@ -383,6 +388,10 @@ export function Compiler({ initialCode, variant = 'default' }: CompilerProps) {
     setIsCompiling(false);
   }, [code, settings.errorChecking]);
 
+  useImperativeHandle(ref, () => ({
+    run: handleRun
+  }));
+
   const handleSaveRequest = useCallback(() => {
     if (!activeFile) return;
     setSaveForm({ 
@@ -567,16 +576,18 @@ export function Compiler({ initialCode, variant = 'default' }: CompilerProps) {
   return (
     <div className="bg-background">
       <div className="sticky top-0 z-20 bg-background">
-        <Header 
-          onRun={handleRun} 
-          onSettings={() => setIsSettingsOpen(true)} 
-          isCompiling={isCompiling} 
-          onSaveAs={handleSaveRequest} 
-          onShare={handleShare}
-          activeFile={activeFile} 
-          hasActiveFile={!!activeFile}
-          variant={variant}
-        />
+        {!hideHeader && (
+          <Header 
+            onRun={handleRun} 
+            onSettings={() => setIsSettingsOpen(true)} 
+            isCompiling={isCompiling} 
+            onSaveAs={handleSaveRequest} 
+            onShare={handleShare}
+            activeFile={activeFile} 
+            hasActiveFile={!!activeFile}
+            variant={variant}
+          />
+        )}
         {variant === 'default' && (
           <TabBar 
             openFiles={openFiles}
@@ -685,4 +696,7 @@ export function Compiler({ initialCode, variant = 'default' }: CompilerProps) {
       </Dialog>
     </div>
   );
-}
+});
+
+CompilerWithRef.displayName = "Compiler";
+export const Compiler = CompilerWithRef;
