@@ -215,7 +215,6 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
 
                                     {segment.type === 'html' ? (
                                         <div className="space-y-2">
-                                            <Label>Text Content (HTML/Markdown)</Label>
                                             <Textarea
                                                 className="min-h-[120px] font-sans"
                                                 value={segment.content}
@@ -369,5 +368,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    
