@@ -4,11 +4,18 @@ export interface NoteSegment {
     content: string;
 }
 
+export interface PracticeQuestion {
+    question: string;
+    initialCode: string;
+    expectedOutput: string;
+}
+
 export interface Topic {
     id:string;
     title: string;
     notes: NoteSegment[];
     syntax: string;
+    practice: PracticeQuestion[];
     videoUrl?: string;
 }
 
@@ -143,7 +150,19 @@ console.log(age); // 22
 const country = "India";
 // country = "USA"; // ❌ Error: Assignment to constant variable
 console.log(country); // India
-`
+`,
+                        practice: [
+                            {
+                                question: "Declare a constant variable named `productName` with the value 'T-Shirt' and a `let` variable `price` with the value 25. Print both variables to the console.",
+                                initialCode: `// Your code here`,
+                                expectedOutput: `T-Shirt\n25`
+                            },
+                            {
+                                question: "Declare a `let` variable `quantity` with a value of 2. Then, on a new line, update `quantity` to 3. Finally, print the new value of `quantity`.",
+                                initialCode: `// Your code here`,
+                                expectedOutput: `3`
+                            }
+                        ]
                     }
                 ]
             },
@@ -185,7 +204,8 @@ console.log('Sum:', add(5, 3));
 // Arrow Function
 const multiply = (a, b) => a * b;
 console.log('Product:', multiply(4, 5));
-`
+`,
+                        practice: []
                     }
                 ]
             },

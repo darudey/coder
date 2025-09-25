@@ -4,84 +4,89 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import React from 'react';
-import type { RunResult } from '@/app/actions';
+import type { RunResult } from './compiler';
 import { DotLoader } from './dot-loader';
+import AnsiToHtml from '@/lib/ansi-to-html';
+import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 interface OutputDisplayProps {
   output: RunResult | null;
   isCompiling: boolean;
-  isAiChecking: boolean;
+  isAiChecking?: boolean;
+  expectedOutput?: string;
 }
-
-const renderStaticAnalysisError = (output: string) => {
-    const errorSections = output.replace('Static Analysis Errors:\n\n', '').split('\n\n---\n\n');
-    
-    return (
-        <div className="p-4 text-sm font-code text-green-600">
-            <h3 className="font-bold text-base mb-4">Static Analysis Errors</h3>
-            {errorSections.map((section, index) => {
-                const summaryMatch = section.match(/Summary: (.*)/);
-                const explanationMatch = section.match(/Explanation: ([\s\S]*)/);
-                const summary = summaryMatch ? summaryMatch[1] : 'Unknown Error';
-                const explanation = explanationMatch ? explanationMatch[1] : 'No details available.';
-
-                return (
-                    <div key={index} className="mb-4 last:mb-0">
-                        <p className="font-semibold mb-1">{summary}</p>
-                        <p className="whitespace-pre-wrap opacity-90">{explanation}</p>
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
-
 
 const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   output,
   isCompiling,
   isAiChecking,
+  expectedOutput,
 }) => {
-  const renderOutput = () => {
-    if (isCompiling) {
-      return (
-        <div className="flex items-center justify-center h-full">
-            {isAiChecking ? (
-                <>
-                    <p className="mr-4 text-muted-foreground">AI checking your error bro</p>
-                    <DotLoader className="w-12 text-primary" />
-                </>
-            ) : (
-                <>
-                    <DotLoader className="w-12 text-primary" />
-                    <p className="ml-4 text-muted-foreground">Running code...</p>
-                </>
-            )}
-        </div>
-      );
-    }
-    if (!output) {
-      return <p className="text-muted-foreground p-4">Click "Run" to execute the code and see the output here.</p>;
-    }
-
-    if (output.type === 'error' && output.output.startsWith('Static Analysis Errors')) {
-        return renderStaticAnalysisError(output.output);
-    }
-
+  const renderOutputContent = (content: string, type: 'result' | 'error' = 'result') => {
     return (
       <pre
-        className={`p-4 text-sm whitespace-pre-wrap font-code h-full`}
-        style={{ overflowWrap: 'anywhere', color: output.type === 'error' ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))' }}
-      >
-        {output.output}
-      </pre>
+        className={cn(
+            "p-4 text-sm whitespace-pre-wrap font-code h-full",
+            type === 'error' ? 'text-destructive' : 'text-foreground'
+        )}
+        style={{ overflowWrap: 'anywhere' }}
+        dangerouslySetInnerHTML={{ __html: AnsiToHtml(content) }}
+      />
     );
   };
+
+  const renderLoading = () => (
+    <div className="flex items-center justify-center h-full">
+        {isAiChecking ? (
+            <>
+                <p className="mr-4 text-muted-foreground">AI is analyzing your code...</p>
+                <DotLoader className="w-12 text-primary" />
+            </>
+        ) : (
+            <>
+                <DotLoader className="w-12 text-primary" />
+                <p className="ml-4 text-muted-foreground">Running code...</p>
+            </>
+        )}
+    </div>
+  );
+  
+  if (isCompiling) {
+      return renderLoading();
+  }
+
+  if (!output) {
+      return <p className="text-muted-foreground p-4">Click "Run" to execute the code and see the output here.</p>;
+  }
+
+  if (expectedOutput) {
+    return (
+        <Tabs defaultValue="user" className="flex flex-col h-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="user">Your Output</TabsTrigger>
+                <TabsTrigger value="required">Required Output</TabsTrigger>
+            </TabsList>
+            <TabsContent value="user" className="flex-grow overflow-hidden mt-0">
+                <ScrollArea className="h-full">
+                    {renderOutputContent(output.output, output.type)}
+                </ScrollArea>
+            </TabsContent>
+            <TabsContent value="required" className="flex-grow overflow-hidden mt-0">
+                <ScrollArea className="h-full">
+                    {renderOutputContent(expectedOutput)}
+                </ScrollArea>
+            </TabsContent>
+        </Tabs>
+    );
+  }
 
   return (
     <Card className="flex flex-col h-full overflow-hidden shadow-none border-0">
         <CardContent className="flex-grow p-0 overflow-hidden h-full">
-            <ScrollArea className="h-full">{renderOutput()}</ScrollArea>
+            <ScrollArea className="h-full">
+                {renderOutputContent(output.output, output.type)}
+            </ScrollArea>
         </CardContent>
     </Card>
   );

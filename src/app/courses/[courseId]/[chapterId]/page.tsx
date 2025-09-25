@@ -5,9 +5,9 @@ import { courses } from '@/lib/courses-data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
+import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState } from 'react';
 import {
     Tabs,
@@ -17,6 +17,8 @@ import {
   } from "@/components/ui/tabs"
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { EmbeddedCompiler } from '@/components/codeweave/embedded-compiler';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { OutputDisplay } from '@/components/codeweave/output-display';
 
 
 interface ChapterPageProps {
@@ -30,25 +32,49 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
   const params = React.use(paramsProp);
   const course = courses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
+  
   const syntaxCompilerRef = useRef<CompilerRef>(null);
   const practiceCompilerRef = useRef<CompilerRef>(null);
+  
   const [isCompiling, setIsCompiling] = useState(false);
   const [activeTab, setActiveTab] = useState('video');
+  const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
+
+  const [output, setOutput] = useState<RunResult | null>(null);
+  const [isResultOpen, setIsResultOpen] = useState(false);
 
   if (!course || !chapter) {
     notFound();
   }
 
   const topic = chapter.topics[0];
+  const practiceQuestions = topic.practice || [];
+  const currentPracticeQuestion = practiceQuestions[practiceQuestionIndex];
 
   const handleRunCode = async () => {
-    const ref = activeTab === 'syntax' ? syntaxCompilerRef : practiceCompilerRef;
-    if (ref.current) {
+    let ref: React.RefObject<CompilerRef> | null = null;
+    if (activeTab === 'syntax') ref = syntaxCompilerRef;
+    if (activeTab === 'practice') ref = practiceCompilerRef;
+
+    if (ref?.current) {
         setIsCompiling(true);
-        await ref.current.run();
+        setIsResultOpen(true);
+        setOutput(null);
+
+        const result = await ref.current.run();
+        setOutput(result);
         setIsCompiling(false);
     }
   }
+  
+  const handlePrevQuestion = () => {
+    setPracticeQuestionIndex(prev => Math.max(0, prev - 1));
+  }
+
+  const handleNextQuestion = () => {
+    setPracticeQuestionIndex(prev => Math.min(practiceQuestions.length - 1, prev + 1));
+  }
+
 
   if (!topic) {
     return (
@@ -139,16 +165,54 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                     </Card>
                 </TabsContent>
                 <TabsContent value="practice" className="mt-4 h-full">
-                    <Card className="h-full flex flex-col rounded-none border-x-0">
-                        <CardContent className="flex-grow overflow-auto p-0">
-                            <div className="h-full min-h-[400px]">
-                               <Compiler ref={practiceCompilerRef} initialCode={`// Try it yourself!\\n// Modify the code from the previous example.\\n\\n${topic.syntax}`} variant="minimal" hideHeader />
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {currentPracticeQuestion ? (
+                        <>
+                            <Card className="rounded-none border-x-0 border-t-0">
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <CardTitle className="text-sm">Practice Question {practiceQuestionIndex + 1}</CardTitle>
+                                            <p className="text-xs text-muted-foreground mt-1">{currentPracticeQuestion.question}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="icon" onClick={handlePrevQuestion} disabled={practiceQuestionIndex === 0}>
+                                                <ChevronLeft className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="outline" size="icon" onClick={handleNextQuestion} disabled={practiceQuestionIndex === practiceQuestions.length - 1}>
+                                                <ChevronRight className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                            <Card className="h-full flex flex-col rounded-none border-x-0">
+                                <CardContent className="flex-grow overflow-auto p-0">
+                                    <div className="h-full min-h-[400px]">
+                                    <Compiler ref={practiceCompilerRef} initialCode={currentPracticeQuestion.initialCode} variant="minimal" hideHeader />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </>
+                    ) : (
+                        <div className="text-center text-muted-foreground p-8">No practice questions available for this topic yet.</div>
+                    )}
                 </TabsContent>
             </div>
         </Tabs>
+        <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
+            <DialogContent className="max-w-2xl h-3/4 flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Result</DialogTitle>
+            </DialogHeader>
+            <div className="flex-grow overflow-hidden">
+                <OutputDisplay 
+                    output={output} 
+                    isCompiling={isCompiling}
+                    expectedOutput={activeTab === 'practice' ? currentPracticeQuestion?.expectedOutput : undefined}
+                />
+            </div>
+            </DialogContent>
+        </Dialog>
       </div>
     </>
   );

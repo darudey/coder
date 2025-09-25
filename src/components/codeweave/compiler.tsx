@@ -54,7 +54,8 @@ interface CompilerProps {
 }
 
 export interface CompilerRef {
-    run: () => Promise<void>;
+    run: () => Promise<RunResult>;
+    getCode: () => string;
 }
 
 const getInitialFileSystem = (initialCode?: string | null): FileSystem => {
@@ -336,23 +337,23 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   
   useEffect(() => {
     if (!isMounted) return;
-    if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
-      const codeToSet = fileSystem[activeFile.folderName][activeFile.fileName];
-      // Only update if the code is actually different to avoid cycles and overwrites.
-      if (codeToSet !== code) {
-          setHistory([codeToSet]);
-          setHistoryIndex(0);
-      }
-    } else if (!activeFile && code !== '') {
-      // No active file, clear the editor
-      setHistory(['']);
-      setHistoryIndex(0);
+    
+    let codeToSet = '';
+    if (variant === 'minimal' && initialCode) {
+      codeToSet = initialCode;
+    } else if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
+      codeToSet = fileSystem[activeFile.folderName][activeFile.fileName];
+    }
+
+    if (codeToSet !== code) {
+        setHistory([codeToSet]);
+        setHistoryIndex(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFile, isMounted]);
+  }, [activeFile, isMounted, initialCode, variant]);
 
   useEffect(() => {
-    if (!isMounted || initialCode) return;
+    if (!isMounted || initialCode || variant === 'minimal') return;
     if (openFiles.length > 0) {
         localStorage.setItem('openFiles', JSON.stringify(openFiles));
     } else {
@@ -363,13 +364,16 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     } else {
         localStorage.removeItem('activeFileIndex');
     }
-  }, [openFiles, activeFileIndex, isMounted, initialCode]);
+  }, [openFiles, activeFileIndex, isMounted, initialCode, variant]);
 
-  const handleRun = useCallback(async () => {
-    setIsCompiling(true);
-    setIsResultOpen(true);
-    setOutput(null); // Clear previous output
-    let result: RunResult | null = null;
+  const handleRun = useCallback(async (): Promise<RunResult> => {
+    if (variant !== 'minimal') {
+        setIsCompiling(true);
+        setIsResultOpen(true);
+        setOutput(null); // Clear previous output
+    }
+    
+    let result: RunResult;
     
     if (settings.errorChecking) {
       setIsAiChecking(true);
@@ -379,17 +383,21 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         // Here we'd call the new AI action
       }
       setIsAiChecking(false);
-    }
-
-    if (!result) {
+    } else {
         result = await runCodeOnClient(code);
     }
-    setOutput(result);
-    setIsCompiling(false);
-  }, [code, settings.errorChecking]);
+
+    if (variant !== 'minimal') {
+        setOutput(result);
+        setIsCompiling(false);
+    }
+    
+    return result;
+  }, [code, settings.errorChecking, variant]);
 
   useImperativeHandle(ref, () => ({
-    run: handleRun
+    run: handleRun,
+    getCode: () => code,
   }));
 
   const handleSaveRequest = useCallback(() => {
@@ -471,7 +479,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         if (!newFs[newActiveFile.folderName]) {
             newFs[newActiveFile.folderName] = {};
         }
-        newFs[newActiveFile.folderName][newActiveFile.fileName] = code;
+        newFs[newActiveFile.folderName][newFile.fileName] = code;
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
@@ -569,9 +577,11 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     setSettings({ ...settings, errorChecking: value });
   };
 
-  if (!isMounted) {
-    return null; // Or a loading spinner
+  if (!isMounted && variant === 'default') {
+    return null; // Or a loading spinner for the main compiler
   }
+
+  const editorVisible = variant === 'default' ? !!activeFile : true;
 
   return (
     <div className="bg-background">
@@ -600,7 +610,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         )}
       </div>
       <div className="p-4 grid grid-cols-1 gap-4">
-        {activeFile ? (
+        {editorVisible ? (
             <CodeEditor
                 code={code || ''}
                 onCodeChange={setCode}
