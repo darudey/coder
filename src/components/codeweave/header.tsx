@@ -117,15 +117,3 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
-
-    
-
-
-
-
-
-
-
-
-
-

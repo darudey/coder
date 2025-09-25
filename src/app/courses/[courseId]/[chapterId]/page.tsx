@@ -104,7 +104,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                 </Card>
             </TabsContent>
             <TabsContent value="syntax" className="flex-grow mt-4 relative">
-                 <Button onClick={() => handleRunCode(syntaxCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-10 h-8 px-3">
+                 <Button onClick={() => handleRunCode(syntaxCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-20 h-8 px-3">
                     {isCompiling ? (
                         <DotLoader />
                     ) : (
@@ -123,7 +123,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                 </Card>
             </TabsContent>
             <TabsContent value="practice" className="flex-grow mt-4 relative">
-                <Button onClick={() => handleRunCode(practiceCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-10 h-8 px-3">
+                <Button onClick={() => handleRunCode(practiceCompilerRef)} disabled={isCompiling} className="absolute top-2 right-2 z-20 h-8 px-3">
                     {isCompiling ? (
                         <DotLoader />
                     ) : (
