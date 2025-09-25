@@ -16,6 +16,7 @@ import {
     TabsTrigger,
   } from "@/components/ui/tabs"
 import { DotLoader } from '@/components/codeweave/dot-loader';
+import { EmbeddedCompiler } from '@/components/codeweave/embedded-compiler';
 
 
 interface ChapterPageProps {
@@ -114,7 +115,17 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="overflow-auto p-6">
-                            <div dangerouslySetInnerHTML={{ __html: topic.notes }} className="prose dark:prose-invert max-w-none" />
+                            <div className="prose dark:prose-invert max-w-none">
+                                {topic.notes.map((segment, index) => {
+                                    if (segment.type === 'html') {
+                                        return <div key={index} dangerouslySetInnerHTML={{ __html: segment.content }} />;
+                                    }
+                                    if (segment.type === 'code') {
+                                        return <EmbeddedCompiler key={index} initialCode={segment.content} />;
+                                    }
+                                    return null;
+                                })}
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -131,7 +142,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
                     <Card className="h-full flex flex-col rounded-none border-x-0">
                         <CardContent className="flex-grow overflow-auto p-0">
                             <div className="h-full min-h-[400px]">
-                               <Compiler ref={practiceCompilerRef} initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} variant="minimal" hideHeader />
+                               <Compiler ref={practiceCompilerRef} initialCode={`// Try it yourself!\\n// Modify the code from the previous example.\\n\\n${topic.syntax}`} variant="minimal" hideHeader />
                             </div>
                         </CardContent>
                     </Card>
