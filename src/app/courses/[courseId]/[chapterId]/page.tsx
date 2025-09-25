@@ -8,13 +8,6 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, Video, StickyNote, Code, BrainCircuit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler } from '@/components/codeweave/compiler';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import React from 'react';
 import {
     Tabs,
@@ -113,30 +106,19 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                 </Card>
             </TabsContent>
             <TabsContent value="practice" className="flex-grow mt-4">
-                <Dialog>
-                    <Card className="h-full flex flex-col">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-3 text-sm">
-                                <BrainCircuit className="w-5 h-5 text-primary" />
-                                Practice
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-grow flex flex-col items-center justify-center text-center">
-                            <p className="text-muted-foreground mb-4">Ready to try it yourself? Open the code editor to start practicing.</p>
-                             <DialogTrigger asChild>
-                                <Button>Start Practice</Button>
-                             </DialogTrigger>
-                        </CardContent>
-                    </Card>
-                    <DialogContent className="w-screen h-screen max-w-full max-h-full p-0 m-0 rounded-none border-0">
-                        <DialogHeader className="sr-only">
-                            <DialogTitle>Practice Editor</DialogTitle>
-                        </DialogHeader>
-                        <div className="h-full w-full bg-background">
-                            <Compiler initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} variant="minimal" />
+                <Card className="h-full flex flex-col">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-3 text-sm">
+                            <BrainCircuit className="w-5 h-5 text-primary" />
+                            Practice
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow overflow-auto p-0">
+                        <div className="h-full min-h-[400px]">
+                           <Compiler initialCode={`// Try it yourself!\n// Modify the code from the previous example.\n\n${topic.syntax}`} variant="minimal" />
                         </div>
-                    </DialogContent>
-                </Dialog>
+                    </CardContent>
+                </Card>
             </TabsContent>
         </Tabs>
     </div>
