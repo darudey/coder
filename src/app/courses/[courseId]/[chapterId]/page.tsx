@@ -43,8 +43,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   }
 
   return (
-    <div className="container mx-auto flex flex-col h-[calc(100vh-4rem)] p-4 md:p-8">
-      <header className="mb-4">
+    <div className="flex flex-col h-[calc(100vh-4rem)] py-4 md:py-8">
+      <header className="mb-4 px-4 md:px-8">
         <Button asChild variant="outline" size="sm" className="mb-2">
           <Link href={`/courses/${course.id}`}>
             <ChevronLeft className="w-4 h-4 mr-2" />
@@ -56,13 +56,13 @@ export default function ChapterPage({ params }: ChapterPageProps) {
       </header>
 
         <Tabs defaultValue="video" className="flex flex-col flex-grow">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
                 <TabsTrigger value="syntax"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>
                 <TabsTrigger value="practice"><BrainCircuit className="w-4 h-4 mr-2" />Practice</TabsTrigger>
             </TabsList>
-            <TabsContent value="video" className="flex-grow mt-4">
+            <TabsContent value="video" className="flex-grow mt-4 px-4 md:px-8">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3 text-sm">
@@ -77,7 +77,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="notes" className="flex-grow mt-4">
+            <TabsContent value="notes" className="flex-grow mt-4 px-4 md:px-8">
                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3 text-sm">
@@ -91,8 +91,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                 </Card>
             </TabsContent>
             <TabsContent value="syntax" className="flex-grow mt-4">
-                 <Card className="h-full flex flex-col">
-                    <CardHeader>
+                 <Card className="h-full flex flex-col rounded-none border-x-0">
+                    <CardHeader className="px-4 md:px-8">
                         <CardTitle className="flex items-center gap-3 text-sm">
                             <Code className="w-5 h-5 text-primary" />
                             Syntax Example
@@ -106,8 +106,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                 </Card>
             </TabsContent>
             <TabsContent value="practice" className="flex-grow mt-4">
-                <Card className="h-full flex flex-col">
-                    <CardHeader>
+                <Card className="h-full flex flex-col rounded-none border-x-0">
+                    <CardHeader className="px-4 md:px-8">
                         <CardTitle className="flex items-center gap-3 text-sm">
                             <BrainCircuit className="w-5 h-5 text-primary" />
                             Practice
