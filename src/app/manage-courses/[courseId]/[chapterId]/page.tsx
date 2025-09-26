@@ -236,8 +236,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                             onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
                                         />
                                     ) : (
-                                        <div className="space-y-2 p-4">
-                                            <Label>Code Block</Label>
+                                        <div className="space-y-2">
+                                            <Label className="px-4 pt-2">Code Block</Label>
                                             <div className="min-h-[120px]">
                                                 <Compiler
                                                     initialCode={segment.content}
@@ -381,5 +381,7 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    
 
     
