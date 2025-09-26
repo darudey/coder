@@ -19,6 +19,7 @@ import { EmbeddedCompiler } from '@/components/codeweave/embedded-compiler';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { OutputDisplay } from '@/components/codeweave/output-display';
 import { useCourses } from '@/hooks/use-courses';
+import { marked } from 'marked';
 
 
 interface ChapterPageProps {
@@ -154,7 +155,8 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                             <div className="prose dark:prose-invert max-w-none">
                                 {topic.notes.map((segment, index) => {
                                     if (segment.type === 'html') {
-                                        return <div key={index} dangerouslySetInnerHTML={{ __html: segment.content }} />;
+                                        const htmlContent = marked(segment.content);
+                                        return <div key={index} dangerouslySetInnerHTML={{ __html: htmlContent }} />;
                                     }
                                     if (segment.type === 'code') {
                                         return <EmbeddedCompiler key={index} initialCode={segment.content} />;

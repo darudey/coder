@@ -230,14 +230,17 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     </div>
 
                                     {segment.type === 'html' ? (
-                                        <AutoResizingTextarea
-                                            className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
-                                            value={segment.content}
-                                            onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
-                                        />
+                                        <div className="space-y-2">
+                                            <Label className="px-4 pt-2 text-xs text-muted-foreground">Markdown</Label>
+                                            <AutoResizingTextarea
+                                                className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
+                                                value={segment.content}
+                                                onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
+                                            />
+                                        </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            <Label className="px-4 pt-2">Code Block</Label>
+                                            <Label className="px-4 pt-2 text-xs text-muted-foreground">Code Block</Label>
                                             <div className="min-h-[120px]">
                                                 <Compiler
                                                     initialCode={segment.content}
@@ -253,7 +256,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <div className="absolute bottom-[-16px] left-1/2 -translate-x-1/2 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
                                             <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('html', index)}>
-                                                <Plus className="w-3 h-3 mr-1" /> Text
+                                                <Plus className="w-3 h-3 mr-1" /> Markdown
                                             </Button>
                                             <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('code', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Code
@@ -267,7 +270,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <p>No content yet. Add your first block.</p>
                                      <div className="flex items-center justify-center gap-2 mt-2">
                                         <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('html', -1)}>
-                                            <Plus className="w-3 h-3 mr-1" /> Add Text
+                                            <Plus className="w-3 h-3 mr-1" /> Add Markdown
                                         </Button>
                                         <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('code', -1)}>
                                             <Plus className="w-3 h-3 mr-1" /> Add Code
