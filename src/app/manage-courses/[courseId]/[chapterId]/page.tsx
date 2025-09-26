@@ -236,12 +236,12 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
 
                                     {segment.type === 'html' ? (
                                         <AutoResizingTextarea
-                                            className="min-h-[120px] font-sans w-full overflow-hidden resize-none"
+                                            className="min-h-[120px] w-full overflow-hidden resize-none"
                                             value={segment.content}
                                             onChange={(e) => dispatch({ type: 'UPDATE_NOTE_SEGMENT', payload: { index, content: e.target.value } })}
                                         />
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 p-4">
                                             <Label>Code Block</Label>
                                             <div className="min-h-[120px]">
                                                 <Compiler
