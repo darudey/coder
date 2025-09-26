@@ -200,7 +200,7 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {(topic.notes || []).map((segment, index) => (
-                                <div key={index} className="relative group border rounded-md p-4">
+                                <div key={index} className="relative group border rounded-md">
                                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border">
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dispatch({ type: 'MOVE_NOTE_SEGMENT', payload: { index, direction: 'up' } })} disabled={index === 0}>
                                             <ArrowUp className="w-4 h-4" />
