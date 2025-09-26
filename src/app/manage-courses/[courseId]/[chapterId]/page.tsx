@@ -24,26 +24,38 @@ import { useCourses } from '@/hooks/use-courses';
 import { ChevronRight } from 'lucide-react';
 
 
-const AutoResizingTextarea = ({ value, onChange, className }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string }) => {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string }>(({ value, onChange, className, ...props }, ref) => {
+    const internalRef = useRef<HTMLTextAreaElement>(null);
+    const combinedRef = (el: HTMLTextAreaElement) => {
+        (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+        if (typeof ref === 'function') {
+            ref(el);
+        } else if (ref) {
+            ref.current = el;
+        }
+    };
+
 
     useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        if (internalRef.current) {
+            internalRef.current.style.height = 'auto';
+            internalRef.current.style.height = `${internalRef.current.scrollHeight}px`;
         }
     }, [value]);
 
     return (
         <Textarea
-            ref={textareaRef}
+            ref={combinedRef}
             value={value}
             onChange={onChange}
             className={className}
             rows={1}
+            {...props}
         />
     );
-};
+});
+AutoResizingTextarea.displayName = 'AutoResizingTextarea';
+
 
 
 interface ManageTopicPageProps {
@@ -241,13 +253,13 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     ) : (
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Code Block</Label>
-                                            <div className="min-h-[120px]">
+                                            <div className="min-h-[120px] p-0">
                                                 <Compiler
                                                     initialCode={segment.content}
                                                     onCodeChange={(code) => handleNoteSegmentChange(index, code)}
                                                     variant="minimal"
                                                     hideHeader
-                                                    key={`note-compiler-${index}`}
+                                                    key={`note-compiler-${topic.id}-${index}`}
                                                 />
                                             </div>
                                         </div>
@@ -292,7 +304,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     initialCode={topic.syntax} 
                                     variant="minimal" 
                                     hideHeader 
-                                    key={topic.id} // Force re-mount on topic change
+                                    key={`syntax-compiler-${topic.id}`}
                                     onCodeChange={(code) => handleFieldChange('syntax', code)}
                                 />
                             </div>
@@ -348,15 +360,13 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                 </Card>
                                 <Card className="h-full flex flex-col rounded-none border-x-0 border-l">
                                     <CardHeader><CardTitle className="text-sm">Expected Output</CardTitle></CardHeader>
-                                    <CardContent className="flex-grow overflow-auto p-0">
-                                         <div className="h-full min-h-[300px]">
-                                            <Compiler 
-                                                initialCode={currentPracticeQuestion.expectedOutput} 
-                                                variant="minimal" hideHeader 
-                                                key={`expected-${currentPracticeQuestion.id}`}
-                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'expectedOutput', code)}
-                                            />
-                                        </div>
+                                    <CardContent className="flex-grow overflow-auto p-4">
+                                        <AutoResizingTextarea
+                                            className="w-full h-full min-h-[300px] resize-none focus-visible:ring-0 focus-visible:ring-offset-0 border-0 p-0 font-code text-sm"
+                                            value={currentPracticeQuestion.expectedOutput}
+                                            onChange={(e) => handlePracticeQuestionChange(practiceQuestionIndex, 'expectedOutput', e.target.value)}
+                                            placeholder="The expected console output..."
+                                        />
                                     </CardContent>
                                 </Card>
                             </div>
@@ -384,7 +394,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    
-
-    
