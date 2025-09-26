@@ -68,6 +68,27 @@ function topicReducer(state: Topic, action: { type: string; payload: any }) : To
   }
 }
 
+const AutoResizingTextarea = ({ value, onChange, className }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string }) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [value]);
+
+    return (
+        <Textarea
+            ref={textareaRef}
+            value={value}
+            onChange={onChange}
+            className={className}
+            rows={1}
+        />
+    );
+};
+
 
 interface ManageTopicPageProps {
   params: {
@@ -214,13 +235,11 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                                     </div>
 
                                     {segment.type === 'html' ? (
-                                        <div className="space-y-2">
-                                            <Textarea
-                                                className="min-h-[120px] font-sans w-full"
-                                                value={segment.content}
-                                                onChange={(e) => dispatch({ type: 'UPDATE_NOTE_SEGMENT', payload: { index, content: e.target.value } })}
-                                            />
-                                        </div>
+                                        <AutoResizingTextarea
+                                            className="min-h-[120px] font-sans w-full overflow-hidden resize-none"
+                                            value={segment.content}
+                                            onChange={(e) => dispatch({ type: 'UPDATE_NOTE_SEGMENT', payload: { index, content: e.target.value } })}
+                                        />
                                     ) : (
                                         <div className="space-y-2">
                                             <Label>Code Block</Label>
@@ -370,4 +389,6 @@ declare module '@/components/codeweave/compiler' {
 }
 
     
+    
+
     
