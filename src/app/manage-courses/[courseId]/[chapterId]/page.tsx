@@ -56,104 +56,89 @@ interface ManageTopicPageProps {
 export default function ManageTopicPage({ params }: ManageTopicPageProps) {
   const { toast } = useToast();
   const { courses, updateTopic } = useCourses();
-  const router = useRouter();
 
-  const [course, setCourse] = useState(() => courses.find((c) => c.id === params.courseId));
-  const [chapter, setChapter] = useState(() => course?.chapters.find((ch) => ch.id === params.chapterId));
-  const [topic, setTopic] = useState(() => chapter?.topics[0]);
+  // Find the current course, chapter, and topic directly from the context on each render
+  const course = courses.find((c) => c.id === params.courseId);
+  const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
+  // Assuming one topic per chapter for now, as per the original structure
+  const topic = chapter?.topics[0];
   
   const [activeTab, setActiveTab] = useState('video');
   const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
 
-  const syntaxCompilerRef = useRef<CompilerRef>(null);
-  
+  // If data is not found, show notFound page. This can happen if the URL is invalid.
   useEffect(() => {
-    const foundCourse = courses.find((c) => c.id === params.courseId);
-    setCourse(foundCourse);
-    const foundChapter = foundCourse?.chapters.find((ch) => ch.id === params.chapterId);
-    setChapter(foundChapter);
-    const foundTopic = foundChapter?.topics[0];
-    setTopic(foundTopic ? { ...foundTopic } : undefined); // Create a mutable copy
-  }, [params.courseId, params.chapterId, courses]);
+    if (!course || !chapter || !topic) {
+        notFound();
+    }
+  }, [course, chapter, topic]);
+
+  // When topic changes (e.g. via navigation), reset practice question index
+  useEffect(() => {
+      setPracticeQuestionIndex(0);
+  }, [topic?.id])
 
   if (!course || !chapter || !topic) {
-    // This can flash briefly while state is setting, which is fine
-    return null;
+    // Render nothing or a loader while waiting for useEffect to trigger notFound
+    return null; 
   }
 
   const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
 
+  // Helper function to create an updated topic object and call the context update function
+  const setTopic = (updatedTopicData: Partial<Topic>) => {
+    updateTopic(course.id, chapter.id, topic.id, { ...topic, ...updatedTopicData });
+  };
+  
   const handleFieldChange = (field: keyof Topic, value: any) => {
-    setTopic(prev => prev ? { ...prev, [field]: value } : undefined);
+    setTopic({ [field]: value });
   };
   
   const handlePracticeQuestionChange = (index: number, field: keyof PracticeQuestion, value: string) => {
-    setTopic(prev => {
-        if (!prev) return undefined;
-        const newPractice = [...prev.practice];
-        newPractice[index] = { ...newPractice[index], [field]: value };
-        return { ...prev, practice: newPractice };
-    });
+    const newPractice = [...topic.practice];
+    newPractice[index] = { ...newPractice[index], [field]: value };
+    setTopic({ practice: newPractice });
   };
 
   const handleAddPracticeQuestion = () => {
-    setTopic(prev => {
-        if (!prev) return undefined;
-        const newPractice = [...prev.practice, { id: nanoid(), question: '', initialCode: '', expectedOutput: '' }];
-        setPracticeQuestionIndex(newPractice.length - 1);
-        return { ...prev, practice: newPractice };
-    });
+    const newPractice = [...topic.practice, { id: nanoid(), question: '', initialCode: '', expectedOutput: '' }];
+    setPracticeQuestionIndex(newPractice.length - 1);
+    setTopic({ practice: newPractice });
   }
 
   const handleDeletePracticeQuestion = (index: number) => {
-    setTopic(prev => {
-        if (!prev) return undefined;
-        const newPractice = prev.practice.filter((_, i) => i !== index);
-        if (practiceQuestionIndex >= index && practiceQuestionIndex > 0) {
-            setPracticeQuestionIndex(p => p - 1);
-        }
-        return { ...prev, practice: newPractice };
-    });
+    const newPractice = topic.practice.filter((_, i) => i !== index);
+    if (practiceQuestionIndex >= index && practiceQuestionIndex > 0) {
+        setPracticeQuestionIndex(p => p - 1);
+    }
+    setTopic({ practice: newPractice });
   }
 
   const handleNoteSegmentChange = (index: number, content: string) => {
-      setTopic(prev => {
-          if (!prev) return undefined;
-          const newNotes = prev.notes.map((segment, i) => i === index ? { ...segment, content } : segment);
-          return { ...prev, notes: newNotes };
-      })
+    const newNotes = topic.notes.map((segment, i) => i === index ? { ...segment, content } : segment);
+    setTopic({ notes: newNotes });
   }
 
   const handleAddNoteSegment = (type: 'html' | 'code', index: number) => {
-      setTopic(prev => {
-          if (!prev) return undefined;
-          const newSegment: NoteSegment = { type, content: '' };
-          const newNotes = [...prev.notes];
-          newNotes.splice(index + 1, 0, newSegment);
-          return { ...prev, notes: newNotes };
-      });
+    const newSegment: NoteSegment = { type, content: '' };
+    const newNotes = [...topic.notes];
+    newNotes.splice(index + 1, 0, newSegment);
+    setTopic({ notes: newNotes });
   }
 
   const handleDeleteNoteSegment = (index: number) => {
-      setTopic(prev => {
-          if (!prev) return undefined;
-          const newNotes = prev.notes.filter((_, i) => i !== index);
-          return { ...prev, notes: newNotes };
-      });
+    const newNotes = topic.notes.filter((_, i) => i !== index);
+    setTopic({ notes: newNotes });
   }
 
-    const handleMoveNoteSegment = (index: number, direction: 'up' | 'down') => {
-        setTopic(prev => {
-            if (!prev) return undefined;
-            const newNotes = [...prev.notes];
-            const newIndex = direction === 'up' ? index - 1 : index + 1;
-            if (newIndex < 0 || newIndex >= newNotes.length) return prev;
-            const [movedItem] = newNotes.splice(index, 1);
-            newNotes.splice(newIndex, 0, movedItem);
-            return { ...prev, notes: newNotes };
-        });
-    };
-
+  const handleMoveNoteSegment = (index: number, direction: 'up' | 'down') => {
+    const newNotes = [...topic.notes];
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= newNotes.length) return;
+    const [movedItem] = newNotes.splice(index, 1);
+    newNotes.splice(newIndex, 0, movedItem);
+    setTopic({ notes: newNotes });
+  };
 
   const handlePrevQuestion = () => {
     setPracticeQuestionIndex(prev => Math.max(0, prev - 1));
@@ -163,9 +148,10 @@ export default function ManageTopicPage({ params }: ManageTopicPageProps) {
     setPracticeQuestionIndex(prev => Math.min((topic.practice?.length || 0) - 1, prev + 1));
   }
 
+  // Save changes is now implicit with every change, but a manual save button can provide user assurance.
   const handleSaveChanges = () => {
-    if (!topic) return;
-    updateTopic(course!.id, chapter!.id, topic.id, topic);
+    // The data is already updated in the context, which saves to localStorage.
+    // We can just show a toast notification.
     toast({
         title: "Content Saved",
         description: `Changes to "${topic.title}" have been saved.`,
@@ -394,3 +380,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    
