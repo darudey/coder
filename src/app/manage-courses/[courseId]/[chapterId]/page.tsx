@@ -198,7 +198,7 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                         <CardHeader>
                             <CardTitle className="text-sm">Topic Notes</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
                                 <div key={index} className="relative group border rounded-md">
                                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border">
