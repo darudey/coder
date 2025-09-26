@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { courses as initialCourses, type Course } from '@/lib/courses-data';
+import { type Course } from '@/lib/courses-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,11 +31,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { nanoid } from 'nanoid';
 import Link from 'next/link';
+import { useCourses } from '@/hooks/use-courses';
 
 export default function ManageCoursesPage() {
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const { courses, addCourse, updateCourse, deleteCourse } = useCourses();
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [newCourse, setNewCourse] = useState({ title: '', description: '' });
   
@@ -45,7 +45,7 @@ export default function ManageCoursesPage() {
   const { toast } = useToast();
 
   const handleDelete = (courseId: string) => {
-    setCourses(prevCourses => prevCourses.filter(course => course.id !== courseId));
+    deleteCourse(courseId);
     toast({
         title: "Course Deleted",
         description: "The course has been removed.",
@@ -62,14 +62,7 @@ export default function ManageCoursesPage() {
         return;
     }
 
-    const newCourseData: Course = {
-        id: nanoid(),
-        title: newCourse.title,
-        description: newCourse.description,
-        chapters: [],
-    };
-    
-    setCourses(prevCourses => [...prevCourses, newCourseData]);
+    addCourse(newCourse.title, newCourse.description);
     
     toast({
         title: "Course Created",
@@ -97,11 +90,7 @@ export default function ManageCoursesPage() {
         return;
     }
 
-    setCourses(prevCourses => 
-        prevCourses.map(course => 
-            course.id === editingCourse.id ? editingCourse : course
-        )
-    );
+    updateCourse(editingCourse.id, editingCourse);
 
     toast({
         title: "Course Updated",

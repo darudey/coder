@@ -1,14 +1,14 @@
 
 'use client';
 
-import { courses as initialCourses, type Course, type Chapter, type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
+import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
-import React, { useRef, useState, useReducer, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
     Tabs,
     TabsContent,
@@ -20,53 +20,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
+import { useCourses } from '@/hooks/use-courses';
+import { ChevronRight } from 'lucide-react';
 
-// This is a simplified reducer for state management
-function topicReducer(state: Topic, action: { type: string; payload: any }) : Topic {
-  switch (action.type) {
-    case 'SET_FIELD':
-      return { ...state, [action.payload.field]: action.payload.value };
-    case 'SET_PRACTICE_QUESTION':
-      const newPractice = [...state.practice];
-      newPractice[action.payload.index] = { ...newPractice[action.payload.index], [action.payload.field]: action.payload.value };
-      return { ...state, practice: newPractice };
-    case 'ADD_PRACTICE_QUESTION':
-      return { ...state, practice: [...state.practice, { id: nanoid(), question: '', initialCode: '', expectedOutput: '' }] };
-    case 'DELETE_PRACTICE_QUESTION':
-        return {...state, practice: state.practice.filter((_, i) => i !== action.payload.index)};
-    
-    case 'ADD_NOTE_SEGMENT': {
-        const { type, index } = action.payload;
-        const newSegment: NoteSegment = { type, content: '' };
-        const newNotes = [...state.notes];
-        newNotes.splice(index + 1, 0, newSegment);
-        return { ...state, notes: newNotes };
-    }
-    case 'UPDATE_NOTE_SEGMENT': {
-        const { index, content } = action.payload;
-        const newNotes = state.notes.map((segment, i) => 
-            i === index ? { ...segment, content } : segment
-        );
-        return { ...state, notes: newNotes };
-    }
-    case 'DELETE_NOTE_SEGMENT': {
-        const newNotes = state.notes.filter((_, i) => i !== action.payload.index);
-        return { ...state, notes: newNotes };
-    }
-    case 'MOVE_NOTE_SEGMENT': {
-        const { index, direction } = action.payload;
-        const newNotes = [...state.notes];
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= newNotes.length) return state;
-        const [movedItem] = newNotes.splice(index, 1);
-        newNotes.splice(newIndex, 0, movedItem);
-        return { ...state, notes: newNotes };
-    }
-
-    default:
-      return state;
-  }
-}
 
 const AutoResizingTextarea = ({ value, onChange, className }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -97,54 +53,107 @@ interface ManageTopicPageProps {
   };
 }
 
-export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageProps) {
-  const params = React.use(paramsProp);
+export default function ManageTopicPage({ params }: ManageTopicPageProps) {
   const { toast } = useToast();
-  const course = initialCourses.find((c) => c.id === params.courseId);
-  const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
-  
-  // For now, we'll just edit the first topic. Topic selection will come next.
-  const firstTopic = chapter?.topics[0];
+  const { courses, updateTopic } = useCourses();
+  const router = useRouter();
 
-  const [topic, dispatch] = useReducer(topicReducer, firstTopic || {} as Topic);
+  const [course, setCourse] = useState(() => courses.find((c) => c.id === params.courseId));
+  const [chapter, setChapter] = useState(() => course?.chapters.find((ch) => ch.id === params.chapterId));
+  const [topic, setTopic] = useState(() => chapter?.topics[0]);
+  
   const [activeTab, setActiveTab] = useState('video');
   const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
 
   const syntaxCompilerRef = useRef<CompilerRef>(null);
-
+  
   useEffect(() => {
-    // When switching practice questions, update the syntax editor if needed
-    if (activeTab === 'syntax' && syntaxCompilerRef.current) {
-        // This is a bit of a hack to force the editor to update.
-        // A better solution would involve a key change or a dedicated method.
-    }
-  }, [practiceQuestionIndex, activeTab]);
+    const foundCourse = courses.find((c) => c.id === params.courseId);
+    setCourse(foundCourse);
+    const foundChapter = foundCourse?.chapters.find((ch) => ch.id === params.chapterId);
+    setChapter(foundChapter);
+    const foundTopic = foundChapter?.topics[0];
+    setTopic(foundTopic ? { ...foundTopic } : undefined); // Create a mutable copy
+  }, [params.courseId, params.chapterId, courses]);
 
   if (!course || !chapter || !topic) {
-    notFound();
+    // This can flash briefly while state is setting, which is fine
+    return null;
   }
 
   const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
 
   const handleFieldChange = (field: keyof Topic, value: any) => {
-    dispatch({ type: 'SET_FIELD', payload: { field, value } });
+    setTopic(prev => prev ? { ...prev, [field]: value } : undefined);
   };
   
   const handlePracticeQuestionChange = (index: number, field: keyof PracticeQuestion, value: string) => {
-    dispatch({ type: 'SET_PRACTICE_QUESTION', payload: { index, field, value } });
+    setTopic(prev => {
+        if (!prev) return undefined;
+        const newPractice = [...prev.practice];
+        newPractice[index] = { ...newPractice[index], [field]: value };
+        return { ...prev, practice: newPractice };
+    });
   };
 
   const handleAddPracticeQuestion = () => {
-    dispatch({ type: 'ADD_PRACTICE_QUESTION', payload: null });
-    setPracticeQuestionIndex(topic.practice.length);
+    setTopic(prev => {
+        if (!prev) return undefined;
+        const newPractice = [...prev.practice, { id: nanoid(), question: '', initialCode: '', expectedOutput: '' }];
+        setPracticeQuestionIndex(newPractice.length - 1);
+        return { ...prev, practice: newPractice };
+    });
   }
 
   const handleDeletePracticeQuestion = (index: number) => {
-    dispatch({ type: 'DELETE_PRACTICE_QUESTION', payload: { index } });
-    if (practiceQuestionIndex >= index && practiceQuestionIndex > 0) {
-        setPracticeQuestionIndex(prev => prev - 1);
-    }
+    setTopic(prev => {
+        if (!prev) return undefined;
+        const newPractice = prev.practice.filter((_, i) => i !== index);
+        if (practiceQuestionIndex >= index && practiceQuestionIndex > 0) {
+            setPracticeQuestionIndex(p => p - 1);
+        }
+        return { ...prev, practice: newPractice };
+    });
   }
+
+  const handleNoteSegmentChange = (index: number, content: string) => {
+      setTopic(prev => {
+          if (!prev) return undefined;
+          const newNotes = prev.notes.map((segment, i) => i === index ? { ...segment, content } : segment);
+          return { ...prev, notes: newNotes };
+      })
+  }
+
+  const handleAddNoteSegment = (type: 'html' | 'code', index: number) => {
+      setTopic(prev => {
+          if (!prev) return undefined;
+          const newSegment: NoteSegment = { type, content: '' };
+          const newNotes = [...prev.notes];
+          newNotes.splice(index + 1, 0, newSegment);
+          return { ...prev, notes: newNotes };
+      });
+  }
+
+  const handleDeleteNoteSegment = (index: number) => {
+      setTopic(prev => {
+          if (!prev) return undefined;
+          const newNotes = prev.notes.filter((_, i) => i !== index);
+          return { ...prev, notes: newNotes };
+      });
+  }
+
+    const handleMoveNoteSegment = (index: number, direction: 'up' | 'down') => {
+        setTopic(prev => {
+            if (!prev) return undefined;
+            const newNotes = [...prev.notes];
+            const newIndex = direction === 'up' ? index - 1 : index + 1;
+            if (newIndex < 0 || newIndex >= newNotes.length) return prev;
+            const [movedItem] = newNotes.splice(index, 1);
+            newNotes.splice(newIndex, 0, movedItem);
+            return { ...prev, notes: newNotes };
+        });
+    };
+
 
   const handlePrevQuestion = () => {
     setPracticeQuestionIndex(prev => Math.max(0, prev - 1));
@@ -155,12 +164,11 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
   }
 
   const handleSaveChanges = () => {
-    // In a real app, you'd save this to a database.
-    // For now, we'll just log it and show a toast.
-    console.log('Saving topic:', topic);
+    if (!topic) return;
+    updateTopic(course!.id, chapter!.id, topic.id, topic);
     toast({
         title: "Content Saved",
-        description: `Changes to "${topic.title}" have been saved locally.`,
+        description: `Changes to "${topic.title}" have been saved.`,
     });
   }
 
@@ -223,13 +231,13 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                             {(topic.notes || []).map((segment, index) => (
                                 <div key={index} className="relative group border rounded-md">
                                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dispatch({ type: 'MOVE_NOTE_SEGMENT', payload: { index, direction: 'up' } })} disabled={index === 0}>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'up')} disabled={index === 0}>
                                             <ArrowUp className="w-4 h-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dispatch({ type: 'MOVE_NOTE_SEGMENT', payload: { index, direction: 'down' } })} disabled={index === topic.notes.length - 1}>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'down')} disabled={index === topic.notes.length - 1}>
                                             <ArrowDown className="w-4 h-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => dispatch({ type: 'DELETE_NOTE_SEGMENT', payload: { index } })}>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteNoteSegment(index)}>
                                             <Trash2 className="w-4 h-4 text-destructive" />
                                         </Button>
                                     </div>
@@ -238,7 +246,7 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                                         <AutoResizingTextarea
                                             className="min-h-[120px] w-full overflow-hidden resize-none"
                                             value={segment.content}
-                                            onChange={(e) => dispatch({ type: 'UPDATE_NOTE_SEGMENT', payload: { index, content: e.target.value } })}
+                                            onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
                                         />
                                     ) : (
                                         <div className="space-y-2 p-4">
@@ -246,7 +254,7 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                                             <div className="min-h-[120px]">
                                                 <Compiler
                                                     initialCode={segment.content}
-                                                    onCodeChange={(code) => dispatch({ type: 'UPDATE_NOTE_SEGMENT', payload: { index, content: code } })}
+                                                    onCodeChange={(code) => handleNoteSegmentChange(index, code)}
                                                     variant="minimal"
                                                     hideHeader
                                                     key={`note-compiler-${index}`}
@@ -257,10 +265,10 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
 
                                     <div className="absolute bottom-[-16px] left-1/2 -translate-x-1/2 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
-                                            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index } })}>
+                                            <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('html', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Text
                                             </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index } })}>
+                                            <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('code', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Code
                                             </Button>
                                         </div>
@@ -271,10 +279,10 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                                 <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-md">
                                     <p>No content yet. Add your first block.</p>
                                      <div className="flex items-center justify-center gap-2 mt-2">
-                                        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'html', index: -1 } })}>
+                                        <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('html', -1)}>
                                             <Plus className="w-3 h-3 mr-1" /> Add Text
                                         </Button>
-                                        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'ADD_NOTE_SEGMENT', payload: { type: 'code', index: -1 } })}>
+                                        <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('code', -1)}>
                                             <Plus className="w-3 h-3 mr-1" /> Add Code
                                         </Button>
                                     </div>
@@ -291,7 +299,6 @@ export default function ManageTopicPage({ params: paramsProp }: ManageTopicPageP
                         <CardContent className="flex-grow overflow-auto p-0">
                             <div className="h-full min-h-[400px]">
                                 <Compiler 
-                                    ref={syntaxCompilerRef} 
                                     initialCode={topic.syntax} 
                                     variant="minimal" 
                                     hideHeader 
@@ -387,8 +394,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    
-    
-
-    

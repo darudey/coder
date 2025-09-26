@@ -1,7 +1,7 @@
 
 'use client';
 
-import { courses as initialCourses, type Course, type Chapter } from '@/lib/courses-data';
+import { type Chapter } from '@/lib/courses-data';
 import Link from 'next/link';
 import { notFound, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   Dialog,
@@ -33,7 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { nanoid } from 'nanoid';
+import { useCourses } from '@/hooks/use-courses';
 
 
 interface ManageChapterPageProps {
@@ -42,14 +41,12 @@ interface ManageChapterPageProps {
   };
 }
 
-export default function ManageChapterPage({ params: paramsProp }: ManageChapterPageProps) {
-  const params = React.use(paramsProp);
+export default function ManageChapterPage({ params }: ManageChapterPageProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { courses, addChapter, updateChapter, deleteChapter } = useCourses();
 
-  const [course, setCourse] = useState<Course | undefined>(() => 
-    initialCourses.find((c) => c.id === params.courseId)
-  );
+  const course = courses.find((c) => c.id === params.courseId);
 
   const [isAddChapterOpen, setIsAddChapterOpen] = useState(false);
   const [newChapter, setNewChapter] = useState({ title: '', description: '' });
@@ -77,22 +74,7 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
         return;
     }
 
-    const newChapterData: Chapter = {
-        id: nanoid(),
-        title: newChapter.title,
-        description: newChapter.description,
-        topics: [],
-    };
-    
-    setCourse(prevCourse => {
-        if (!prevCourse) return prevCourse;
-        const updatedCourse = {
-            ...prevCourse,
-            chapters: [...prevCourse.chapters, newChapterData]
-        };
-        // Note: This only updates local state. To persist, we'd need to update the source.
-        return updatedCourse;
-    });
+    addChapter(course.id, newChapter.title, newChapter.description);
     
     toast({
         title: "Chapter Created",
@@ -120,13 +102,7 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
         return;
     }
 
-    setCourse(prevCourse => {
-        if (!prevCourse) return prevCourse;
-        const updatedChapters = prevCourse.chapters.map(ch =>
-            ch.id === editingChapter.id ? editingChapter : ch
-        );
-        return { ...prevCourse, chapters: updatedChapters };
-    });
+    updateChapter(course.id, editingChapter.id, editingChapter);
 
     toast({
         title: "Chapter Updated",
@@ -138,11 +114,7 @@ export default function ManageChapterPage({ params: paramsProp }: ManageChapterP
   }
 
   const handleDeleteChapter = (chapterId: string) => {
-    setCourse(prevCourse => {
-      if (!prevCourse) return prevCourse;
-      const updatedChapters = prevCourse.chapters.filter(ch => ch.id !== chapterId);
-      return { ...prevCourse, chapters: updatedChapters };
-    });
+    deleteChapter(course.id, chapterId);
     toast({
       title: "Chapter Deleted",
       description: "The chapter has been removed from the course.",

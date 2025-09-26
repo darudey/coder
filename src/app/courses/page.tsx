@@ -1,10 +1,14 @@
 
-import { courses } from '@/lib/courses-data';
+'use client';
+
+import { useCourses } from '@/hooks/use-courses';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen } from 'lucide-react';
 
 export default function CoursesPage() {
+  const { courses } = useCourses();
+  
   return (
     <div className="container mx-auto p-4 md:p-8">
       <header className="mb-8">

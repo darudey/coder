@@ -1,7 +1,6 @@
 
 'use client';
 
-import { courses } from '@/lib/courses-data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,7 @@ import { DotLoader } from '@/components/codeweave/dot-loader';
 import { EmbeddedCompiler } from '@/components/codeweave/embedded-compiler';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { OutputDisplay } from '@/components/codeweave/output-display';
+import { useCourses } from '@/hooks/use-courses';
 
 
 interface ChapterPageProps {
@@ -28,8 +28,8 @@ interface ChapterPageProps {
   };
 }
 
-export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
-  const params = React.use(paramsProp);
+export default function ChapterPage({ params }: ChapterPageProps) {
+  const { courses } = useCourses();
   const course = courses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
   
@@ -48,7 +48,7 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
   }
 
   const topic = chapter.topics[0];
-  const practiceQuestions = topic.practice || [];
+  const practiceQuestions = topic?.practice || [];
   const currentPracticeQuestion = practiceQuestions[practiceQuestionIndex];
 
   const handleRunCode = async () => {
@@ -79,6 +79,15 @@ export default function ChapterPage({ params: paramsProp }: ChapterPageProps) {
   if (!topic) {
     return (
         <div className="container mx-auto p-4 md:p-8">
+            <header className="mb-4">
+                <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
+                    <Link href={`/courses/${course.id}`}>
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back to {course.title}
+                    </Link>
+                </Button>
+                <h1 className="text-sm font-bold tracking-tight">{chapter.title}</h1>
+            </header>
             <p>No topics found for this chapter yet.</p>
         </div>
     )

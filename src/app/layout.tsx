@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Home, Book, BrainCircuit, User, Menu, Edit3 } from 'lucide-react';
 import Link from 'next/link';
+import { CoursesProvider } from '@/hooks/use-courses.tsx';
 
 export const metadata: Metadata = {
   title: '24HrCoding',
@@ -35,36 +36,38 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <SettingsProvider>
-          <div className="relative min-h-screen">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="fixed top-4 left-4 z-50 bg-background/50 backdrop-blur-sm">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Open Menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64">
-                <SheetHeader>
-                  <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col space-y-2 pt-8">
-                  {navItems.map(item => (
-                    <Button variant="ghost" asChild key={item.label} className="justify-start">
-                      <Link href={item.href}>
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {item.label}
-                      </Link>
-                    </Button>
-                  ))}
-                </nav>
-              </SheetContent>
-            </Sheet>
-            
-            <main>
-                {children}
-            </main>
-          </div>
-          <Toaster />
+          <CoursesProvider>
+            <div className="relative min-h-screen">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon" className="fixed top-4 left-4 z-50 bg-background/50 backdrop-blur-sm">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Open Menu</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64">
+                  <SheetHeader>
+                    <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col space-y-2 pt-8">
+                    {navItems.map(item => (
+                      <Button variant="ghost" asChild key={item.label} className="justify-start">
+                        <Link href={item.href}>
+                          <item.icon className="mr-2 h-4 w-4" />
+                          {item.label}
+                        </Link>
+                      </Button>
+                    ))}
+                  </nav>
+                </SheetContent>
+              </Sheet>
+              
+              <main>
+                  {children}
+              </main>
+            </div>
+            <Toaster />
+          </CoursesProvider>
         </SettingsProvider>
       </body>
     </html>
