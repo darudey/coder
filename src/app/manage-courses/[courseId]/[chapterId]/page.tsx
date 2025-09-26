@@ -3,7 +3,7 @@
 
 import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
 import Link from 'next/link';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,7 +53,8 @@ interface ManageTopicPageProps {
   };
 }
 
-export default function ManageTopicPage({ params }: ManageTopicPageProps) {
+export default function ManageTopicPage({ params: propsParams }: ManageTopicPageProps) {
+  const params = useParams() as { courseId: string; chapterId: string };
   const { toast } = useToast();
   const { courses, updateTopic } = useCourses();
 

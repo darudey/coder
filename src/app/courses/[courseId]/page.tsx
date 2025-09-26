@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,8 @@ interface CoursePageProps {
   };
 }
 
-export default function CoursePage({ params }: CoursePageProps) {
+export default function CoursePage({ params: propsParams }: CoursePageProps) {
+  const params = useParams() as { courseId: string };
   const { courses } = useCourses();
   const course = courses.find((c) => c.id === params.courseId);
 

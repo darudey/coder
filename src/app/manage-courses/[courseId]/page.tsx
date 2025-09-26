@@ -3,7 +3,7 @@
 
 import { type Chapter } from '@/lib/courses-data';
 import Link from 'next/link';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, ChevronLeft, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,8 @@ interface ManageChapterPageProps {
   };
 }
 
-export default function ManageChapterPage({ params }: ManageChapterPageProps) {
+export default function ManageChapterPage({ params: propsParams }: ManageChapterPageProps) {
+  const params = useParams() as { courseId: string };
   const router = useRouter();
   const { toast } = useToast();
   const { courses, addChapter, updateChapter, deleteChapter } = useCourses();

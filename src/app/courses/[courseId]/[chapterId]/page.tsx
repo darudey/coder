@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +28,8 @@ interface ChapterPageProps {
   };
 }
 
-export default function ChapterPage({ params }: ChapterPageProps) {
+export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
+  const params = useParams() as { courseId: string; chapterId: string };
   const { courses } = useCourses();
   const course = courses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);

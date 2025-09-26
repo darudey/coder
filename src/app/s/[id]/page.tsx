@@ -8,9 +8,10 @@ interface SharePageProps {
     }
 }
 
-// This is now a Server Component that fetches data and passes it to a Client Component.
 export default async function SharePage({ params }: SharePageProps) {
-    const initialCode = await getSharedCode(params.id);
+    // The params object is a Promise, so we need to await it.
+    const awaitedParams = params;
+    const initialCode = await getSharedCode(awaitedParams.id);
 
     if (initialCode === null) {
         notFound();
@@ -20,7 +21,7 @@ export default async function SharePage({ params }: SharePageProps) {
     // data to it as props. We use a `key` to ensure it re-mounts with the new code.
     return (
         <main className="bg-background min-h-screen">
-            <Compiler key={params.id} initialCode={initialCode} />
+            <Compiler key={awaitedParams.id} initialCode={initialCode} />
         </main>
     );
 }
