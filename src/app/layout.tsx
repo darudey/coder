@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Home, Book, BrainCircuit, User, Menu, Edit3 } from 'lucide-react';
 import Link from 'next/link';
-import { CoursesProvider } from '@/hooks/use-courses.tsx';
+import { CoursesProvider } from '@/hooks/use-courses';
 
 export const metadata: Metadata = {
   title: '24HrCoding',
