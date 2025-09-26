@@ -209,15 +209,15 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="notes" className="mt-4 px-4 md:px-8">
-                    <Card>
+                <TabsContent value="notes" className="mt-0">
+                    <Card className="rounded-none border-x-0">
                         <CardHeader>
                             <CardTitle className="text-sm">Topic Notes</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
-                                <div key={index} className="relative group border rounded-md">
-                                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border">
+                                <div key={index} className="relative group border-y">
+                                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border z-10">
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'up')} disabled={index === 0}>
                                             <ArrowUp className="w-4 h-4" />
                                         </Button>
@@ -231,7 +231,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
                                     {segment.type === 'html' ? (
                                         <AutoResizingTextarea
-                                            className="min-h-[120px] w-full overflow-hidden resize-none"
+                                            className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                                             value={segment.content}
                                             onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
                                         />
@@ -263,7 +263,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                 </div>
                             ))}
                              {(topic.notes?.length || 0) === 0 && (
-                                <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-md">
+                                <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-md m-4">
                                     <p>No content yet. Add your first block.</p>
                                      <div className="flex items-center justify-center gap-2 mt-2">
                                         <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('html', -1)}>
