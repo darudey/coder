@@ -24,27 +24,30 @@ const defaultSettings: Settings = {
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<Settings>(() => {
-    if (typeof window === 'undefined') {
-      return defaultSettings;
-    }
-    try {
-      const item = window.localStorage.getItem('app-settings');
-      return item ? JSON.parse(item) : defaultSettings;
-    } catch (error) {
-      console.error(error);
-      return defaultSettings;
-    }
-  });
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
 
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') {
-      return 'system';
-    }
-    return (localStorage.getItem('theme') as Theme) || 'system';
-  });
+  const [theme, setThemeState] = useState<Theme>('system');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    try {
+      const item = window.localStorage.getItem('app-settings');
+      if (item) {
+        setSettings(JSON.parse(item));
+      }
+      const storedTheme = localStorage.getItem('theme') as Theme;
+      if (storedTheme) {
+        setThemeState(storedTheme);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+    setIsInitialized(true);
+  }, []);
+
+
+  useEffect(() => {
+    if (!isInitialized) return;
     try {
       window.localStorage.setItem('app-settings', JSON.stringify(settings));
     } catch (error) {
@@ -55,9 +58,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const root = window.document.documentElement;
     root.style.setProperty('--editor-font-size', `${settings.editorFontSize}px`);
 
-  }, [settings]);
+  }, [settings, isInitialized]);
 
   useEffect(() => {
+    if (!isInitialized) return;
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
 
@@ -68,7 +72,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     
     root.classList.add(effectiveTheme);
     localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, [theme, isInitialized]);
   
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
@@ -85,6 +89,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setTheme,
     toggleTheme,
   }), [settings, theme]);
+  
+  if (!isInitialized) {
+    return null; // Prevents server-client mismatch on initial render
+  }
+
 
   return (
     <SettingsContext.Provider value={value}>

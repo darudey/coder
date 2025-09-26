@@ -22,19 +22,7 @@ interface CoursesContextValue {
 const CoursesContext = createContext<CoursesContextValue | undefined>(undefined);
 
 export function CoursesProvider({ children }: { children: React.ReactNode }) {
-  const [courses, setCourses] = useState<Course[]>(() => {
-    if (isServer) {
-      return initialCourses;
-    }
-    try {
-      const item = window.localStorage.getItem('courses-data');
-      return item ? JSON.parse(item) : initialCourses;
-    } catch (error) {
-      console.error(error);
-      return initialCourses;
-    }
-  });
-  
+  const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
