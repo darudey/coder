@@ -5,9 +5,9 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
+import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useEffect } from 'react';
 import {
     Tabs,
@@ -22,9 +22,11 @@ import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
 import { useCourses } from '@/hooks/use-courses';
 import { ChevronRight } from 'lucide-react';
+import { DotLoader } from '@/components/codeweave/dot-loader';
+import { LoadingPage } from '@/components/loading-page';
 
 
-const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string }>(({ value, onChange, className, ...props }, ref) => {
+const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean }>(({ value, onChange, className, ...props }, ref) => {
     const internalRef = useRef<HTMLTextAreaElement>(null);
     const combinedRef = (el: HTMLTextAreaElement) => {
         (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
@@ -68,37 +70,34 @@ interface ManageTopicPageProps {
 export default function ManageTopicPage({ params: propsParams }: ManageTopicPageProps) {
   const params = useParams() as { courseId: string; chapterId: string };
   const { toast } = useToast();
-  const { courses, updateTopic } = useCourses();
+  const { courses, updateTopic, loading } = useCourses();
 
-  // Find the current course, chapter, and topic directly from the context on each render
-  const course = courses.find((c) => c.id === params.courseId);
-  const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
-  // Assuming one topic per chapter for now, as per the original structure
-  const topic = chapter?.topics[0];
+  const [isCompiling, setIsCompiling] = useState(false);
+  const solutionCompilerRef = useRef<CompilerRef>(null);
+
+  const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
+  const chapter = !loading ? course?.chapters.find((ch) => ch.id === params.chapterId) : undefined;
+  const topic = !loading ? chapter?.topics[0] : undefined;
   
   const [activeTab, setActiveTab] = useState('video');
   const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
 
-  // If data is not found, show notFound page. This can happen if the URL is invalid.
   useEffect(() => {
-    if (!course || !chapter || !topic) {
+    if (!loading && (!course || !chapter || !topic)) {
         notFound();
     }
-  }, [course, chapter, topic]);
+  }, [course, chapter, topic, loading]);
 
-  // When topic changes (e.g. via navigation), reset practice question index
   useEffect(() => {
       setPracticeQuestionIndex(0);
   }, [topic?.id])
 
-  if (!course || !chapter || !topic) {
-    // Render nothing or a loader while waiting for useEffect to trigger notFound
-    return null; 
+  if (loading || !course || !chapter || !topic) {
+    return <LoadingPage />;
   }
 
   const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
 
-  // Helper function to create an updated topic object and call the context update function
   const setTopic = (updatedTopicData: Partial<Topic>) => {
     updateTopic(course.id, chapter.id, topic.id, { ...topic, ...updatedTopicData });
   };
@@ -113,8 +112,21 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     setTopic({ practice: newPractice });
   };
 
+  const handleRunSolution = async () => {
+    if (solutionCompilerRef.current) {
+        setIsCompiling(true);
+        const result = await solutionCompilerRef.current.run();
+        handlePracticeQuestionChange(practiceQuestionIndex, 'expectedOutput', result.output);
+        setIsCompiling(false);
+        toast({
+            title: "Expected Output Updated",
+            description: "The output from the solution code has been saved.",
+        })
+    }
+  }
+
   const handleAddPracticeQuestion = () => {
-    const newPractice = [...topic.practice, { id: nanoid(), question: '', initialCode: '', expectedOutput: '' }];
+    const newPractice = [...topic.practice, { id: nanoid(), question: '', initialCode: '', solutionCode: '', expectedOutput: '' }];
     setPracticeQuestionIndex(newPractice.length - 1);
     setTopic({ practice: newPractice });
   }
@@ -161,10 +173,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     setPracticeQuestionIndex(prev => Math.min((topic.practice?.length || 0) - 1, prev + 1));
   }
 
-  // Save changes is now implicit with every change, but a manual save button can provide user assurance.
   const handleSaveChanges = () => {
-    // The data is already updated in the context, which saves to localStorage.
-    // We can just show a toast notification.
     toast({
         title: "Content Saved",
         description: `Changes to "${topic.title}" have been saved.`,
@@ -346,7 +355,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                             </Card>
                             <div className="grid grid-cols-1 md:grid-cols-2">
                                 <Card className="h-full flex flex-col rounded-none border-x-0">
-                                    <CardHeader><CardTitle className="text-sm">Initial Code</CardTitle></CardHeader>
+                                    <CardHeader><CardTitle className="text-sm">Initial Code (for student)</CardTitle></CardHeader>
                                     <CardContent className="flex-grow overflow-auto p-0">
                                         <div className="h-full min-h-[300px]">
                                             <Compiler 
@@ -358,18 +367,38 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         </div>
                                     </CardContent>
                                 </Card>
-                                <Card className="h-full flex flex-col rounded-none border-x-0 border-l">
-                                    <CardHeader><CardTitle className="text-sm">Expected Output</CardTitle></CardHeader>
-                                    <CardContent className="flex-grow overflow-auto p-4">
-                                        <AutoResizingTextarea
-                                            className="w-full h-full min-h-[300px] resize-none focus-visible:ring-0 focus-visible:ring-offset-0 border-0 p-0 font-code text-sm"
-                                            value={currentPracticeQuestion.expectedOutput}
-                                            onChange={(e) => handlePracticeQuestionChange(practiceQuestionIndex, 'expectedOutput', e.target.value)}
-                                            placeholder="The expected console output..."
-                                        />
+                                 <Card className="h-full flex flex-col rounded-none border-x-0 border-l">
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <CardTitle className="text-sm">Solution Code</CardTitle>
+                                        <Button size="sm" onClick={handleRunSolution} disabled={isCompiling}>
+                                            {isCompiling ? <DotLoader /> : <Play className="w-4 h-4 mr-2" />}
+                                            Run to Get Output
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="flex-grow overflow-auto p-0">
+                                        <div className="h-full min-h-[300px]">
+                                            <Compiler
+                                                ref={solutionCompilerRef}
+                                                initialCode={currentPracticeQuestion.solutionCode}
+                                                variant="minimal" hideHeader
+                                                key={`solution-${currentPracticeQuestion.id}`}
+                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'solutionCode', code)}
+                                            />
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>
+                             <Card className="h-full flex flex-col rounded-none border-x-0 border-t">
+                                <CardHeader><CardTitle className="text-sm">Expected Output (Auto-generated)</CardTitle></CardHeader>
+                                <CardContent className="flex-grow overflow-auto p-4 bg-muted/50">
+                                    <AutoResizingTextarea
+                                        className="w-full h-full min-h-[100px] resize-none focus-visible:ring-0 focus-visible:ring-offset-0 border-0 p-0 font-code text-sm bg-transparent"
+                                        value={currentPracticeQuestion.expectedOutput}
+                                        readOnly
+                                        placeholder="Run the solution code to generate this..."
+                                    />
+                                </CardContent>
+                            </Card>
                         </>
                     ) : (
                         <div className="text-center text-muted-foreground p-8">

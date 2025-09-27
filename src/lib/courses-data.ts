@@ -8,6 +8,7 @@ export interface PracticeQuestion {
     id: string;
     question: string;
     initialCode: string;
+    solutionCode: string;
     expectedOutput: string;
 }
 
@@ -157,30 +158,35 @@ console.log(country); // India
                                 id: 'pq1',
                                 question: "Declare three `let` variables for your name, age, and city and print them to the console.",
                                 initialCode: `// Declare variables for name, age, and city\n\n\n// Print each variable`,
+                                solutionCode: `let name = "Alice";\nlet age = 30;\nlet city = "New York";\nconsole.log("Name: " + name);\nconsole.log("Age: " + age);\nconsole.log("City: " + city);`,
                                 expectedOutput: `Name: YOUR_NAME\nAge: YOUR_AGE\nCity: YOUR_CITY`
                             },
                             {
                                 id: 'pq2',
                                 question: "Declare a `let` variable `score` with a value of 50. Print the initial score. Then, update the score to 75 and print the updated score.",
                                 initialCode: `let score = 50;\n\n// Print the initial score\n\n\n// Update the score\n\n\n// Print the updated score`,
+                                solutionCode: `let score = 50;\nconsole.log("Initial score:", score);\nscore = 75;\nconsole.log("Updated score:", score);`,
                                 expectedOutput: `Initial score: 50\nUpdated score: 75`
                             },
                             {
                                 id: 'pq3',
                                 question: "Declare a `const` variable `pi` with the value 3.14. Try to reassign it to 3.14159 and observe the error.",
                                 initialCode: `const pi = 3.14;\nconsole.log("PI value:", pi);\n\n// Try to reassign pi\npi = 3.14159;\nconsole.log("Updated PI:", pi);`,
+                                solutionCode: `const pi = 3.14;\nconsole.log("PI value:", pi);\ntry {\n  pi = 3.14159;\n} catch (e) {\n  console.log(e.name + ': ' + e.message);\n}`,
                                 expectedOutput: `TypeError: Assignment to constant variable.`
                             },
                             {
                                 id: 'pq4',
                                 question: "Declare a `var` variable inside a block scope `{}` and try to access it outside the block. Observe the output.",
                                 initialCode: `{\n  var testVar = "I am using var";\n}\n\n// Try to access testVar here`,
+                                solutionCode: `{\n  var testVar = "I am using var";\n}\nconsole.log(testVar);`,
                                 expectedOutput: `I am using var`
                             },
                             {
                                 id: 'pq5',
                                 question: "Declare two different variables, `myName` and `MyName`. Assign them different string values and print both to see that they are distinct.",
                                 initialCode: `// Declare two case-sensitive variables\n\n\n// Print both variables`,
+                                solutionCode: `let myName = "Alice";\nlet MyName = "Bob";\nconsole.log(myName);\nconsole.log(MyName);`,
                                 expectedOutput: `Alice\nBob`
                             }
                         ]
