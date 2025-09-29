@@ -24,6 +24,7 @@ import { useCourses } from '@/hooks/use-courses';
 import { ChevronRight } from 'lucide-react';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { LoadingPage } from '@/components/loading-page';
+import { NoteCodeEditor } from '@/components/codeweave/note-code-editor';
 
 
 const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean }>(({ value, onChange, className, ...props }, ref) => {
@@ -263,11 +264,9 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Code Block</Label>
                                             <div className="min-h-[120px] p-0">
-                                                <Compiler
+                                                <NoteCodeEditor
                                                     initialCode={segment.content}
                                                     onCodeChange={(code) => handleNoteSegmentChange(index, code)}
-                                                    variant="minimal"
-                                                    hideHeader
                                                     key={`note-compiler-${topic.id}-${index}`}
                                                 />
                                             </div>
@@ -314,7 +313,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     variant="minimal" 
                                     hideHeader 
                                     key={`syntax-compiler-${topic.id}`}
-                                    onCodeChange={(code) => handleFieldChange('syntax', code)}
                                 />
                             </div>
                         </CardContent>
@@ -362,7 +360,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                                 initialCode={currentPracticeQuestion.initialCode} 
                                                 variant="minimal" hideHeader 
                                                 key={`initial-${currentPracticeQuestion.id}`}
-                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'initialCode', code)}
                                             />
                                         </div>
                                     </CardContent>
@@ -382,7 +379,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                                 initialCode={currentPracticeQuestion.solutionCode}
                                                 variant="minimal" hideHeader
                                                 key={`solution-${currentPracticeQuestion.id}`}
-                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'solutionCode', code)}
                                             />
                                         </div>
                                     </CardContent>
@@ -420,6 +416,5 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 // Add onCodeChange to Compiler props
 declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
-        onCodeChange?: (code: string) => void;
     }
 }
