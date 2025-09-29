@@ -29,6 +29,7 @@ import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { getSmartIndentation } from '@/lib/indentation';
+import { getCaretCoordinates } from '@/lib/caret-position';
 
 
 const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search' }>(({ value, onChange, className, ...props }, ref) => {
@@ -83,7 +84,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
   const chapter = !loading ? course?.chapters.find((ch) => ch.id === params.chapterId) : undefined;
-  const topic = !loading ? chapter?.topics[0] : undefined;
+  
+  const [topic, setTopic] = useState<Topic | undefined>(undefined);
   
   const [activeTab, setActiveTab] = useState('video');
   const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
@@ -93,10 +95,14 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const [ctrlActive, setCtrlActive] = useState(false);
 
   useEffect(() => {
-    if (!loading && (!course || !chapter || !topic)) {
-        notFound();
+    if (!loading && course && chapter) {
+        const initialTopic = chapter.topics[0];
+        setTopic(initialTopic);
+        if (!initialTopic) {
+            notFound();
+        }
     }
-  }, [course, chapter, topic, loading]);
+  }, [course, chapter, loading]);
 
   useEffect(() => {
       setPracticeQuestionIndex(0);
@@ -191,8 +197,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
     handleNoteSegmentChange(index, newContent);
     requestAnimationFrame(() => {
-        textarea.selectionStart = newCursorPosition;
-        textarea.selectionEnd = newCursorPosition;
+        if (textarea) {
+            textarea.selectionStart = newCursorPosition;
+            textarea.selectionEnd = newCursorPosition;
+        }
     });
   }
 
@@ -200,21 +208,21 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   if (loading || !course || !chapter || !topic) {
     return <LoadingPage />;
   }
-
-  const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
-
-  const setTopic = (updatedTopicData: Partial<Topic>) => {
-    updateTopic(course.id, chapter.id, topic.id, { ...topic, ...updatedTopicData });
+  
+  const handleTopicUpdate = (updatedTopicData: Partial<Topic>) => {
+    const newTopic = { ...topic, ...updatedTopicData };
+    setTopic(newTopic);
+    updateTopic(course.id, chapter.id, topic.id, newTopic);
   };
   
   const handleFieldChange = (field: keyof Topic, value: any) => {
-    setTopic({ [field]: value });
+    handleTopicUpdate({ [field]: value });
   };
   
   const handlePracticeQuestionChange = (index: number, field: keyof PracticeQuestion, value: string) => {
     const newPractice = [...topic.practice];
     newPractice[index] = { ...newPractice[index], [field]: value };
-    setTopic({ practice: newPractice });
+    handleTopicUpdate({ practice: newPractice });
   };
 
   const handleRunSolution = async () => {
@@ -233,7 +241,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const handleAddPracticeQuestion = () => {
     const newPractice = [...topic.practice, { id: nanoid(), question: '', initialCode: '', solutionCode: '', expectedOutput: '' }];
     setPracticeQuestionIndex(newPractice.length - 1);
-    setTopic({ practice: newPractice });
+    handleTopicUpdate({ practice: newPractice });
   }
 
   const handleDeletePracticeQuestion = (index: number) => {
@@ -241,24 +249,24 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     if (practiceQuestionIndex >= index && practiceQuestionIndex > 0) {
         setPracticeQuestionIndex(p => p - 1);
     }
-    setTopic({ practice: newPractice });
+    handleTopicUpdate({ practice: newPractice });
   }
 
   const handleNoteSegmentChange = (index: number, content: string) => {
     const newNotes = topic.notes.map((segment, i) => i === index ? { ...segment, content } : segment);
-    setTopic({ notes: newNotes });
+    handleTopicUpdate({ notes: newNotes });
   }
 
   const handleAddNoteSegment = (type: 'html' | 'code', index: number) => {
     const newSegment: NoteSegment = { type, content: '' };
     const newNotes = [...topic.notes];
     newNotes.splice(index + 1, 0, newSegment);
-    setTopic({ notes: newNotes });
+    handleTopicUpdate({ notes: newNotes });
   }
 
   const handleDeleteNoteSegment = (index: number) => {
     const newNotes = topic.notes.filter((_, i) => i !== index);
-    setTopic({ notes: newNotes });
+    handleTopicUpdate({ notes: newNotes });
   }
 
   const handleMoveNoteSegment = (index: number, direction: 'up' | 'down') => {
@@ -267,7 +275,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     if (newIndex < 0 || newIndex >= newNotes.length) return;
     const [movedItem] = newNotes.splice(index, 1);
     newNotes.splice(newIndex, 0, movedItem);
-    setTopic({ notes: newNotes });
+    handleTopicUpdate({ notes: newNotes });
   };
 
   const handlePrevQuestion = () => {
@@ -278,20 +286,15 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     setPracticeQuestionIndex(prev => Math.min((topic.practice?.length || 0) - 1, prev + 1));
   }
 
-  const handleSaveChanges = () => {
-    toast({
-        title: "Content Saved",
-        description: `Changes to "${topic.title}" have been saved.`,
-    });
-  }
+  const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
 
   const showKeyboard = isKeyboardVisible && isMobile;
 
   return (
     <>
-      <Button onClick={handleSaveChanges} className="fixed top-[56px] right-4 z-50 h-9 px-4">
+      <Button disabled className="fixed top-[56px] right-4 z-50 h-9 px-4">
           <Save className="w-4 h-4" />
-          <span className="ml-1.5 hidden sm:inline">Save Changes</span>
+          <span className="ml-1.5 hidden sm:inline">Saved</span>
       </Button>
       <div className="flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
@@ -419,6 +422,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         <CardContent className="flex-grow overflow-auto p-0">
                             <div className="h-full min-h-[400px]">
                                 <Compiler 
+                                    onCodeChange={(code) => handleFieldChange('syntax', code)}
                                     initialCode={topic.syntax} 
                                     variant="minimal" 
                                     hideHeader 
@@ -467,6 +471,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <CardContent className="flex-grow overflow-auto p-0">
                                         <div className="h-full min-h-[300px]">
                                             <Compiler 
+                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'initialCode', code)}
                                                 initialCode={currentPracticeQuestion.initialCode} 
                                                 variant="minimal" hideHeader 
                                                 key={`initial-${currentPracticeQuestion.id}`}
@@ -486,6 +491,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="h-full min-h-[300px]">
                                             <Compiler
                                                 ref={solutionCompilerRef}
+                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'solutionCode', code)}
                                                 initialCode={currentPracticeQuestion.solutionCode}
                                                 variant="minimal" hideHeader
                                                 key={`solution-${currentPracticeQuestion.id}`}
@@ -540,11 +546,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 // Add onCodeChange to Compiler props
 declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
+        onCodeChange?: (code: string) => void;
     }
 }
-
-    
-
-    
-
-    

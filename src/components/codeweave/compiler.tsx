@@ -51,6 +51,7 @@ interface CompilerProps {
   initialCode?: string | null;
   variant?: 'default' | 'minimal';
   hideHeader?: boolean;
+  onCodeChange?: (code: string) => void;
 }
 
 export interface CompilerRef {
@@ -113,7 +114,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false }, ref) => {
+const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange }, ref) => {
   const [fileSystem, setFileSystem] = useState<FileSystem>({});
   const [openFiles, setOpenFiles] = useState<ActiveFile[]>([]);
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
@@ -206,6 +207,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   useEffect(() => {
     setIsMounted(true);
+    if (variant === 'minimal' && initialCode) return;
+
     const fs = getInitialFileSystem(initialCode);
     setFileSystem(fs);
 
@@ -266,7 +269,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         setActiveFileIndex(initialActiveIndex);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCode]);
+  }, [initialCode, variant]);
 
   const [history, setHistory] = useState<string[]>(['']);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -286,23 +289,16 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const [shareLink, setShareLink] = useState('');
   const [isSharing, setIsSharing] = useState(false);
 
-  const setCode = useCallback((newCode: string, fromHistory = false) => {
-    if (fromHistory) {
-      setHistory(h => {
-        const newHistory = [...h];
-        newHistory[historyIndex] = newCode;
-        return newHistory;
-      });
-      return;
+  const handleCodeChange = useCallback((newCode: string) => {
+    if (onCodeChange) {
+        onCodeChange(newCode);
     }
-    
-    setHistory(h => {
-      const newHistory = h.slice(0, historyIndex + 1);
-      newHistory.push(newCode);
-      return newHistory;
-    });
+
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newCode);
+    setHistory(newHistory);
     setHistoryIndex(i => i + 1);
-  }, [historyIndex]);
+  }, [history, historyIndex, onCodeChange]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -317,6 +313,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [historyIndex, history.length]);
   
   useEffect(() => {
+    if (variant === 'minimal') return;
     if (debouncedCode && activeFile && isMounted) {
         if (fileSystem[activeFile.folderName]?.[activeFile.fileName] !== debouncedCode) {
             setFileSystem(fs => {
@@ -333,7 +330,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
             });
         }
     }
-  }, [debouncedCode, activeFile, isMounted, fileSystem, initialCode]);
+  }, [debouncedCode, activeFile, isMounted, fileSystem, initialCode, variant]);
   
   useEffect(() => {
     if (!isMounted) return;
@@ -343,17 +340,22 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       codeToSet = initialCode;
     } else if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
       codeToSet = fileSystem[activeFile.folderName][activeFile.fileName];
+    } else if (!activeFile && openFiles.length > 0 && activeFileIndex !== -1) {
+        // This case handles when a file is deleted.
+        const firstFile = openFiles[0];
+        codeToSet = fileSystem[firstFile.folderName]?.[firstFile.fileName] || '';
     }
 
-    if (codeToSet !== code) {
-        setHistory([codeToSet]);
-        setHistoryIndex(0);
+    setHistory([codeToSet]);
+    setHistoryIndex(0);
+    if(onCodeChange) {
+        onCodeChange(codeToSet);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFile, isMounted, initialCode, variant]);
 
   useEffect(() => {
-    if (!isMounted || initialCode || variant === 'minimal') return;
+    if (variant === 'minimal' || !isMounted || initialCode) return;
     if (openFiles.length > 0) {
         localStorage.setItem('openFiles', JSON.stringify(openFiles));
     } else {
@@ -410,6 +412,20 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [activeFile]);
 
   const handleShare = useCallback(async () => {
+    if (variant === 'minimal') {
+        if(code) {
+             const result = await shareCode(code);
+             if ('id' in result) {
+                const url = `${window.location.origin}/s/${result.id}`;
+                navigator.clipboard.writeText(url);
+                toast({ title: 'Copied!', description: 'Share link copied to clipboard.' });
+            } else {
+                toast({ title: 'Error', description: result.error, variant: 'destructive' });
+            }
+        }
+        return;
+    }
+    
     if (!activeFile) {
         toast({ title: 'Error', description: 'No active file to share.', variant: 'destructive' });
         return;
@@ -435,7 +451,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         setShareDialogOpen(false); // Close dialog on error
     }
     setIsSharing(false);
-  }, [activeFile, fileSystem, toast]);
+  }, [activeFile, fileSystem, toast, variant, code]);
 
   const handleCopyShareLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -613,7 +629,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         {editorVisible ? (
             <CodeEditor
                 code={code || ''}
-                onCodeChange={setCode}
+                onCodeChange={handleCodeChange}
                 onUndo={undo}
                 onRedo={redo}
                 onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}

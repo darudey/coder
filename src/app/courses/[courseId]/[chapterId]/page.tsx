@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { OutputDisplay } from '@/components/codeweave/output-display';
 import { useCourses } from '@/hooks/use-courses';
 import { marked } from 'marked';
+import { LoadingPage } from '@/components/loading-page';
 
 
 interface ChapterPageProps {
@@ -31,7 +32,7 @@ interface ChapterPageProps {
 
 export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   const params = useParams() as { courseId: string; chapterId: string };
-  const { courses } = useCourses();
+  const { courses, loading } = useCourses();
   const course = courses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
   
@@ -44,6 +45,10 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
 
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
+
+  if (loading) {
+    return <LoadingPage />;
+  }
 
   if (!course || !chapter) {
     notFound();

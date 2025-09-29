@@ -5,10 +5,15 @@ import { useCourses } from '@/hooks/use-courses';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen } from 'lucide-react';
+import { LoadingPage } from '@/components/loading-page';
 
 export default function CoursesPage() {
-  const { courses } = useCourses();
+  const { courses, loading } = useCourses();
   
+  if (loading) {
+    return <LoadingPage />;
+  }
+
   return (
     <div className="container mx-auto p-4 md:p-8">
       <header className="mb-8">

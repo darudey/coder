@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/use-courses';
+import { LoadingPage } from '@/components/loading-page';
 
 
 interface ManageChapterPageProps {
@@ -46,7 +47,7 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
   const params = useParams() as { courseId: string };
   const router = useRouter();
   const { toast } = useToast();
-  const { courses, addChapter, updateChapter, deleteChapter } = useCourses();
+  const { courses, addChapter, updateChapter, deleteChapter, loading } = useCourses();
 
   const course = courses.find((c) => c.id === params.courseId);
 
@@ -56,13 +57,12 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
   const [isEditChapterOpen, setIsEditChapterOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
 
-  useEffect(() => {
-    if (!course) {
-      notFound();
-    }
-  }, [course]);
+  if (loading) {
+    return <LoadingPage />;
+  }
 
   if (!course) {
+    notFound();
     return null;
   }
   
@@ -113,7 +113,7 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
 
     setEditingChapter(null);
     setIsEditChapterOpen(false);
-  }
+a  }
 
   const handleDeleteChapter = (chapterId: string) => {
     deleteChapter(course.id, chapterId);

@@ -33,9 +33,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useCourses } from '@/hooks/use-courses';
+import { LoadingPage } from '@/components/loading-page';
 
 export default function ManageCoursesPage() {
-  const { courses, addCourse, updateCourse, deleteCourse } = useCourses();
+  const { courses, addCourse, updateCourse, deleteCourse, loading } = useCourses();
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [newCourse, setNewCourse] = useState({ title: '', description: '' });
   
@@ -101,6 +102,9 @@ export default function ManageCoursesPage() {
     setIsEditCourseOpen(false);
   }
 
+  if (loading) {
+    return <LoadingPage />;
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-8">

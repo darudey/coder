@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import React from 'react';
 import { useCourses } from '@/hooks/use-courses';
+import { LoadingPage } from '@/components/loading-page';
 
 interface CoursePageProps {
   params: {
@@ -17,8 +18,12 @@ interface CoursePageProps {
 
 export default function CoursePage({ params: propsParams }: CoursePageProps) {
   const params = useParams() as { courseId: string };
-  const { courses } = useCourses();
+  const { courses, loading } = useCourses();
   const course = courses.find((c) => c.id === params.courseId);
+
+  if (loading) {
+    return <LoadingPage />;
+  }
 
   if (!course) {
     notFound();
