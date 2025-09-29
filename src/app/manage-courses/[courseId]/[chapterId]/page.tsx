@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { getSmartIndentation } from '@/lib/indentation';
 
 
-const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void }>(({ value, onChange, className, ...props }, ref) => {
+const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search' }>(({ value, onChange, className, ...props }, ref) => {
     const internalRef = useRef<HTMLTextAreaElement>(null);
     const combinedRef = (el: HTMLTextAreaElement) => {
         (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
@@ -126,75 +126,70 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const handleEditorFocus = (type: 'markdown' | 'code', index: number) => {
     setActiveEditor({ type, index });
-    if (type === 'code') {
-        setIsKeyboardVisible(true);
-    } else {
-        setIsKeyboardVisible(false);
-    }
+    setIsKeyboardVisible(true);
   }
 
   const handleKeyPress = (key: string) => {
-    if (activeEditor?.type !== 'code' || !topic) return;
+    if (!activeEditor || !topic) return;
 
-    const segment = topic.notes[activeEditor.index];
-    if (segment.type !== 'code') return;
+    const { type, index } = activeEditor;
+    const segment = topic.notes[index];
 
-    const code = segment.content;
-    const textarea = document.querySelector<HTMLTextAreaElement>(`#note-code-editor-${activeEditor.index}`);
+    let textarea: HTMLTextAreaElement | null = null;
+    let content = segment.content;
+    let newContent: string;
+    let newCursorPosition: number;
+
+    if (type === 'code') {
+      textarea = document.querySelector<HTMLTextAreaElement>(`#note-code-editor-${index}`);
+    } else { // markdown
+      textarea = document.querySelector<HTMLTextAreaElement>(`#note-markdown-editor-${index}`);
+    }
+
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    if (key === 'Enter') {
-        const { textToInsert, newCursorPosition } = getSmartIndentation(code, start);
-        const newCode = code.substring(0, start) + textToInsert + code.substring(end);
-        handleNoteSegmentChange(activeEditor.index, newCode);
-        
-        requestAnimationFrame(() => {
-            textarea.selectionStart = newCursorPosition;
-            textarea.selectionEnd = newCursorPosition;
-        });
-        return;
-    }
-    if (key === 'Tab') {
-        const newCode = code.substring(0, start) + '  ' + code.substring(end);
-        handleNoteSegmentChange(activeEditor.index, newCode);
-        requestAnimationFrame(() => {
-            textarea.selectionStart = start + 2;
-            textarea.selectionEnd = start + 2;
-        });
-        return;
-    }
-     if (key === 'Ctrl') {
+    if (key === 'Ctrl') {
         setCtrlActive(prev => !prev);
         return;
     }
-
-    if (ctrlActive) {
+     if (ctrlActive) {
         setCtrlActive(false);
         return;
     }
-
-    let newCode, newCursorPosition;
-    switch(key) {
-        case 'Backspace':
-            if (start === end && start > 0) {
-                newCode = code.substring(0, start - 1) + code.substring(end);
-                newCursorPosition = start - 1;
-              } else {
-                newCode = code.substring(0, start) + code.substring(end);
-                newCursorPosition = start;
-              }
-              break;
-        default:
-            newCode = code.substring(0, start) + key + code.substring(end);
-            newCursorPosition = start + key.length;
-            break;
+    
+    if (key === 'Enter') {
+        if (type === 'code') {
+            const { textToInsert, newCursorPosition: nextCursorPos } = getSmartIndentation(content, start);
+            newContent = content.substring(0, start) + textToInsert + content.substring(end);
+            newCursorPosition = nextCursorPos;
+        } else {
+            newContent = content.substring(0, start) + '\n' + content.substring(end);
+            newCursorPosition = start + 1;
+        }
+    } else if (key === 'Tab') {
+        if (type === 'code') {
+            newContent = content.substring(0, start) + '  ' + content.substring(end);
+            newCursorPosition = start + 2;
+        } else {
+            return; // Tab has no function in markdown editor for now
+        }
+    } else if (key === 'Backspace') {
+        if (start === end && start > 0) {
+            newContent = content.substring(0, start - 1) + content.substring(end);
+            newCursorPosition = start - 1;
+        } else {
+            newContent = content.substring(0, start) + content.substring(end);
+            newCursorPosition = start;
+        }
+    } else {
+        newContent = content.substring(0, start) + key + content.substring(end);
+        newCursorPosition = start + key.length;
     }
 
-    handleNoteSegmentChange(activeEditor.index, newCode);
-
+    handleNoteSegmentChange(index, newContent);
     requestAnimationFrame(() => {
         textarea.selectionStart = newCursorPosition;
         textarea.selectionEnd = newCursorPosition;
@@ -290,7 +285,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     });
   }
 
-  const showKeyboard = isKeyboardVisible && isMobile && activeEditor?.type === 'code';
+  const showKeyboard = isKeyboardVisible && isMobile;
 
   return (
     <>
@@ -366,10 +361,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Markdown</Label>
                                             <AutoResizingTextarea
+                                                id={`note-markdown-editor-${index}`}
                                                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                                                 value={segment.content}
                                                 onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
                                                 onFocus={() => handleEditorFocus('markdown', index)}
+                                                inputMode={isMobile ? 'none' : 'text'}
                                             />
                                         </div>
                                     ) : (
@@ -544,5 +541,7 @@ declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
     }
 }
+
+    
 
     
