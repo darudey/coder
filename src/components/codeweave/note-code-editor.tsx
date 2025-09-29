@@ -109,21 +109,31 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
         lineHeight: '1.5',
         whiteSpace: 'pre-wrap',
         overflowWrap: 'anywhere',
-        padding: '0.5rem',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.5rem',
+        paddingRight: '0.5rem',
+        paddingLeft: '0.5rem',
         boxSizing: 'border-box',
     };
+    
+    const gutterWidth = gutterRef.current?.offsetWidth || 0;
 
     return (
         <div ref={editorWrapperRef} className="relative group border-y">
             <div 
                 ref={gutterRef}
                 className="absolute top-0 left-0 h-full box-border pr-1 text-right text-gray-500 bg-gray-100 border-r select-none dark:bg-gray-900 dark:border-gray-700"
-                style={{...editorStyles, borderRight: '1px solid hsl(var(--border))'}}
+                style={{
+                    ...editorStyles,
+                    paddingLeft: '0.5rem', 
+                    paddingRight: '0.5rem', 
+                    borderRight: '1px solid hsl(var(--border))'
+                }}
             />
             <div
                 aria-hidden="true"
                 className="absolute inset-0 m-0 pointer-events-none"
-                style={{...editorStyles, left: '48px' }}
+                style={{...editorStyles, left: `${gutterWidth}px`, paddingLeft: '0.5rem' }}
             >
                 {highlightedCode}
             </div>
@@ -139,7 +149,7 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
                     "absolute inset-0 w-full h-full bg-transparent z-10",
                     "caret-black dark:caret-white"
                 )}
-                style={{...editorStyles, color: 'transparent', border: 'none', left: '48px', overflow: 'hidden'}}
+                style={{...editorStyles, color: 'transparent', border: 'none', left: `${gutterWidth}px`, overflow: 'hidden', paddingLeft: '0.5rem'}}
                 spellCheck="false"
             />
              <div 
@@ -148,8 +158,9 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
                 className="absolute top-0 left-0 invisible pointer-events-none"
                 style={{
                     ...editorStyles,
-                    left: '48px',
-                    width: 'calc(100% - 48px)',
+                    left: `${gutterWidth}px`,
+                    width: `calc(100% - ${gutterWidth}px)`,
+                    paddingLeft: '0.5rem'
                 }}
             />
         </div>
