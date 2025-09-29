@@ -113,7 +113,7 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
 
     setEditingChapter(null);
     setIsEditChapterOpen(false);
-a  }
+  }
 
   const handleDeleteChapter = (chapterId: string) => {
     deleteChapter(course.id, chapterId);
