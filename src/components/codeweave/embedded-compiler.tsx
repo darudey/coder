@@ -47,7 +47,6 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode }) => {
-    const [code, setCode] = useState(initialCode);
     const [output, setOutput] = useState<RunResult | null>(null);
     const [isCompiling, setIsCompiling] = useState(false);
     
@@ -64,7 +63,7 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
         const wrapper = editorWrapperRef.current;
         if (!ta || !gutter || !mirror || !wrapper) return;
     
-        const lines = ta.value.split('\n');
+        const lines = initialCode.split('\n');
         gutter.innerHTML = '';
         mirror.innerHTML = '';
     
@@ -97,25 +96,25 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
         const newHeight = Math.max(totalHeight + totalPadding, 21);
         wrapper.style.height = `${newHeight}px`;
     
-    }, []);
+    }, [initialCode]);
 
     useLayoutEffect(() => {
         updateLineNumbersAndResize();
-    }, [code, updateLineNumbersAndResize]);
+    }, [initialCode, updateLineNumbersAndResize]);
 
     const handleRun = useCallback(async () => {
         setIsCompiling(true);
         setOutput(null);
-        const result = await runCodeOnClient(code);
+        const result = await runCodeOnClient(initialCode);
         setOutput(result);
         setIsCompiling(false);
         setTimeout(() => {
             outputRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
-    }, [code]);
+    }, [initialCode]);
 
     const highlightedCode = React.useMemo(() => {
-        const lines = code.split('\n');
+        const lines = initialCode.split('\n');
         return (
             <>
                 {lines.map((line, lineIndex) => (
@@ -129,7 +128,7 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
                 ))}
             </>
         );
-    }, [code]);
+    }, [initialCode]);
 
     const editorStyles: React.CSSProperties = {
         fontFamily: 'var(--font-code)',
@@ -156,11 +155,11 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
                 </div>
                  <Textarea
                     ref={textareaRef}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
+                    value={initialCode}
+                    readOnly
                     className={cn(
                         "font-code text-sm rounded-none border-0 border-b focus-visible:ring-0 focus-visible:ring-offset-0 overflow-hidden resize-none",
-                        "absolute inset-0 w-full h-full bg-transparent text-transparent caret-black dark:caret-white z-10"
+                        "absolute inset-0 w-full h-full bg-transparent text-transparent caret-transparent z-10"
                     )}
                     style={{...editorStyles, padding: '0.5rem 0.75rem', paddingLeft: '48px'}}
                     spellCheck="false"
