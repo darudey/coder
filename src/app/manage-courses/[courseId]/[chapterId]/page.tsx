@@ -518,6 +518,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                 </TabsContent>
             </div>
         </Tabs>
+        <div className="h-[75vh]" />
       </div>
       <div id="coder-keyboard" className={cn(
         "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
