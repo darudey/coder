@@ -2,9 +2,20 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut, type User } from 'firebase/auth';
+import { 
+    getAuth, 
+    onAuthStateChanged, 
+    signInWithPopup, 
+    GoogleAuthProvider, 
+    signOut as firebaseSignOut, 
+    type User,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signInAnonymously
+} from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { app, db } from '@/lib/firebase';
+import { useToast } from './use-toast';
 
 type Role = 'student' | 'teacher' | 'developer';
 
@@ -14,6 +25,9 @@ interface AuthContextValue {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  registerWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signInAnonymously: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -22,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   const auth = getAuth(app);
 
@@ -59,18 +74,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithPopup(auth, provider);
       // onAuthStateChanged will handle the rest
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing in with Google:", error);
+      toast({ title: 'Sign-in Error', description: error.message, variant: 'destructive' });
     }
-  }, [auth]);
+  }, [auth, toast]);
+
+  const registerWithEmail = useCallback(async (email: string, password: string) => {
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+        console.error("Error registering with email:", error);
+        toast({ title: 'Registration Error', description: error.message, variant: 'destructive' });
+    }
+  }, [auth, toast]);
+
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+        console.error("Error signing in with email:", error);
+        toast({ title: 'Sign-in Error', description: error.message, variant: 'destructive' });
+    }
+  }, [auth, toast]);
+
+  const signInAnonymously = useCallback(async () => {
+    try {
+        await signInAnonymously(auth);
+    } catch (error: any) {
+        console.error("Error signing in anonymously:", error);
+        toast({ title: 'Sign-in Error', description: error.message, variant: 'destructive' });
+    }
+  }, [auth, toast]);
 
   const signOut = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing out:", error);
+      toast({ title: 'Sign-out Error', description: error.message, variant: 'destructive' });
     }
-  }, [auth]);
+  }, [auth, toast]);
   
   const value = useMemo(() => ({
     user,
@@ -78,7 +122,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signInWithGoogle,
     signOut,
-  }), [user, userRole, loading, signInWithGoogle, signOut]);
+    registerWithEmail,
+    signInWithEmail,
+    signInAnonymously
+  }), [user, userRole, loading, signInWithGoogle, signOut, registerWithEmail, signInWithEmail, signInAnonymously]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -90,3 +137,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    
