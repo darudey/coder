@@ -26,7 +26,7 @@ import { DotLoader } from '@/components/codeweave/dot-loader';
 import { LoadingPage } from '@/components/loading-page';
 import { NoteCodeEditor } from '@/components/codeweave/note-code-editor';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
-import { useIsMobile } from '@/hooks/use-is-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { getSmartIndentation } from '@/lib/indentation';
 
@@ -541,6 +541,8 @@ declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
     }
 }
+
+    
 
     
 
