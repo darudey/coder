@@ -1,6 +1,7 @@
 
 
-const INDENT_CHAR = '    ';
+
+const INDENT_CHAR = '  '; // Using 2 spaces for indentation
 
 function getLineIndentation(line: string): string {
     const match = line.match(/^\s*/);
@@ -22,19 +23,26 @@ export function getSmartIndentation(code: string, cursorPosition: number): Smart
     const trimmedLineBefore = lineBefore.trimEnd();
     const trimmedTextAfter = textAfterCursor.trimStart();
 
-    // Rule: If previous line ends with an opening brace, and the line after the cursor starts with a closing brace.
-    if (trimmedLineBefore.endsWith('{') && trimmedTextAfter.startsWith('}')) {
-        const indent = currentIndent + INDENT_CHAR;
-        
+    let indent = currentIndent;
+
+    // Rule: If previous line ends with an opening brace, indent further
+    if (trimmedLineBefore.endsWith('{') || trimmedLineBefore.endsWith('(') || trimmedLineBefore.endsWith('[')) {
+        indent += INDENT_CHAR;
+    }
+    
+    // Rule: If the line after the cursor starts with a closing brace, create a new line for the cursor and indent the closing brace.
+    if (trimmedTextAfter.startsWith('}') || trimmedTextAfter.startsWith(')') || trimmedTextAfter.startsWith(']')) {
         const textToInsert = '\n' + indent + '\n' + currentIndent;
         const newCursorPosition = cursorPosition + indent.length + 1; // +1 for the newline
 
         return { textToInsert, newCursorPosition };
     }
 
-    // Default Rule: For all other cases, just insert a new line with the current indentation.
-    const textToInsert = '\n' + currentIndent;
+    // Default Rule: For all other cases, just insert a new line with the calculated indentation.
+    const textToInsert = '\n' + indent;
     const newCursorPosition = cursorPosition + textToInsert.length;
     
     return { textToInsert, newCursorPosition };
 }
+
+    

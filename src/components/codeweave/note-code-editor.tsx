@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
 
 interface NoteCodeEditorProps {
+    id: string;
     initialCode: string;
     onCodeChange: (code: string) => void;
     onFocus?: () => void;
@@ -14,23 +15,17 @@ interface NoteCodeEditorProps {
     isActive: boolean;
 }
 
-export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onCodeChange, onFocus, onKeyPress, isActive }) => {
-    const [code, setCode] = useState(initialCode);
+export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ id, initialCode, onCodeChange, onFocus, onKeyPress, isActive }) => {
+    // This component is now controlled by the parent. 
+    // The `initialCode` prop is the source of truth.
+    const code = initialCode;
     
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const gutterRef = useRef<HTMLDivElement>(null);
     const mirrorRef = useRef<HTMLDivElement>(null);
     const editorWrapperRef = useRef<HTMLDivElement>(null);
 
-    // Update internal state if the initialCode prop changes from outside
-    useEffect(() => {
-        if (initialCode !== code) {
-          setCode(initialCode);
-        }
-    }, [initialCode]);
-
     const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setCode(e.target.value);
         onCodeChange(e.target.value);
     };
 
@@ -40,8 +35,11 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
         const mirror = mirrorRef.current;
         const wrapper = editorWrapperRef.current;
         if (!ta || !gutter || !mirror || !wrapper) return;
+
+        // Use the current code value for calculations
+        const currentCode = ta.value;
     
-        const lines = ta.value.split('\n');
+        const lines = currentCode.split('\n');
         gutter.innerHTML = '';
         mirror.innerHTML = '';
     
@@ -80,7 +78,7 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
     }, [code, updateLineNumbersAndResize]);
     
     const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' || e.key === 'Tab') {
+        if (isActive && (e.key === 'Enter' || e.key === 'Tab')) {
             e.preventDefault();
             onKeyPress(e.key);
         }
@@ -112,14 +110,14 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
         paddingTop: '0.5rem',
         paddingBottom: '0.5rem',
         paddingRight: '0.5rem',
-        paddingLeft: '0.5rem',
+        paddingLeft: '0rem', // No left padding on the editor itself
         boxSizing: 'border-box',
     };
     
     const gutterWidth = gutterRef.current?.offsetWidth || 0;
 
     return (
-        <div ref={editorWrapperRef} className="relative group border-y">
+        <div ref={editorWrapperRef} className="relative group">
             <div 
                 ref={gutterRef}
                 className="absolute top-0 left-0 h-full box-border pr-1 text-right text-gray-500 bg-gray-100 border-r select-none dark:bg-gray-900 dark:border-gray-700"
@@ -138,18 +136,28 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
                 {highlightedCode}
             </div>
              <Textarea
+                id={id}
                 ref={textareaRef}
                 value={code}
                 onChange={handleCodeChange}
                 onFocus={onFocus}
-                onKeyDown={isActive ? handleNativeKeyDown : undefined}
+                onKeyDown={handleNativeKeyDown}
                 inputMode={isActive ? 'none' : 'text'}
                 className={cn(
-                    "font-code text-sm resize-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "font-code text-sm resize-none",
                     "absolute inset-0 w-full h-full bg-transparent z-10",
                     "caret-black dark:caret-white"
                 )}
-                style={{...editorStyles, color: 'transparent', border: 'none', left: `${gutterWidth}px`, overflow: 'hidden', paddingLeft: '0.5rem'}}
+                style={{
+                    ...editorStyles, 
+                    color: 'transparent',
+                    border: 'none', 
+                    left: `${gutterWidth}px`, 
+                    overflow: 'hidden', 
+                    paddingLeft: '0.5rem',
+                    outline: 'none',
+                    boxShadow: 'none'
+                }}
                 spellCheck="false"
             />
              <div 
@@ -166,3 +174,5 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ initialCode, onC
         </div>
     );
 };
+
+    

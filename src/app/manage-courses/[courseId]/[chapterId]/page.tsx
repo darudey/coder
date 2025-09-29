@@ -25,9 +25,13 @@ import { ChevronRight } from 'lucide-react';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { LoadingPage } from '@/components/loading-page';
 import { NoteCodeEditor } from '@/components/codeweave/note-code-editor';
+import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
+import { useIsMobile } from '@/hooks/use-is-mobile';
+import { cn } from '@/lib/utils';
+import { getSmartIndentation } from '@/lib/indentation';
 
 
-const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean }>(({ value, onChange, className, ...props }, ref) => {
+const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void }>(({ value, onChange, className, ...props }, ref) => {
     const internalRef = useRef<HTMLTextAreaElement>(null);
     const combinedRef = (el: HTMLTextAreaElement) => {
         (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
@@ -73,6 +77,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const { toast } = useToast();
   const { courses, updateTopic, loading } = useCourses();
 
+  const isMobile = useIsMobile();
   const [isCompiling, setIsCompiling] = useState(false);
   const solutionCompilerRef = useRef<CompilerRef>(null);
 
@@ -83,6 +88,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const [activeTab, setActiveTab] = useState('video');
   const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
 
+  const [activeEditor, setActiveEditor] = useState<{type: 'markdown' | 'code', index: number} | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [ctrlActive, setCtrlActive] = useState(false);
+
   useEffect(() => {
     if (!loading && (!course || !chapter || !topic)) {
         notFound();
@@ -92,6 +101,106 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   useEffect(() => {
       setPracticeQuestionIndex(0);
   }, [topic?.id])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const keyboard = document.getElementById('coder-keyboard');
+      const target = event.target as Node;
+      
+      const isClickInsideEditor = (target as HTMLElement).closest('.note-editor-segment');
+
+      if (!isClickInsideEditor && (!keyboard || !keyboard.contains(target))) {
+        setIsKeyboardVisible(false);
+        setActiveEditor(null);
+      }
+    }
+    if (isMobile) {
+        document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+       if (isMobile) {
+        document.removeEventListener("mousedown", handleClickOutside);
+       }
+    };
+  }, [isMobile]);
+
+  const handleEditorFocus = (type: 'markdown' | 'code', index: number) => {
+    setActiveEditor({ type, index });
+    if (type === 'code') {
+        setIsKeyboardVisible(true);
+    } else {
+        setIsKeyboardVisible(false);
+    }
+  }
+
+  const handleKeyPress = (key: string) => {
+    if (activeEditor?.type !== 'code' || !topic) return;
+
+    const segment = topic.notes[activeEditor.index];
+    if (segment.type !== 'code') return;
+
+    const code = segment.content;
+    const textarea = document.querySelector<HTMLTextAreaElement>(`#note-code-editor-${activeEditor.index}`);
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    if (key === 'Enter') {
+        const { textToInsert, newCursorPosition } = getSmartIndentation(code, start);
+        const newCode = code.substring(0, start) + textToInsert + code.substring(end);
+        handleNoteSegmentChange(activeEditor.index, newCode);
+        
+        requestAnimationFrame(() => {
+            textarea.selectionStart = newCursorPosition;
+            textarea.selectionEnd = newCursorPosition;
+        });
+        return;
+    }
+    if (key === 'Tab') {
+        const newCode = code.substring(0, start) + '  ' + code.substring(end);
+        handleNoteSegmentChange(activeEditor.index, newCode);
+        requestAnimationFrame(() => {
+            textarea.selectionStart = start + 2;
+            textarea.selectionEnd = start + 2;
+        });
+        return;
+    }
+     if (key === 'Ctrl') {
+        setCtrlActive(prev => !prev);
+        return;
+    }
+
+    if (ctrlActive) {
+        setCtrlActive(false);
+        return;
+    }
+
+    let newCode, newCursorPosition;
+    switch(key) {
+        case 'Backspace':
+            if (start === end && start > 0) {
+                newCode = code.substring(0, start - 1) + code.substring(end);
+                newCursorPosition = start - 1;
+              } else {
+                newCode = code.substring(0, start) + code.substring(end);
+                newCursorPosition = start;
+              }
+              break;
+        default:
+            newCode = code.substring(0, start) + key + code.substring(end);
+            newCursorPosition = start + key.length;
+            break;
+    }
+
+    handleNoteSegmentChange(activeEditor.index, newCode);
+
+    requestAnimationFrame(() => {
+        textarea.selectionStart = newCursorPosition;
+        textarea.selectionEnd = newCursorPosition;
+    });
+  }
+
 
   if (loading || !course || !chapter || !topic) {
     return <LoadingPage />;
@@ -181,6 +290,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     });
   }
 
+  const showKeyboard = isKeyboardVisible && isMobile && activeEditor?.type === 'code';
+
   return (
     <>
       <Button onClick={handleSaveChanges} className="fixed top-[56px] right-4 z-50 h-9 px-4">
@@ -238,7 +349,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         </CardHeader>
                         <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
-                                <div key={index} className="relative group border-y">
+                                <div key={`note-segment-${index}`} className="relative group border-y note-editor-segment">
                                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border z-10">
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'up')} disabled={index === 0}>
                                             <ArrowUp className="w-4 h-4" />
@@ -258,18 +369,20 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                                                 value={segment.content}
                                                 onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
+                                                onFocus={() => handleEditorFocus('markdown', index)}
                                             />
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Code Block</Label>
-                                            <div className="min-h-[120px] p-0">
-                                                <NoteCodeEditor
-                                                    initialCode={segment.content}
-                                                    onCodeChange={(code) => handleNoteSegmentChange(index, code)}
-                                                    key={`note-compiler-${topic.id}-${index}`}
-                                                />
-                                            </div>
+                                            <NoteCodeEditor
+                                                id={`note-code-editor-${index}`}
+                                                initialCode={segment.content}
+                                                onCodeChange={(code) => handleNoteSegmentChange(index, code)}
+                                                onFocus={() => handleEditorFocus('code', index)}
+                                                onKeyPress={handleKeyPress}
+                                                isActive={activeEditor?.type === 'code' && activeEditor.index === index}
+                                            />
                                         </div>
                                     )}
 
@@ -409,6 +522,19 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             </div>
         </Tabs>
       </div>
+      <div id="coder-keyboard" className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+        showKeyboard ? "translate-y-0" : "translate-y-full"
+      )}>
+        <CoderKeyboard 
+            onKeyPress={handleKeyPress} 
+            ctrlActive={ctrlActive} 
+            onHide={() => setIsKeyboardVisible(false)}
+            isSuggestionsOpen={false} // Suggestions not implemented for this editor yet
+            onNavigateSuggestions={() => {}}
+            onSelectSuggestion={() => {}}
+        />
+      </div>
     </>
   );
 }
@@ -418,3 +544,5 @@ declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
     }
 }
+
+    
