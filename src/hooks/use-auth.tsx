@@ -11,7 +11,7 @@ import {
     type User,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
-    signInAnonymously
+    signInAnonymously as firebaseSignInAnonymously
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { app, db } from '@/lib/firebase';
@@ -40,24 +40,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const auth = getAuth(app);
 
-  const getUserRole = useCallback(async (uid: string): Promise<Role> => {
-    const userDocRef = doc(db, 'users', uid);
+  const manageUserDocument = useCallback(async (user: User) => {
+    const userDocRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-      return userDoc.data().role as Role;
-    } else {
-      // Default new users to 'student' role
-      await setDoc(userDocRef, { role: 'student' });
-      return 'student';
+    if (!userDoc.exists()) {
+        // This is a new user, create their document with a default role.
+        await setDoc(userDocRef, { role: 'student', email: user.email || 'anonymous', displayName: user.displayName || 'Guest' });
+        return 'student';
     }
+    return userDoc.data().role as Role;
   }, []);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       if (firebaseUser) {
+        const role = await manageUserDocument(firebaseUser);
         setUser(firebaseUser);
-        const role = await getUserRole(firebaseUser.uid);
         setUserRole(role);
       } else {
         setUser(null);
@@ -67,13 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [auth, getUserRole]);
+  }, [auth, manageUserDocument]);
 
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // onAuthStateChanged will handle the rest
+      // onAuthStateChanged will handle user document creation
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       toast({ title: 'Sign-in Error', description: error.message, variant: 'destructive' });
@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerWithEmail = useCallback(async (email: string, password: string) => {
     try {
         await createUserWithEmailAndPassword(auth, email, password);
+         // onAuthStateChanged will handle user document creation
     } catch (error: any) {
         console.error("Error registering with email:", error);
         toast({ title: 'Registration Error', description: error.message, variant: 'destructive' });
@@ -92,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     try {
         await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle user document creation
     } catch (error: any) {
         console.error("Error signing in with email:", error);
         toast({ title: 'Sign-in Error', description: error.message, variant: 'destructive' });
@@ -100,7 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInAnonymously = useCallback(async () => {
     try {
-        await signInAnonymously(auth);
+        await firebaseSignInAnonymously(auth);
+        // onAuthStateChanged will handle user document creation
     } catch (error: any) {
         console.error("Error signing in anonymously:", error);
         toast({ title: 'Sign-in Error', description: error.message, variant: 'destructive' });
@@ -137,5 +140,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    
