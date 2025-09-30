@@ -99,6 +99,9 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         const initialTopic = chapter.topics[0];
         setTopic(initialTopic);
         if (!initialTopic) {
+            // This should not happen if addChapter creates a default topic.
+            // But as a fallback, we can redirect or show an error.
+            // For now, let's use notFound, but ideally we'd have a better UX.
             notFound();
         }
     }
