@@ -107,11 +107,46 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const addChapter = useCallback(async (courseId: string, title: string, description: string) => {
+    const defaultTopic: Topic = {
+        id: nanoid(),
+        title: 'New Topic',
+        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        notes: [
+            {
+                type: 'html',
+                content: `
+                    <h4>Welcome to Your New Topic!</h4>
+                    <p>This is where you can write notes for your students. You can use Markdown to format your text.</p>
+                    <ul>
+                        <li>Use lists to organize information.</li>
+                        <li>Add <strong>bold</strong> or <em>italic</em> text.</li>
+                        <li>Include links, images, and more.</li>
+                    </ul>
+                    <p>Below is a code block. You can add interactive code snippets to explain concepts.</p>
+                `
+            },
+            {
+                type: 'code',
+                content: `console.log("Hello, Teacher!");\n// You can edit this code block.`
+            }
+        ],
+        syntax: `// This is the syntax tab.\n// Use this area to provide a clean, read-only example of the core syntax for this topic.\n\nfunction example() {\n  return "This code demonstrates a concept.";\n}\n\nconsole.log(example());`,
+        practice: [
+            {
+                id: nanoid(),
+                question: 'This is a sample practice question. What will the following code output?',
+                initialCode: `// Students will see this code and can run it.\nconst x = 10;\nconst y = 20;\nconsole.log(x + y);`,
+                solutionCode: `// This is the solution code. Run it to generate the 'Expected Output'.\nconst x = 10;\nconst y = 20;\nconsole.log(x + y);`,
+                expectedOutput: '30'
+            }
+        ]
+    };
+
     const newChapter: Chapter = {
       id: nanoid(),
       title,
       description,
-      topics: [],
+      topics: [defaultTopic],
     };
     
     const originalCourses = courses;
