@@ -44,13 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userDocRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
     if (!userDoc.exists()) {
-        // This is a new user, create their document with a default role.
-        await setDoc(userDocRef, { role: 'student', email: user.email || 'anonymous', displayName: user.displayName || 'Guest' });
+        await setDoc(userDocRef, { 
+            role: 'student', 
+            email: user.email || 'anonymous', 
+            displayName: user.displayName || 'Guest User' 
+        });
         return 'student';
     }
-    return userDoc.data().role as Role;
+    return userDoc.data()?.role as Role;
   }, []);
-
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
