@@ -3,14 +3,13 @@
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Home, Book, BrainCircuit, User, Menu, Edit3, ShieldCheck } from 'lucide-react';
+import { Home, Book, User, Menu, Edit3, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 
 const defaultNavItems = [
   { href: '/', label: 'Compiler', icon: Home },
   { href: '/courses', label: 'Courses', icon: Book },
-  { href: '/practice', label: 'Practice', icon: BrainCircuit },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
