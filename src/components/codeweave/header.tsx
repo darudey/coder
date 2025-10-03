@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Home, Book, User, Edit3 } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Home, Book, User, Edit3, Check } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { usePathname } from 'next/navigation';
 
 interface HeaderProps {
   onRun: () => void;
@@ -32,6 +33,7 @@ interface HeaderProps {
 
 const NavItems = () => {
   const { userRole } = useAuth();
+  const pathname = usePathname();
   const defaultNavItems = [
     { href: '/', label: 'Compiler', icon: Home },
     { href: '/courses', label: 'Courses', icon: Book },
@@ -53,6 +55,7 @@ const NavItems = () => {
           <DropdownMenuItem>
             <item.icon className="mr-2 h-4 w-4" />
             <span>{item.label}</span>
+            {pathname === item.href && <Check className="ml-auto h-4 w-4" />}
           </DropdownMenuItem>
         </Link>
       ))}
