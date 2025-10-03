@@ -96,13 +96,17 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
     return (
       <header className="bg-background border-b">
         <div className="container mx-auto p-4 md:p-8">
-          <div className="mb-4">
+          <div className="flex justify-between items-center mb-4">
             <MainNav />
+            <div className="flex-grow" />
+            {React.Children.toArray(children).find(child => (child as React.ReactElement)?.type === Button)}
           </div>
-          <div>{children}</div>
+          <div>
+            {React.Children.toArray(children).filter(child => (child as React.ReactElement)?.type !== Button)}
+          </div>
         </div>
       </header>
-    )
+    );
   }
 
   if (variant === 'minimal') {
