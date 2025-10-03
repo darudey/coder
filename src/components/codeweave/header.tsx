@@ -53,7 +53,7 @@ const NavItems = () => {
       {navItems.map(item => (
         <Link href={item.href} key={item.label} passHref>
           <DropdownMenuItem className={cn(
-            "border border-transparent focus:bg-primary/20",
+            "border focus:bg-primary/20",
             pathname === item.href && "border-primary"
           )}>
             <item.icon className="mr-2 h-4 w-4" />
