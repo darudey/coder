@@ -5,7 +5,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useEffect } from 'react';
@@ -304,12 +304,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                 onChange={(e) => handleFieldChange('title', e.target.value)}
             />
         </div>
-        <div className="flex-none">
-          <Button disabled className="h-9 px-4">
-              <Save className="w-4 h-4" />
-              <span className="ml-1.5 hidden sm:inline">Saved</span>
-          </Button>
-        </div>
       </Header>
 
       <div className="container mx-auto px-4 md:px-8">
@@ -553,6 +547,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             onSelectSuggestion={() => {}}
         />
       </div>
+       <div className="fixed bottom-8 right-8 z-50">
+            <Button disabled size="lg" className="rounded-full shadow-lg">
+                <Check className="w-5 h-5 mr-2" />
+                Saved
+            </Button>
+        </div>
     </>
   );
 }

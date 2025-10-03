@@ -113,52 +113,6 @@ export default function ManageCoursesPage() {
             <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
                 <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage Courses</h1>
             </div>
-             <div className="flex-none">
-                <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add New Course
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Add New Course</DialogTitle>
-                            <DialogDescription>
-                                Fill in the details for your new course below.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="course-name" className="text-right">Name</Label>
-                                <Input
-                                    id="course-name"
-                                    value={newCourse.title}
-                                    onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
-                                    className="col-span-3"
-                                    placeholder="e.g., Advanced JavaScript"
-                                />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="course-description" className="text-right">Description</Label>
-                                <Textarea
-                                    id="course-description"
-                                    value={newCourse.description}
-                                    onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
-                                    className="col-span-3"
-                                    placeholder="A brief summary of the course content."
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button onClick={handleCreateCourse}>Create Course</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
         </Header>
         <div className="container mx-auto p-4 md:p-8">
             <p className="text-muted-foreground mt-4 mb-8">
@@ -249,6 +203,53 @@ export default function ManageCoursesPage() {
                     </DialogContent>
                 </Dialog>
             )}
+        </div>
+
+        <div className="fixed bottom-8 right-8 z-50">
+            <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
+                <DialogTrigger asChild>
+                    <Button size="lg" className="rounded-full shadow-lg">
+                        <Plus className="w-5 h-5 mr-2" />
+                        Add New Course
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add New Course</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details for your new course below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="course-name" className="text-right">Name</Label>
+                            <Input
+                                id="course-name"
+                                value={newCourse.title}
+                                onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+                                className="col-span-3"
+                                placeholder="e.g., Advanced JavaScript"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="course-description" className="text-right">Description</Label>
+                            <Textarea
+                                id="course-description"
+                                value={newCourse.description}
+                                onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+                                className="col-span-3"
+                                placeholder="A brief summary of the course content."
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleCreateCourse}>Create Course</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     </>
   );

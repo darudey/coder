@@ -131,52 +131,6 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
         <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
             <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage: {course.title}</h1>
         </div>
-        <div className="flex-none">
-            <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
-              <DialogTrigger asChild>
-                  <Button>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New Chapter
-                  </Button>
-              </DialogTrigger>
-              <DialogContent>
-                  <DialogHeader>
-                      <DialogTitle>Add New Chapter</DialogTitle>
-                      <DialogDescription>
-                          Fill in the details for your new chapter below.
-                      </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="chapter-title" className="text-right">Title</Label>
-                          <Input
-                              id="chapter-title"
-                              value={newChapter.title}
-                              onChange={(e) => setNewChapter({ ...newChapter, title: e.target.value })}
-                              className="col-span-3"
-                              placeholder="e.g., Introduction to Functions"
-                          />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="chapter-description" className="text-right">Description</Label>
-                          <Textarea
-                              id="chapter-description"
-                              value={newChapter.description}
-                              onChange={(e) => setNewChapter({ ...newChapter, description: e.target.value })}
-                              className="col-span-3"
-                              placeholder="What will users learn in this chapter?"
-                          />
-                      </div>
-                  </div>
-                  <DialogFooter>
-                      <DialogClose asChild>
-                          <Button variant="outline">Cancel</Button>
-                      </DialogClose>
-                      <Button onClick={handleCreateChapter}>Create Chapter</Button>
-                  </DialogFooter>
-              </DialogContent>
-          </Dialog>
-        </div>
       </Header>
       <div className="container mx-auto p-4 md:p-8">
         <p className="text-muted-foreground mt-4 mb-8">{course.description}</p>
@@ -272,6 +226,53 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
             </DialogContent>
         </Dialog>
       )}
+
+        <div className="fixed bottom-8 right-8 z-50">
+            <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
+              <DialogTrigger asChild>
+                  <Button size="lg" className="rounded-full shadow-lg">
+                      <Plus className="w-5 h-5 mr-2" />
+                      Add New Chapter
+                  </Button>
+              </DialogTrigger>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Add New Chapter</DialogTitle>
+                      <DialogDescription>
+                          Fill in the details for your new chapter below.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="chapter-title" className="text-right">Title</Label>
+                          <Input
+                              id="chapter-title"
+                              value={newChapter.title}
+                              onChange={(e) => setNewChapter({ ...newChapter, title: e.target.value })}
+                              className="col-span-3"
+                              placeholder="e.g., Introduction to Functions"
+                          />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="chapter-description" className="text-right">Description</Label>
+                          <Textarea
+                              id="chapter-description"
+                              value={newChapter.description}
+                              onChange={(e) => setNewChapter({ ...newChapter, description: e.target.value })}
+                              className="col-span-3"
+                              placeholder="What will users learn in this chapter?"
+                          />
+                      </div>
+                  </div>
+                  <DialogFooter>
+                      <DialogClose asChild>
+                          <Button variant="outline">Cancel</Button>
+                      </DialogClose>
+                      <Button onClick={handleCreateChapter}>Create Chapter</Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+        </div>
     </>
   );
 }
