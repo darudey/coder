@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen } from 'lucide-react';
 import { LoadingPage } from '@/components/loading-page';
+import { Header } from '@/components/codeweave/header';
 
 export default function CoursesPage() {
   const { courses, loading } = useCourses();
@@ -15,31 +16,33 @@ export default function CoursesPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      <header className="mb-8">
+    <>
+      <Header variant="page">
         <h1 className="text-2xl font-bold tracking-tight">Courses</h1>
         <p className="text-muted-foreground mt-2 text-sm">
           Start your journey into web development. Choose a course to begin.
         </p>
-      </header>
+      </Header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course) => (
-          <Link href={`/courses/${course.id}`} key={course.id} className="group">
-            <Card className="h-full hover:border-primary transition-colors">
-              <CardHeader className="flex flex-row items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-md">
-                    <BookOpen className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle>{course.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-xs">{course.description}</p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      <div className="container mx-auto p-4 md:p-8 pt-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <Link href={`/courses/${course.id}`} key={course.id} className="group">
+              <Card className="h-full hover:border-primary transition-colors">
+                <CardHeader className="flex flex-row items-center gap-4">
+                  <div className="bg-primary/10 p-3 rounded-md">
+                      <BookOpen className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle>{course.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-xs">{course.description}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

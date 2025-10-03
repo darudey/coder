@@ -21,14 +21,15 @@ import { useAuth } from '@/hooks/use-auth';
 import { usePathname } from 'next/navigation';
 
 interface HeaderProps {
-  onRun: () => void;
-  onSettings: () => void;
-  isCompiling: boolean;
-  onSaveAs: () => void;
-  onShare: () => void;
-  activeFile: ActiveFile | null;
-  hasActiveFile: boolean;
-  variant?: 'default' | 'minimal';
+  onRun?: () => void;
+  onSettings?: () => void;
+  isCompiling?: boolean;
+  onSaveAs?: () => void;
+  onShare?: () => void;
+  activeFile?: ActiveFile | null;
+  hasActiveFile?: boolean;
+  variant?: 'default' | 'minimal' | 'page';
+  children?: React.ReactNode;
 }
 
 const NavItems = () => {
@@ -74,8 +75,35 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   onShare, 
   activeFile, 
   hasActiveFile,
-  variant = 'default' 
+  variant = 'default',
+  children,
 }) => {
+  const MainNav = () => (
+     <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+        <div className="flex items-center gap-2 shrink-0 cursor-pointer p-1 rounded-md transition-colors active:bg-primary/20">
+            <LogoIcon className="w-6 h-6" />
+            <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
+        </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="p-0 bg-popover/20 backdrop-blur-sm border-0">
+            <NavItems />
+        </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  if (variant === 'page') {
+    return (
+      <header className="bg-background">
+        <div className="flex items-center justify-between py-2 px-2 gap-2">
+            <MainNav />
+        </div>
+        <Separator />
+        {children && <div className="p-4 md:p-8 pt-4 md:pt-6">{children}</div>}
+      </header>
+    )
+  }
+
   if (variant === 'minimal') {
     return (
       <header className="bg-background">
@@ -115,17 +143,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
       <div className={cn(
         "flex items-center justify-between py-2 px-2 gap-2",
       )}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div className="flex items-center gap-2 shrink-0 cursor-pointer p-1 rounded-md transition-colors active:bg-primary/20">
-              <LogoIcon className="w-6 h-6" />
-              <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-0 bg-popover/20 backdrop-blur-sm border-0">
-              <NavItems />
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <MainNav />
         
         <div className="flex-1 flex justify-center min-w-0 px-2">
           {activeFile && (
@@ -169,8 +187,3 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
-
-
-
-
-    

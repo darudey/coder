@@ -21,6 +21,7 @@ import { OutputDisplay } from '@/components/codeweave/output-display';
 import { useCourses } from '@/hooks/use-courses';
 import { marked } from 'marked';
 import { LoadingPage } from '@/components/loading-page';
+import { Header } from '@/components/codeweave/header';
 
 
 interface ChapterPageProps {
@@ -86,7 +87,7 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   if (!topic) {
     return (
         <div className="container mx-auto p-4 md:p-8">
-            <header className="mb-4">
+            <Header variant="page">
                 <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
                     <Link href={`/courses/${course.id}`}>
                     <ChevronLeft className="w-4 h-4 mr-2" />
@@ -94,8 +95,10 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                     </Link>
                 </Button>
                 <h1 className="text-sm font-bold tracking-tight">{chapter.title}</h1>
-            </header>
-            <p>No topics found for this chapter yet.</p>
+            </Header>
+            <div className="p-4 md:p-8 pt-0">
+                <p>No topics found for this chapter yet.</p>
+            </div>
         </div>
     )
   }
@@ -116,16 +119,16 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
       )}
       <div className="flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
-            <header className="mb-4 px-4 md:px-8 pt-4 md:pt-8">
-              <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
-                <Link href={`/courses/${course.id}`}>
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Back to {course.title}
-                </Link>
-              </Button>
-              <h1 className="text-sm font-bold tracking-tight">{topic.title}</h1>
-              <p className="text-muted-foreground text-xs mt-1">{chapter.title}</p>
-            </header>
+            <Header variant="page">
+                <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
+                    <Link href={`/courses/${course.id}`}>
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back to {course.title}
+                    </Link>
+                </Button>
+                <h1 className="text-sm font-bold tracking-tight">{topic.title}</h1>
+                <p className="text-muted-foreground text-xs mt-1">{chapter.title}</p>
+            </Header>
             <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
