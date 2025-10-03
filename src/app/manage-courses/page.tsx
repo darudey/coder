@@ -110,10 +110,10 @@ export default function ManageCoursesPage() {
   return (
     <>
         <Header variant="page">
-            <div className="flex justify-between items-center w-full">
-                <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
-                    <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage Courses</h1>
-                </div>
+            <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage Courses</h1>
+            </div>
+             <div className="flex-none">
                 <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
                     <DialogTrigger asChild>
                         <Button>

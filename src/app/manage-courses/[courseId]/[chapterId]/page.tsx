@@ -297,20 +297,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   return (
     <>
       <Header variant="page">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <Button asChild variant="outline" size="sm" className="flex-shrink-0">
-              <Link href={`/manage-courses/${course.id}`}>
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Back to Chapters
-              </Link>
-          </Button>
-          <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
-              <Input 
-                  className="text-base sm:text-lg lg:text-xl font-bold tracking-tight h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent truncate"
-                  value={topic.title}
-                  onChange={(e) => handleFieldChange('title', e.target.value)}
-              />
-          </div>
+        <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
+            <Input 
+                className="text-base sm:text-lg lg:text-xl font-bold tracking-tight h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent truncate"
+                value={topic.title}
+                onChange={(e) => handleFieldChange('title', e.target.value)}
+            />
         </div>
         <div className="flex-none">
           <Button disabled className="h-9 px-4">
@@ -536,6 +528,14 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         </div>
                     )}
                 </TabsContent>
+            </div>
+            <div className="container mx-auto px-4 md:px-8">
+                <Button asChild variant="outline" size="sm">
+                    <Link href={`/manage-courses/${course.id}`}>
+                        <ChevronLeft className="w-4 h-4 mr-2" />
+                        Back to Chapters
+                    </Link>
+                </Button>
             </div>
         </Tabs>
         <div className="h-[75vh]" />
