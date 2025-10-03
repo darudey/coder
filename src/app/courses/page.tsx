@@ -19,7 +19,7 @@ export default function CoursesPage() {
     <>
       <Header variant="page">
         <div className="border rounded-md px-4 py-1.5 bg-muted">
-            <h1 className="text-base font-bold tracking-tight">Courses</h1>
+            <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight">Courses</h1>
         </div>
       </Header>
       <div className="container mx-auto p-4 md:p-8">
