@@ -3,12 +3,21 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2 } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Home, Book, User, Edit3 } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
 import { LogoIcon } from './logo-icon';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 interface HeaderProps {
   onRun: () => void;
@@ -20,6 +29,37 @@ interface HeaderProps {
   hasActiveFile: boolean;
   variant?: 'default' | 'minimal';
 }
+
+const NavItems = () => {
+  const { userRole } = useAuth();
+  const defaultNavItems = [
+    { href: '/', label: 'Compiler', icon: Home },
+    { href: '/courses', label: 'Courses', icon: Book },
+    { href: '/profile', label: 'Profile', icon: User },
+  ];
+  const adminNavItems = [
+      { href: '/manage-courses', label: 'Manage Courses', icon: Edit3, roles: ['teacher', 'developer'] },
+  ];
+
+  const navItems = [
+      ...defaultNavItems,
+      ...adminNavItems.filter(item => item.roles.includes(userRole || ''))
+  ]
+
+  return (
+    <>
+      {navItems.map(item => (
+        <Link href={item.href} key={item.label} passHref>
+          <DropdownMenuItem>
+            <item.icon className="mr-2 h-4 w-4" />
+            <span>{item.label}</span>
+          </DropdownMenuItem>
+        </Link>
+      ))}
+    </>
+  )
+}
+
 
 const MemoizedHeader: React.FC<HeaderProps> = ({ 
   onRun, 
@@ -70,10 +110,17 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
       <div className={cn(
         "flex items-center justify-between py-2 px-2 gap-2",
       )}>
-        <div className="flex items-center gap-2 shrink-0">
-          <LogoIcon className="w-6 h-6" />
-          <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center gap-2 shrink-0 cursor-pointer">
+              <LogoIcon className="w-6 h-6" />
+              <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+              <NavItems />
+          </DropdownMenuContent>
+        </DropdownMenu>
         
         <div className="flex-1 flex justify-center min-w-0 px-2">
           {activeFile && (
