@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
-import React, { useRef, useState, useEffect, useImperativeHandle } from 'react';
+import React, { useRef, useState, useEffect, useImperativeHandle, useCallback } from 'react';
 import {
     Tabs,
     TabsContent,
@@ -38,9 +38,12 @@ interface AutoResizingTextareaRef {
   getValue: () => string;
 }
 
-const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initialValue: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search', onContentChange: () => void }>(({ initialValue, onChange, className, onContentChange, ...props }, ref) => {
+const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initialValue: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, onContentChange: () => void }>(({ initialValue, onChange, className, onContentChange, ...props }, ref) => {
     const internalRef = useRef<HTMLTextAreaElement>(null);
     const [value, setValue] = useState(initialValue);
+    const isMobile = useIsMobile();
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    const [ctrlActive, setCtrlActive] = useState(false);
 
     useImperativeHandle(ref, () => ({
         getValue: () => value,
@@ -63,15 +66,86 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
         onContentChange();
     }
 
+    const handleKeyPress = useCallback(async (key: string) => {
+        const textarea = internalRef.current;
+        if (!textarea) return;
+    
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+    
+        let newValue = value;
+        let newCursorPosition = start;
+    
+        if (key === 'Enter') {
+          const { textToInsert, newCursorPosition: cursorPos } = getSmartIndentation(value, start, end);
+          newValue = value.substring(0, start) + textToInsert + value.substring(end);
+          newCursorPosition = cursorPos;
+        } else if (key === 'Backspace') {
+          if (start === end && start > 0) {
+            newValue = value.substring(0, start - 1) + value.substring(end);
+            newCursorPosition = start - 1;
+          } else {
+            newValue = value.substring(0, start) + value.substring(end);
+            newCursorPosition = start;
+          }
+        } else if (key === 'Tab') {
+          newValue = value.substring(0, start) + '  ' + value.substring(end);
+          newCursorPosition = start + 2;
+        } else if (!['Shift', 'CapsLock', 'Ctrl'].includes(key)) {
+          const pairMap: {[key:string]: string} = { '(': ')', '{': '}', '[': ']', "'": "'", '"': '"', '`': '`' };
+          if (pairMap[key] && key.length === 1) {
+            newValue = value.substring(0, start) + key + pairMap[key] + value.substring(end);
+            newCursorPosition = start + 1;
+          } else {
+            newValue = value.substring(0, start) + key + value.substring(end);
+            newCursorPosition = start + key.length;
+          }
+        } else if (key === 'Ctrl') {
+          setCtrlActive(p => !p);
+          return;
+        }
+    
+        setValue(newValue);
+        onContentChange();
+    
+        requestAnimationFrame(() => {
+          textarea.selectionStart = newCursorPosition;
+          textarea.selectionEnd = newCursorPosition;
+          textarea.focus();
+        });
+      }, [value, onContentChange]);
+
+    const showKeyboard = isMobile && isKeyboardVisible;
+
     return (
-        <Textarea
-            ref={internalRef}
-            value={value}
-            onChange={handleChange}
-            className={className}
-            rows={1}
-            {...props}
-        />
+        <>
+            <Textarea
+                ref={internalRef}
+                value={value}
+                onChange={handleChange}
+                onFocus={() => setIsKeyboardVisible(true)}
+                onClick={() => setIsKeyboardVisible(true)}
+                className={className}
+                rows={1}
+                inputMode={isMobile ? 'none' : 'text'}
+                {...props}
+            />
+             {showKeyboard && (
+              <div id="coder-keyboard-markdown" className={cn(
+                  "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+                  isKeyboardVisible ? "translate-y-0" : "translate-y-full"
+              )}>
+                  <CoderKeyboard 
+                      onKeyPress={handleKeyPress}
+                      ctrlActive={ctrlActive}
+                      onHide={() => setIsKeyboardVisible(false)}
+                      isSuggestionsOpen={false} // No suggestions for markdown for now
+                      onNavigateSuggestions={() => {}}
+                      onSelectSuggestion={() => {}}
+                  />
+              </div>
+            )}
+        </>
     );
 });
 AutoResizingTextarea.displayName = 'AutoResizingTextarea';
@@ -368,7 +442,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                                                 initialValue={segment.content}
                                                 onContentChange={markAsDirty}
-                                                inputMode={'text'}
                                             />
                                         </div>
                                     ) : (
@@ -567,5 +640,7 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
+
+    
 
     
