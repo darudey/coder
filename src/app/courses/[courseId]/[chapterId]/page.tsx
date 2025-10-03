@@ -86,7 +86,7 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
 
   if (!topic) {
     return (
-        <div className="container mx-auto p-4 md:p-8">
+        <>
             <Header variant="page">
                 <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
                     <Link href={`/courses/${course.id}`}>
@@ -94,19 +94,19 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                     Back to {course.title}
                     </Link>
                 </Button>
-                <h1 className="text-sm font-bold tracking-tight">{chapter.title}</h1>
+                <h1 className="text-xl font-bold tracking-tight">{chapter.title}</h1>
             </Header>
-            <div className="p-4 md:p-8 pt-0">
+            <div className="container mx-auto p-4 md:p-8 pt-0">
                 <p>No topics found for this chapter yet.</p>
             </div>
-        </div>
+        </>
     )
   }
 
   return (
     <>
       {(activeTab === 'syntax' || activeTab === 'practice') && (
-        <Button onClick={handleRunCode} disabled={isCompiling} className="fixed top-[56px] right-4 z-50 h-9 px-4">
+        <Button onClick={handleRunCode} disabled={isCompiling} className="fixed top-4 right-4 z-50 h-9 px-4">
             {isCompiling ? (
                 <DotLoader />
             ) : (
@@ -126,10 +126,10 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                     Back to {course.title}
                     </Link>
                 </Button>
-                <h1 className="text-sm font-bold tracking-tight">{topic.title}</h1>
-                <p className="text-muted-foreground text-xs mt-1">{chapter.title}</p>
+                <h1 className="text-2xl font-bold tracking-tight">{topic.title}</h1>
+                <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
             </Header>
-            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30">
+            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30 border-b">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
                 <TabsTrigger value="syntax"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>

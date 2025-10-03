@@ -94,12 +94,13 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 
   if (variant === 'page') {
     return (
-      <header className="bg-background">
-        <div className="flex items-center justify-between py-2 px-2 gap-2">
-            <MainNav />
+      <header className="bg-background border-b">
+        <div className="container mx-auto p-4 md:p-8 flex items-start gap-8">
+            <div className="sticky top-4">
+              <MainNav />
+            </div>
+            <div className="flex-grow">{children}</div>
         </div>
-        <Separator />
-        {children && <div className="p-4 md:p-8 pt-4 md:pt-6">{children}</div>}
       </header>
     )
   }
