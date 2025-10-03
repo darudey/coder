@@ -18,7 +18,7 @@ export default function CoursesPage() {
   return (
     <>
       <Header variant="page">
-        <div className="border rounded-md px-4 py-1.5 bg-muted">
+        <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
             <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Courses</h1>
         </div>
       </Header>
@@ -29,8 +29,8 @@ export default function CoursesPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
-            <Link href={`/courses/${course.id}`} key={course.id} className="group">
-              <Card className="h-full hover:border-primary transition-colors">
+            <Link href={`/courses/${course.id}`} key={course.id} className="group active:bg-primary/20 rounded-lg">
+              <Card className="h-full group-hover:border-primary transition-colors">
                 <CardHeader className="flex flex-row items-center gap-4">
                   <div className="bg-primary/10 p-3 rounded-md">
                       <BookOpen className="w-6 h-6 text-primary" />

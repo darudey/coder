@@ -33,7 +33,7 @@ export default function CoursePage({ params: propsParams }: CoursePageProps) {
   return (
     <>
       <Header variant="page">
-        <div className="border rounded-md px-4 py-1.5 bg-muted">
+        <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
             <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">{course.title}</h1>
         </div>
       </Header>
@@ -42,8 +42,8 @@ export default function CoursePage({ params: propsParams }: CoursePageProps) {
         <p className="text-muted-foreground mb-8">{course.description}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {course.chapters.map((chapter) => (
-            <Link href={`/courses/${course.id}/${chapter.id}`} key={chapter.id} className="group">
-              <Card className="h-full hover:border-primary transition-colors">
+            <Link href={`/courses/${course.id}/${chapter.id}`} key={chapter.id} className="group active:bg-primary/20 rounded-lg">
+              <Card className="h-full group-hover:border-primary transition-colors">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-primary/80"/>

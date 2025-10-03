@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Home, Book, User, Edit3, Check } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Home, Book, User, Edit3, Check, Plus } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -30,6 +30,7 @@ interface HeaderProps {
   hasActiveFile?: boolean;
   variant?: 'default' | 'minimal' | 'page';
   children?: React.ReactNode;
+  actions?: React.ReactNode;
 }
 
 const NavItems = () => {
@@ -77,6 +78,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   hasActiveFile,
   variant = 'default',
   children,
+  actions
 }) => {
   const MainNav = ({className}: {className?: string}) => (
      <DropdownMenu>
@@ -98,6 +100,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
         <div className="container mx-auto p-4 md:px-8 md:py-4 flex items-center gap-4">
           <MainNav />
           <div className="flex-1 min-w-0">{children}</div>
+          {actions && <div className="shrink-0">{actions}</div>}
         </div>
       </header>
     );
