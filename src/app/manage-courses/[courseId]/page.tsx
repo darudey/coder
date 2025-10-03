@@ -127,52 +127,7 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
 
   return (
     <>
-      <Header variant="page" actions={
-        <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
-          <DialogTrigger asChild>
-              <Button size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Chapter
-              </Button>
-          </DialogTrigger>
-          <DialogContent>
-              <DialogHeader>
-                  <DialogTitle>Add New Chapter</DialogTitle>
-                  <DialogDescription>
-                      Fill in the details for your new chapter below.
-                  </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="chapter-title" className="text-right">Title</Label>
-                      <Input
-                          id="chapter-title"
-                          value={newChapter.title}
-                          onChange={(e) => setNewChapter({ ...newChapter, title: e.target.value })}
-                          className="col-span-3"
-                          placeholder="e.g., Introduction to Functions"
-                      />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="chapter-description" className="text-right">Description</Label>
-                      <Textarea
-                          id="chapter-description"
-                          value={newChapter.description}
-                          onChange={(e) => setNewChapter({ ...newChapter, description: e.target.value })}
-                          className="col-span-3"
-                          placeholder="What will users learn in this chapter?"
-                      />
-                  </div>
-              </div>
-              <DialogFooter>
-                  <DialogClose asChild>
-                      <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button onClick={handleCreateChapter}>Create Chapter</Button>
-              </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      }>
+      <Header variant="page">
         <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
             <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage: {course.title}</h1>
         </div>
@@ -181,9 +136,9 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
         <p className="text-muted-foreground mt-4 mb-8">{course.description}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {course.chapters.map((chapter) => (
-            <div key={chapter.id} className="h-full flex flex-col">
-              <Link href={`/manage-courses/${course.id}/${chapter.id}`} className="group flex-grow">
-                <Card className="h-full group-hover:border-primary group-active:bg-primary/20 transition-colors">
+            <div key={chapter.id} className="flex flex-col">
+               <Link href={`/manage-courses/${course.id}/${chapter.id}`} className="group h-full">
+                <Card className="h-full group-hover:border-primary group-active:bg-primary/20 transition-colors flex flex-col">
                   <CardHeader className="flex-grow">
                     <CardTitle className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-primary/80"/>
