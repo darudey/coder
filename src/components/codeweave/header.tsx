@@ -49,17 +49,17 @@ const NavItems = () => {
   ]
 
   return (
-    <>
+    <div className="p-1 space-y-1">
       {navItems.map(item => (
         <Link href={item.href} key={item.label} passHref>
-          <DropdownMenuItem>
+          <DropdownMenuItem className="border focus-visible:ring-1 focus-visible:ring-ring">
             <item.icon className="mr-2 h-4 w-4" />
             <span>{item.label}</span>
             {pathname === item.href && <Check className="ml-auto h-4 w-4" />}
           </DropdownMenuItem>
         </Link>
       ))}
-    </>
+    </div>
   )
 }
 
@@ -120,7 +120,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
               <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
+          <DropdownMenuContent align="start" className="p-0">
               <NavItems />
           </DropdownMenuContent>
         </DropdownMenu>
