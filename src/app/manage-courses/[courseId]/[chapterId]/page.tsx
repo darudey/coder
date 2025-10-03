@@ -24,28 +24,31 @@ import { useCourses } from '@/hooks/use-courses';
 import { ChevronRight } from 'lucide-react';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { LoadingPage } from '@/components/loading-page';
-import { NoteCodeEditor } from '@/components/codeweave/note-code-editor';
+import { NoteCodeEditor, type NoteCodeEditorRef } from '@/components/codeweave/note-code-editor';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { getSmartIndentation } from '@/lib/indentation';
-import { getCaretCoordinates } from '@/lib/caret-position';
 import { Header } from '@/components/codeweave/header';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
 
-const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search' }>(({ value, onChange, className, ...props }, ref) => {
-    const internalRef = useRef<HTMLTextAreaElement>(null);
-    const combinedRef = (el: HTMLTextAreaElement) => {
-        (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
-        if (typeof ref === 'function') {
-            ref(el);
-        } else if (ref) {
-            ref.current = el;
-        }
-    };
+interface AutoResizingTextareaRef {
+  getValue: () => string;
+}
 
+const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initialValue: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search', onContentChange: () => void }>(({ initialValue, onChange, className, onContentChange, ...props }, ref) => {
+    const internalRef = useRef<HTMLTextAreaElement>(null);
+    const [value, setValue] = useState(initialValue);
+
+    useImperativeHandle(ref, () => ({
+        getValue: () => internalRef.current?.value || '',
+    }));
+
+    useEffect(() => {
+        setValue(initialValue);
+    }, [initialValue]);
 
     useEffect(() => {
         if (internalRef.current) {
@@ -54,11 +57,17 @@ const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: stri
         }
     }, [value]);
 
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setValue(e.target.value);
+        if (onChange) onChange(e);
+        onContentChange();
+    }
+
     return (
         <Textarea
-            ref={combinedRef}
+            ref={internalRef}
             value={value}
-            onChange={onChange}
+            onChange={handleChange}
             className={className}
             rows={1}
             {...props}
@@ -80,10 +89,15 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const params = useParams() as { courseId: string; chapterId: string };
   const { toast } = useToast();
   const { courses, updateTopic, loading } = useCourses();
-
+  
   const isMobile = useIsMobile();
   const [isCompiling, setIsCompiling] = useState(false);
+  
+  const syntaxCompilerRef = useRef<CompilerRef>(null);
   const solutionCompilerRef = useRef<CompilerRef>(null);
+  const practiceInitialCodeRefs = useRef<{[key: string]: CompilerRef | null}>({});
+  const noteSegmentRefs = useRef<{[key: number]: NoteCodeEditorRef | AutoResizingTextareaRef | null}>({});
+
 
   const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
   const chapter = !loading ? course?.chapters.find((ch) => ch.id === params.chapterId) : undefined;
@@ -102,9 +116,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   useEffect(() => {
     if (!loading && course && chapter) {
-        const initialTopic = chapter.topics.find(t => t.id === chapter.id); // Assuming topic ID might match chapter ID or it's the first.
-        setTopic(JSON.parse(JSON.stringify(initialTopic || chapter.topics[0])));
-        if (!initialTopic && !chapter.topics[0]) {
+        const initialTopic = chapter.topics.find(t => t.id === chapter.id) || chapter.topics[0];
+        if (initialTopic) {
+            setTopic(JSON.parse(JSON.stringify(initialTopic)));
+        } else {
             notFound();
         }
         setHasUnsavedChanges(false);
@@ -114,122 +129,31 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   useEffect(() => {
       setPracticeQuestionIndex(0);
   }, [topic?.id])
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const keyboard = document.getElementById('coder-keyboard');
-      const target = event.target as Node;
-      
-      const isClickInsideEditor = (target as HTMLElement).closest('.note-editor-segment');
-
-      if (!isClickInsideEditor && (!keyboard || !keyboard.contains(target))) {
-        setIsKeyboardVisible(false);
-        setActiveEditor(null);
-      }
-    }
-    if (isMobile) {
-        document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-       if (isMobile) {
-        document.removeEventListener("mousedown", handleClickOutside);
-       }
-    };
-  }, [isMobile]);
-
-  const handleEditorFocus = (type: 'markdown' | 'code', index: number) => {
-    setActiveEditor({ type, index });
-    setIsKeyboardVisible(true);
-  }
-
-  const handleKeyPress = (key: string) => {
-    if (!activeEditor || !topic) return;
-
-    const { type, index } = activeEditor;
-    const segment = topic.notes[index];
-
-    let textarea: HTMLTextAreaElement | null = null;
-    let content = segment.content;
-    let newContent: string;
-    let newCursorPosition: number;
-
-    if (type === 'code') {
-      textarea = document.querySelector<HTMLTextAreaElement>(`#note-code-editor-${index}`);
-    } else { // markdown
-      textarea = document.querySelector<HTMLTextAreaElement>(`#note-markdown-editor-${index}`);
-    }
-
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-
-    if (key === 'Ctrl') {
-        setCtrlActive(prev => !prev);
-        return;
-    }
-     if (ctrlActive) {
-        setCtrlActive(false);
-        return;
-    }
-    
-    if (key === 'Enter') {
-        if (type === 'code') {
-            const { textToInsert, newCursorPosition: nextCursorPos } = getSmartIndentation(content, start);
-            newContent = content.substring(0, start) + textToInsert + content.substring(end);
-            newCursorPosition = nextCursorPos;
-        } else {
-            newContent = content.substring(0, start) + '\n' + content.substring(end);
-            newCursorPosition = start + 1;
-        }
-    } else if (key === 'Tab') {
-        if (type === 'code') {
-            newContent = content.substring(0, start) + '  ' + content.substring(end);
-            newCursorPosition = start + 2;
-        } else {
-            return; // Tab has no function in markdown editor for now
-        }
-    } else if (key === 'Backspace') {
-        if (start === end && start > 0) {
-            newContent = content.substring(0, start - 1) + content.substring(end);
-            newCursorPosition = start - 1;
-        } else {
-            newContent = content.substring(0, start) + content.substring(end);
-            newCursorPosition = start;
-        }
-    } else {
-        newContent = content.substring(0, start) + key + content.substring(end);
-        newCursorPosition = start + key.length;
-    }
-
-    handleNoteSegmentChange(index, newContent);
-    requestAnimationFrame(() => {
-        if (textarea) {
-            textarea.selectionStart = newCursorPosition;
-            textarea.selectionEnd = newCursorPosition;
-        }
-    });
-  }
-
+  
+  const markAsDirty = () => setHasUnsavedChanges(true);
 
   if (loading || !course || !chapter || !topic) {
     return <LoadingPage />;
   }
   
-  const handleTopicUpdate = (updatedTopicData: Partial<Topic>) => {
+  const handleTopicTitleChange = (value: string) => {
     if (!topic) return;
-    setTopic(prevTopic => ({ ...prevTopic!, ...updatedTopicData }));
-    setHasUnsavedChanges(true);
+    setTopic(prevTopic => ({ ...prevTopic!, title: value }));
+    markAsDirty();
   };
   
   const handleFieldChange = (field: keyof Topic, value: any) => {
-    handleTopicUpdate({ [field]: value });
+    if (!topic) return;
+    setTopic(prevTopic => ({ ...prevTopic!, [field]: value }));
+    markAsDirty();
   };
   
   const handlePracticeQuestionChange = (index: number, field: keyof PracticeQuestion, value: string) => {
+    if (!topic) return;
     const newPractice = [...topic.practice];
     newPractice[index] = { ...newPractice[index], [field]: value };
-    handleTopicUpdate({ practice: newPractice });
+    setTopic(prevTopic => ({ ...prevTopic!, practice: newPractice }));
+    markAsDirty();
   };
 
   const handleRunSolution = async () => {
@@ -246,43 +170,48 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   }
 
   const handleAddPracticeQuestion = () => {
-    const newPractice = [...topic.practice, { id: nanoid(), question: '', initialCode: '', solutionCode: '', expectedOutput: '' }];
+    if (!topic) return;
+    const newPractice = [...topic.practice, { id: nanoid(), question: '', initialCode: '// Your code here', solutionCode: '// Your solution here', expectedOutput: '' }];
+    setTopic(prevTopic => ({ ...prevTopic!, practice: newPractice }));
     setPracticeQuestionIndex(newPractice.length - 1);
-    handleTopicUpdate({ practice: newPractice });
+    markAsDirty();
   }
 
   const handleDeletePracticeQuestion = (index: number) => {
+    if (!topic) return;
     const newPractice = topic.practice.filter((_, i) => i !== index);
     if (practiceQuestionIndex >= index && practiceQuestionIndex > 0) {
         setPracticeQuestionIndex(p => p - 1);
     }
-    handleTopicUpdate({ practice: newPractice });
-  }
-
-  const handleNoteSegmentChange = (index: number, content: string) => {
-    const newNotes = topic.notes.map((segment, i) => i === index ? { ...segment, content } : segment);
-    handleTopicUpdate({ notes: newNotes });
+    setTopic(prevTopic => ({ ...prevTopic!, practice: newPractice }));
+    markAsDirty();
   }
 
   const handleAddNoteSegment = (type: 'html' | 'code', index: number) => {
+    if (!topic) return;
     const newSegment: NoteSegment = { type, content: '' };
     const newNotes = [...topic.notes];
     newNotes.splice(index + 1, 0, newSegment);
-    handleTopicUpdate({ notes: newNotes });
+    setTopic(prevTopic => ({ ...prevTopic!, notes: newNotes }));
+    markAsDirty();
   }
 
   const handleDeleteNoteSegment = (index: number) => {
+    if (!topic) return;
     const newNotes = topic.notes.filter((_, i) => i !== index);
-    handleTopicUpdate({ notes: newNotes });
+    setTopic(prevTopic => ({ ...prevTopic!, notes: newNotes }));
+    markAsDirty();
   }
 
   const handleMoveNoteSegment = (index: number, direction: 'up' | 'down') => {
+    if (!topic) return;
     const newNotes = [...topic.notes];
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= newNotes.length) return;
     const [movedItem] = newNotes.splice(index, 1);
     newNotes.splice(newIndex, 0, movedItem);
-    handleTopicUpdate({ notes: newNotes });
+    setTopic(prevTopic => ({ ...prevTopic!, notes: newNotes }));
+    markAsDirty();
   };
 
   const handlePrevQuestion = () => {
@@ -297,6 +226,39 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     if (!topic || !course || !chapter) return;
     setIsSaving(true);
     
+    // Construct the final topic object by gathering data from refs
+    const finalTopic: Topic = { ...topic };
+
+    // Get syntax code
+    if (syntaxCompilerRef.current) {
+        finalTopic.syntax = syntaxCompilerRef.current.getCode();
+    }
+    
+    // Get notes content
+    finalTopic.notes = topic.notes.map((segment, index) => {
+        const segmentRef = noteSegmentRefs.current[index];
+        if (segmentRef) {
+            return { ...segment, content: segmentRef.getValue() };
+        }
+        return segment;
+    });
+
+    // Get practice question codes
+    finalTopic.practice = topic.practice.map(pq => {
+        const initialCodeRef = practiceInitialCodeRefs.current[`initial-${pq.id}`];
+        const solutionCode = solutionCompilerRef.current?.getCode(); // This will only get the current one
+        
+        let updatedPq = {...pq};
+        if (initialCodeRef) {
+            updatedPq.initialCode = initialCodeRef.getCode();
+        }
+        if (pq.id === currentPracticeQuestion?.id && solutionCode) {
+            updatedPq.solutionCode = solutionCode;
+        }
+
+        return updatedPq;
+    });
+
     // Create an updated course object to save to DB
     const updatedCourse = {
         ...course,
@@ -304,7 +266,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             if (chap.id !== chapter.id) return chap;
             return {
                 ...chap,
-                topics: chap.topics.map(t => t.id === topic.id ? topic : t)
+                topics: chap.topics.map(t => t.id === finalTopic.id ? finalTopic : t)
             };
         })
     };
@@ -313,7 +275,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         await setDoc(doc(db, 'courses', course.id), updatedCourse);
         
         // Also update the local global state for immediate consistency on other pages
-        updateTopic(course.id, chapter.id, topic.id, topic);
+        updateTopic(course.id, chapter.id, finalTopic.id, finalTopic);
         
         setIsSaving(false);
         setHasUnsavedChanges(false);
@@ -334,8 +296,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
 
-  const showKeyboard = isKeyboardVisible && isMobile;
-
   return (
     <>
       <Header variant="page">
@@ -343,7 +303,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             <Input 
                 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent truncate"
                 value={topic.title}
-                onChange={(e) => handleFieldChange('title', e.target.value)}
+                onChange={(e) => handleTopicTitleChange(e.target.value)}
             />
         </div>
       </Header>
@@ -389,7 +349,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         </CardHeader>
                         <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
-                                <div key={`note-segment-${index}`} className="relative group border-y note-editor-segment">
+                                <div key={segment.type + index} className="relative group border-y note-editor-segment">
                                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border z-10">
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'up')} disabled={index === 0}>
                                             <ArrowUp className="w-4 h-4" />
@@ -406,11 +366,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Markdown</Label>
                                             <AutoResizingTextarea
+                                                ref={ref => noteSegmentRefs.current[index] = ref}
+                                                key={`md-${topic.id}-${index}`}
                                                 id={`note-markdown-editor-${index}`}
                                                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
-                                                value={segment.content}
-                                                onChange={(e) => handleNoteSegmentChange(index, e.target.value)}
-                                                onFocus={() => handleEditorFocus('markdown', index)}
+                                                initialValue={segment.content}
+                                                onContentChange={markAsDirty}
                                                 inputMode={isMobile ? 'none' : 'text'}
                                             />
                                         </div>
@@ -418,12 +379,11 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Code Block</Label>
                                             <NoteCodeEditor
+                                                ref={ref => noteSegmentRefs.current[index] = ref}
+                                                key={`code-${topic.id}-${index}`}
                                                 id={`note-code-editor-${index}`}
                                                 initialCode={segment.content}
-                                                onCodeChange={(code) => handleNoteSegmentChange(index, code)}
-                                                onFocus={() => handleEditorFocus('code', index)}
-                                                onKeyPress={handleKeyPress}
-                                                isActive={activeEditor?.type === 'code' && activeEditor.index === index}
+                                                onContentChange={markAsDirty}
                                             />
                                         </div>
                                     )}
@@ -464,7 +424,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         <CardContent className="flex-grow overflow-auto p-0">
                             <div className="h-full min-h-[400px]">
                                 <Compiler 
-                                    onCodeChange={(code) => handleFieldChange('syntax', code)}
+                                    ref={syntaxCompilerRef}
+                                    onCodeChange={markAsDirty}
                                     initialCode={topic.syntax} 
                                     variant="minimal" 
                                     hideHeader 
@@ -513,7 +474,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <CardContent className="flex-grow overflow-auto p-0">
                                         <div className="h-full min-h-[300px]">
                                             <Compiler 
-                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'initialCode', code)}
+                                                ref={ref => { practiceInitialCodeRefs.current[`initial-${currentPracticeQuestion.id}`] = ref; }}
+                                                onCodeChange={markAsDirty}
                                                 initialCode={currentPracticeQuestion.initialCode} 
                                                 variant="minimal" hideHeader 
                                                 key={`initial-${currentPracticeQuestion.id}`}
@@ -533,7 +495,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="h-full min-h-[300px]">
                                             <Compiler
                                                 ref={solutionCompilerRef}
-                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'solutionCode', code)}
+                                                onCodeChange={markAsDirty}
                                                 initialCode={currentPracticeQuestion.solutionCode}
                                                 variant="minimal" hideHeader
                                                 key={`solution-${currentPracticeQuestion.id}`}
@@ -545,7 +507,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                              <Card className="h-full flex flex-col rounded-none border-x-0 border-t">
                                 <CardHeader><CardTitle className="text-sm">Expected Output (Auto-generated)</CardTitle></CardHeader>
                                 <CardContent className="flex-grow overflow-auto p-4 bg-muted/50">
-                                    <AutoResizingTextarea
+                                    <Textarea
                                         className="w-full h-full min-h-[100px] resize-none focus-visible:ring-0 focus-visible:ring-offset-0 border-0 p-0 font-code text-sm bg-transparent"
                                         value={currentPracticeQuestion.expectedOutput}
                                         readOnly
@@ -566,7 +528,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                 </TabsContent>
             </div>
             <div className="container mx-auto px-4 md:px-8">
-                <Button asChild variant="outline" size="sm">
+                 <Button asChild variant="outline" size="sm">
                     <Link href={`/manage-courses/${course.id}`}>
                         <ChevronLeft className="w-4 h-4 mr-2" />
                         Back to Chapters
@@ -576,19 +538,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         </Tabs>
         <div className="h-[75vh]" />
       </div>
-      <div id="coder-keyboard" className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
-        showKeyboard ? "translate-y-0" : "translate-y-full"
-      )}>
-        <CoderKeyboard 
-            onKeyPress={handleKeyPress} 
-            ctrlActive={ctrlActive} 
-            onHide={() => setIsKeyboardVisible(false)}
-            isSuggestionsOpen={false} // Suggestions not implemented for this editor yet
-            onNavigateSuggestions={() => {}}
-            onSelectSuggestion={() => {}}
-        />
-      </div>
+
       <div className="fixed top-20 right-8 z-50">
         {!hasUnsavedChanges ? (
             <Button disabled size="lg" className="rounded-full shadow-lg">
@@ -618,6 +568,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 // Add onCodeChange to Compiler props
 declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
-        onCodeChange?: (code: string) => void;
+        onCodeChange?: () => void;
     }
 }
+
+    

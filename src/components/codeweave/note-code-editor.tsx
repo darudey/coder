@@ -1,32 +1,41 @@
 
 'use client';
 
-import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useLayoutEffect, useEffect, useImperativeHandle } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
 
+export interface NoteCodeEditorRef {
+  getValue: () => string;
+}
+
 interface NoteCodeEditorProps {
     id: string;
     initialCode: string;
-    onCodeChange: (code: string) => void;
+    onContentChange: () => void;
     onFocus?: () => void;
-    onKeyPress: (key: string) => void;
-    isActive: boolean;
 }
 
-export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ id, initialCode, onCodeChange, onFocus, onKeyPress, isActive }) => {
-    // This component is now controlled by the parent. 
-    // The `initialCode` prop is the source of truth.
-    const code = initialCode;
+export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditorProps>(({ id, initialCode, onContentChange, onFocus }, ref) => {
+    const [code, setCode] = useState(initialCode);
     
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const gutterRef = useRef<HTMLDivElement>(null);
     const mirrorRef = useRef<HTMLDivElement>(null);
     const editorWrapperRef = useRef<HTMLDivElement>(null);
 
+    useImperativeHandle(ref, () => ({
+        getValue: () => code,
+    }));
+
+    useEffect(() => {
+        setCode(initialCode);
+    }, [initialCode]);
+
     const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        onCodeChange(e.target.value);
+        setCode(e.target.value);
+        onContentChange();
     };
 
     const updateLineNumbersAndResize = useCallback(() => {
@@ -35,11 +44,8 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ id, initialCode,
         const mirror = mirrorRef.current;
         const wrapper = editorWrapperRef.current;
         if (!ta || !gutter || !mirror || !wrapper) return;
-
-        // Use the current code value for calculations
-        const currentCode = ta.value;
     
-        const lines = currentCode.split('\n');
+        const lines = code.split('\n');
         gutter.innerHTML = '';
         mirror.innerHTML = '';
     
@@ -71,19 +77,12 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ id, initialCode,
         const newHeight = Math.max(totalHeight + totalPadding, 21);
         wrapper.style.height = `${newHeight}px`;
     
-    }, []);
+    }, [code]);
 
     useLayoutEffect(() => {
         updateLineNumbersAndResize();
     }, [code, updateLineNumbersAndResize]);
     
-    const handleNativeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (isActive && (e.key === 'Enter' || e.key === 'Tab')) {
-            e.preventDefault();
-            onKeyPress(e.key);
-        }
-    };
-
     const highlightedCode = React.useMemo(() => {
         const lines = code.split('\n');
         return (
@@ -141,8 +140,6 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ id, initialCode,
                 value={code}
                 onChange={handleCodeChange}
                 onFocus={onFocus}
-                onKeyDown={handleNativeKeyDown}
-                inputMode={isActive ? 'none' : 'text'}
                 className={cn(
                     "font-code text-sm resize-none",
                     "absolute inset-0 w-full h-full bg-transparent z-10",
@@ -173,6 +170,7 @@ export const NoteCodeEditor: React.FC<NoteCodeEditorProps> = ({ id, initialCode,
             />
         </div>
     );
-};
+});
+NoteCodeEditor.displayName = 'NoteCodeEditor';
 
     
