@@ -124,10 +124,8 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
       <div className="flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
             <Header variant="page">
-              <div className="flex items-center gap-4">
-                <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
-                  <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">{topic.title}</h1>
-                </div>
+              <div className="border rounded-md px-4 py-1.5 bg-muted">
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">{topic.title}</h1>
               </div>
             </Header>
             <div className="container mx-auto px-4 md:px-8">

@@ -33,7 +33,7 @@ export default function CoursePage({ params: propsParams }: CoursePageProps) {
   return (
     <>
       <Header variant="page">
-        <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
+        <div className="border rounded-md px-4 py-1.5 bg-muted">
             <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">{course.title}</h1>
         </div>
       </Header>
