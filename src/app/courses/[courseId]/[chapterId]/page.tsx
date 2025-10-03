@@ -89,17 +89,19 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
         <>
             <Header variant="page">
               <div>
-                <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
-                    <Link href={`/courses/${course.id}`}>
-                    <ChevronLeft className="w-4 h-4 mr-2" />
-                    Back to {course.title}
-                    </Link>
-                </Button>
                 <h1 className="text-xl font-bold tracking-tight">{chapter.title}</h1>
               </div>
             </Header>
             <div className="container mx-auto p-4 md:p-8 pt-0">
                 <p>No topics found for this chapter yet.</p>
+                  <div className="mt-8">
+                    <Button asChild variant="outline" size="sm">
+                        <Link href={`/courses/${course.id}`}>
+                        <ChevronLeft className="w-4 h-4 mr-2" />
+                        Back to {course.title}
+                        </Link>
+                    </Button>
+                </div>
             </div>
         </>
     )
@@ -123,12 +125,6 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
             <Header variant="page">
               <div>
-                <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
-                    <Link href={`/courses/${course.id}`}>
-                    <ChevronLeft className="w-4 h-4 mr-2" />
-                    Back to {course.title}
-                    </Link>
-                </Button>
                 <h1 className="text-2xl font-bold tracking-tight">{topic.title}</h1>
                 <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
               </div>
@@ -221,6 +217,15 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                         <div className="text-center text-muted-foreground p-8">No practice questions available for this topic yet.</div>
                     )}
                 </TabsContent>
+            </div>
+
+            <div className="px-4 md:px-8">
+                 <Button asChild variant="outline" size="sm">
+                    <Link href={`/courses/${course.id}`}>
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back to {course.title}
+                    </Link>
+                </Button>
             </div>
         </Tabs>
         <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>

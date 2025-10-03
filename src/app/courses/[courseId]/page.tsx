@@ -35,12 +35,6 @@ export default function CoursePage({ params: propsParams }: CoursePageProps) {
       <Header variant="page">
         <div className="flex justify-between items-start">
           <div>
-            <Button asChild variant="outline" size="sm" className="mb-4">
-              <Link href="/courses">
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Back to Courses
-              </Link>
-            </Button>
             <h1 className="text-3xl font-bold tracking-tight">{course.title}</h1>
             <p className="text-muted-foreground mt-2">{course.description}</p>
           </div>
@@ -65,6 +59,14 @@ export default function CoursePage({ params: propsParams }: CoursePageProps) {
             </Link>
           ))}
         </div>
+         <div className="mt-8">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/courses">
+                <ChevronLeft className="w-4 h-4 mr-2" />
+                Back to Courses
+              </Link>
+            </Button>
+          </div>
       </div>
     </>
   );
