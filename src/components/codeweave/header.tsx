@@ -117,7 +117,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
       )}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <div className="flex items-center gap-2 shrink-0 cursor-pointer">
+            <div className="flex items-center gap-2 shrink-0 cursor-pointer p-1 rounded-md transition-colors active:bg-muted">
               <LogoIcon className="w-6 h-6" />
               <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
             </div>
@@ -169,4 +169,5 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
+
 
