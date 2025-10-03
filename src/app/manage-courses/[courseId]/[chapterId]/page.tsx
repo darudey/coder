@@ -372,7 +372,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                                                 initialValue={segment.content}
                                                 onContentChange={markAsDirty}
-                                                inputMode={isMobile ? 'none' : 'text'}
+                                                inputMode={'text'}
                                             />
                                         </div>
                                     ) : (
@@ -384,6 +384,9 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                                 id={`note-code-editor-${index}`}
                                                 initialCode={segment.content}
                                                 onContentChange={markAsDirty}
+                                                onFocus={() => {
+                                                    if(isMobile) setIsKeyboardVisible(true)
+                                                }}
                                             />
                                         </div>
                                     )}
@@ -571,6 +574,8 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
+
+    
 
     
 

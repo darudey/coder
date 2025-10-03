@@ -138,6 +138,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                 id={id}
                 ref={textareaRef}
                 value={code}
+                inputMode="none"
                 onChange={handleCodeChange}
                 onFocus={onFocus}
                 className={cn(
@@ -172,5 +173,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     );
 });
 NoteCodeEditor.displayName = 'NoteCodeEditor';
+
+    
 
     
