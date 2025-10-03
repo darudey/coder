@@ -128,18 +128,12 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
   return (
     <>
       <Header variant="page">
-        <div className="flex justify-between items-center w-full">
-            <div className="flex items-center gap-4">
-                <Button asChild variant="outline" size="sm">
-                <Link href="/manage-courses">
-                    <ChevronLeft className="w-4 h-4 mr-2" />
-                    Back to Courses
-                </Link>
-                </Button>
-                <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
-                    <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage: {course.title}</h1>
-                </div>
-            </div>
+        <div className="flex-1 min-w-0">
+          <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
+              <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage: {course.title}</h1>
+          </div>
+        </div>
+        <div className="flex-none">
             <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
               <DialogTrigger asChild>
                   <Button>
@@ -230,6 +224,15 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        <div className="mt-8">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/manage-courses">
+                <ChevronLeft className="w-4 h-4 mr-2" />
+                Back to Courses
+              </Link>
+            </Button>
         </div>
       </div>
       
