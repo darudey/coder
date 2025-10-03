@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useRef, useLayoutEffect, useEffect, useImperativeHandle } from 'react';
@@ -20,7 +21,10 @@ interface NoteCodeEditorProps {
 }
 
 export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditorProps>(({ id, initialCode, onContentChange }, ref) => {
-    const [code, setCode] = useState(initialCode);
+    const [history, setHistory] = useState([initialCode]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+    const code = history[historyIndex];
+
     const isMobile = useIsMobile();
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [ctrlActive, setCtrlActive] = useState(false);
@@ -35,13 +39,26 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     }));
 
     useEffect(() => {
-        setCode(initialCode);
+        setHistory([initialCode]);
+        setHistoryIndex(0);
     }, [initialCode]);
 
     const handleCodeChange = (newCode: string) => {
-        setCode(newCode);
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newCode);
+        setHistory(newHistory);
+        setHistoryIndex(i => i + 1);
         onContentChange();
     };
+
+    const undo = useCallback(() => {
+        if (historyIndex > 0) setHistoryIndex(i => i - 1);
+    }, [historyIndex]);
+
+    const redo = useCallback(() => {
+        if (historyIndex < history.length - 1) setHistoryIndex(i => i + 1);
+    }, [historyIndex, history.length]);
+
 
     const handleEnterPress = useCallback(() => {
         const textarea = textareaRef.current;
@@ -66,16 +83,49 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         const textarea = textareaRef.current;
         if (!textarea) return;
 
-        if (key === 'Enter') {
-            handleEnterPress();
-            return;
-        }
         if (key === 'Ctrl') {
             setCtrlActive(prev => !prev);
             return;
         }
 
-        // Basic handling for other keys, can be expanded
+        if (ctrlActive) {
+            setCtrlActive(false);
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            switch (key.toLowerCase()) {
+                case 'z': undo(); break;
+                case 'y': redo(); break;
+                case 'c':
+                    if (start !== end) await navigator.clipboard.writeText(code.substring(start, end));
+                    break;
+                case 'x':
+                    if (start !== end) {
+                        await navigator.clipboard.writeText(code.substring(start, end));
+                        const newCode = code.substring(0, start) + code.substring(end);
+                        handleCodeChange(newCode);
+                        requestAnimationFrame(() => {
+                            textarea.selectionStart = textarea.selectionEnd = start;
+                        });
+                    }
+                    break;
+                case 'v':
+                    const text = await navigator.clipboard.readText();
+                    const newCode = code.substring(0, start) + text + code.substring(end);
+                    handleCodeChange(newCode);
+                    requestAnimationFrame(() => {
+                        const newCursorPos = start + text.length;
+                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+                    });
+                    break;
+            }
+            return;
+        }
+
+        if (key === 'Enter') {
+            handleEnterPress();
+            return;
+        }
+
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
 
@@ -113,7 +163,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
           textarea.selectionEnd = newCursorPosition;
           textarea.focus();
         });
-    }, [code, handleEnterPress]);
+    }, [code, handleEnterPress, ctrlActive, undo, redo]);
 
     const updateLineNumbersAndResize = useCallback(() => {
         const ta = textareaRef.current;
@@ -256,6 +306,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
             )}>
                 <CoderKeyboard 
                     onKeyPress={handleKeyPress}
+                    ctrlActive={ctrlActive}
                     onHide={() => setIsKeyboardVisible(false)}
                     isSuggestionsOpen={false}
                     onNavigateSuggestions={() => {}}

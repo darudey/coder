@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
@@ -40,7 +41,10 @@ interface AutoResizingTextareaRef {
 
 const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initialValue: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, onContentChange: () => void }>(({ initialValue, onChange, className, onContentChange, ...props }, ref) => {
     const internalRef = useRef<HTMLTextAreaElement>(null);
-    const [value, setValue] = useState(initialValue);
+    const [history, setHistory] = useState([initialValue]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+    const value = history[historyIndex];
+
     const isMobile = useIsMobile();
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [ctrlActive, setCtrlActive] = useState(false);
@@ -50,7 +54,8 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
     }));
 
     useEffect(() => {
-        setValue(initialValue);
+        setHistory([initialValue]);
+        setHistoryIndex(0);
     }, [initialValue]);
 
     useEffect(() => {
@@ -60,15 +65,62 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
         }
     }, [value]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setValue(e.target.value);
-        if (onChange) onChange(e);
+    const handleChange = (newValue: string) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newValue);
+        setHistory(newHistory);
+        setHistoryIndex(i => i + 1);
         onContentChange();
+    };
+    
+    const undo = () => {
+        if (historyIndex > 0) setHistoryIndex(i => i - 1);
+    }
+    const redo = () => {
+        if (historyIndex < history.length - 1) setHistoryIndex(i => i + 1);
     }
 
     const handleKeyPress = useCallback(async (key: string) => {
         const textarea = internalRef.current;
         if (!textarea) return;
+
+        if (key === 'Ctrl') {
+            setCtrlActive(p => !p);
+            return;
+        }
+
+        if (ctrlActive) {
+            setCtrlActive(false);
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            switch (key.toLowerCase()) {
+                case 'z': undo(); break;
+                case 'y': redo(); break;
+                case 'c':
+                    if (start !== end) await navigator.clipboard.writeText(value.substring(start, end));
+                    break;
+                case 'x':
+                    if (start !== end) {
+                        await navigator.clipboard.writeText(value.substring(start, end));
+                        const newValue = value.substring(0, start) + value.substring(end);
+                        handleChange(newValue);
+                        requestAnimationFrame(() => {
+                            textarea.selectionStart = textarea.selectionEnd = start;
+                        });
+                    }
+                    break;
+                case 'v':
+                    const text = await navigator.clipboard.readText();
+                    const newValue = value.substring(0, start) + text + value.substring(end);
+                    handleChange(newValue);
+                    requestAnimationFrame(() => {
+                        const newCursorPos = start + text.length;
+                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+                    });
+                    break;
+            }
+            return;
+        }
     
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
@@ -91,7 +143,7 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
         } else if (key === 'Tab') {
           newValue = value.substring(0, start) + '  ' + value.substring(end);
           newCursorPosition = start + 2;
-        } else if (!['Shift', 'CapsLock', 'Ctrl'].includes(key)) {
+        } else if (!['Shift', 'CapsLock'].includes(key)) {
           const pairMap: {[key:string]: string} = { '(': ')', '{': '}', '[': ']', "'": "'", '"': '"', '`': '`' };
           if (pairMap[key] && key.length === 1) {
             newValue = value.substring(0, start) + key + pairMap[key] + value.substring(end);
@@ -100,20 +152,18 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
             newValue = value.substring(0, start) + key + value.substring(end);
             newCursorPosition = start + key.length;
           }
-        } else if (key === 'Ctrl') {
-          setCtrlActive(p => !p);
-          return;
+        } else {
+            return; // Don't handle shift/capslock here
         }
     
-        setValue(newValue);
-        onContentChange();
+        handleChange(newValue);
     
         requestAnimationFrame(() => {
           textarea.selectionStart = newCursorPosition;
           textarea.selectionEnd = newCursorPosition;
           textarea.focus();
         });
-      }, [value, onContentChange]);
+      }, [value, onContentChange, ctrlActive, history.length, historyIndex]);
 
     const showKeyboard = isMobile && isKeyboardVisible;
 
@@ -122,7 +172,7 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
             <Textarea
                 ref={internalRef}
                 value={value}
-                onChange={handleChange}
+                onChange={(e) => handleChange(e.target.value)}
                 onFocus={() => setIsKeyboardVisible(true)}
                 onClick={() => setIsKeyboardVisible(true)}
                 className={className}
@@ -345,7 +395,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         await setDoc(doc(db, 'courses', course.id), updatedCourse);
         
         // Also update the local global state for immediate consistency on other pages
-        updateTopic(course.id, chapter.id, finalTopic);
+        updateTopic(course.id, chapter.id, finalTopic.id, finalTopic);
         
         setIsSaving(false);
         setHasUnsavedChanges(false);
@@ -644,3 +694,4 @@ declare module '@/components/codeweave/compiler' {
     
 
     
+
