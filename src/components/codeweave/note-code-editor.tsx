@@ -93,6 +93,9 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
             switch (key.toLowerCase()) {
+                case 'a':
+                    textarea.select();
+                    break;
                 case 'z': undo(); break;
                 case 'y': redo(); break;
                 case 'c':
@@ -319,3 +322,4 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
 NoteCodeEditor.displayName = 'NoteCodeEditor';
 
     
+

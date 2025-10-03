@@ -94,6 +94,9 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
             switch (key.toLowerCase()) {
+                case 'a':
+                    textarea.select();
+                    break;
                 case 'z': undo(); break;
                 case 'y': redo(); break;
                 case 'c':
@@ -694,4 +697,5 @@ declare module '@/components/codeweave/compiler' {
     
 
     
+
 
