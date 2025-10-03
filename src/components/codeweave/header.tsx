@@ -120,7 +120,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
               <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-0 bg-popover/50 backdrop-blur-sm">
+          <DropdownMenuContent align="start" className="p-0 bg-popover/20 backdrop-blur-sm">
               <NavItems />
           </DropdownMenuContent>
         </DropdownMenu>
