@@ -42,8 +42,8 @@ export default function CoursePage({ params: propsParams }: CoursePageProps) {
         <p className="text-muted-foreground mb-8">{course.description}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {course.chapters.map((chapter) => (
-            <Link href={`/courses/${course.id}/${chapter.id}`} key={chapter.id} className="group active:bg-primary/20 rounded-lg">
-              <Card className="h-full group-hover:border-primary transition-colors">
+            <Link href={`/courses/${course.id}/${chapter.id}`} key={chapter.id} className="group rounded-lg">
+              <Card className="h-full group-hover:border-primary transition-colors group-active:bg-primary/20">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-primary/80"/>
