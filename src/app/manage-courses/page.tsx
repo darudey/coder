@@ -205,7 +205,7 @@ export default function ManageCoursesPage() {
             )}
         </div>
 
-        <div className="fixed bottom-8 right-8 z-50">
+        <div className="fixed top-20 right-8 z-50">
             <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
                 <DialogTrigger asChild>
                     <Button size="lg" className="rounded-full shadow-lg">

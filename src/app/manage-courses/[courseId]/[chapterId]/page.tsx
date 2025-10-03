@@ -547,7 +547,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             onSelectSuggestion={() => {}}
         />
       </div>
-       <div className="fixed bottom-8 right-8 z-50">
+       <div className="fixed top-20 right-8 z-50">
             <Button disabled size="lg" className="rounded-full shadow-lg">
                 <Check className="w-5 h-5 mr-2" />
                 Saved

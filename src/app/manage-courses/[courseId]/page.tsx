@@ -227,7 +227,7 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
         </Dialog>
       )}
 
-        <div className="fixed bottom-8 right-8 z-50">
+        <div className="fixed top-20 right-8 z-50">
             <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
               <DialogTrigger asChild>
                   <Button size="lg" className="rounded-full shadow-lg">
