@@ -88,11 +88,11 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
     return (
         <>
             <Header variant="page">
-              <div className="flex items-center gap-4">
-                <h1 className="text-xl font-bold tracking-tight">{chapter.title}</h1>
+              <div className="border rounded-md px-4 py-1.5 bg-muted">
+                <h1 className="text-base font-bold tracking-tight">{chapter.title}</h1>
               </div>
             </Header>
-            <div className="container mx-auto p-4 md:p-8 pt-0">
+            <div className="container mx-auto p-4 md:p-8">
                 <p>No topics found for this chapter yet.</p>
                   <div className="mt-8">
                     <Button asChild variant="outline" size="sm">
@@ -125,10 +125,14 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
             <Header variant="page">
               <div className="flex items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight">{topic.title}</h1>
+                <div className="border rounded-md px-4 py-1.5 bg-muted">
+                  <h1 className="text-base font-bold tracking-tight">{topic.title}</h1>
+                </div>
               </div>
-              <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
             </Header>
+            <div className="container mx-auto px-4 md:px-8">
+              <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
+            </div>
             <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30 border-b">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>

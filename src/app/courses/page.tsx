@@ -18,17 +18,15 @@ export default function CoursesPage() {
   return (
     <>
       <Header variant="page">
-        <div className="flex items-center gap-4">
-            <div className="border rounded-md px-4 py-1.5 bg-muted">
-                <h1 className="text-base font-bold tracking-tight">Courses</h1>
-            </div>
+        <div className="border rounded-md px-4 py-1.5 bg-muted">
+            <h1 className="text-base font-bold tracking-tight">Courses</h1>
         </div>
-        <p className="text-muted-foreground mt-4">
+      </Header>
+      <div className="container mx-auto p-4 md:p-8">
+        <p className="text-muted-foreground mt-4 mb-8">
           Start your journey into web development. Choose a course to begin.
         </p>
-      </Header>
 
-      <div className="container mx-auto p-4 md:p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
             <Link href={`/courses/${course.id}`} key={course.id} className="group">

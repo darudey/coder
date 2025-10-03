@@ -96,7 +96,10 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
     return (
       <header className="bg-background border-b">
         <div className="container mx-auto p-4 md:px-8 md:py-4">
-          {children}
+          <div className="flex items-center gap-4">
+            <MainNav />
+            {children}
+          </div>
         </div>
       </header>
     );
