@@ -109,7 +109,51 @@ export default function ManageCoursesPage() {
 
   return (
     <>
-        <Header variant="page">
+        <Header variant="page" actions={
+            <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm">
+                        <Plus className="w-4 h-4 mr-2" /> Add Course
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add New Course</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details for your new course below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="course-name" className="text-right">Name</Label>
+                            <Input
+                                id="course-name"
+                                value={newCourse.title}
+                                onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+                                className="col-span-3"
+                                placeholder="e.g., Advanced JavaScript"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="course-description" className="text-right">Description</Label>
+                            <Textarea
+                                id="course-description"
+                                value={newCourse.description}
+                                onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+                                className="col-span-3"
+                                placeholder="A brief summary of the course content."
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleCreateCourse}>Create Course</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        }>
             <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
                 <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage Courses</h1>
             </div>
@@ -121,47 +165,51 @@ export default function ManageCoursesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses.map((course) => (
-                <Card key={course.id} className="h-full flex flex-col">
-                    <Link href={`/manage-courses/${course.id}`} className="flex-grow group active:bg-primary/20">
-                        <CardHeader className="flex flex-row items-center gap-4 group-hover:bg-muted/50 transition-colors">
-                        <div className="bg-primary/10 p-3 rounded-md">
-                            <BookOpen className="w-6 h-6 text-primary" />
-                        </div>
-                        <CardTitle>{course.title}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="group-hover:bg-muted/50 transition-colors pt-0">
-                        <p className="text-muted-foreground text-xs">{course.description}</p>
-                        </CardContent>
+                <div key={course.id} className="flex flex-col">
+                    <Link href={`/manage-courses/${course.id}`} className="group flex-grow">
+                        <Card className="h-full flex flex-col group-hover:border-primary group-active:bg-primary/20 transition-colors">
+                            <CardHeader className="flex-grow flex flex-row items-center gap-4">
+                                <div className="bg-primary/10 p-3 rounded-md">
+                                    <BookOpen className="w-6 h-6 text-primary" />
+                                </div>
+                                <CardTitle>{course.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground text-sm">{course.description}</p>
+                            </CardContent>
+                        </Card>
                     </Link>
-                    <CardContent className="pt-0">
-                        <div className="flex gap-2 mt-4">
-                            <Button variant="outline" size="sm" className="w-full" onClick={() => handleOpenEditDialog(course)}>
-                                <Pencil className="w-4 h-4 mr-2" />
-                                Edit
-                            </Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm" className="w-full">
-                                        <Trash2 className="w-4 h-4 mr-2" />
-                                        Delete
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the course and all of its chapters and topics.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(course.id)}>Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </CardContent>
+                     <Card>
+                        <CardContent>
+                            <div className="flex gap-2 mt-4">
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => handleOpenEditDialog(course)}>
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Edit
+                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="sm" className="w-full">
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Delete
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete the course and all of its chapters and topics.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(course.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </CardContent>
                     </Card>
+                </div>
                 ))}
             </div>
 
