@@ -18,8 +18,12 @@ export default function CoursesPage() {
   return (
     <>
       <Header variant="page">
-        <h1 className="text-3xl font-bold tracking-tight">Courses</h1>
-        <p className="text-muted-foreground mt-2">
+        <div className="flex items-center gap-4">
+            <div className="border rounded-md px-4 py-1.5 bg-muted">
+                <h1 className="text-base font-bold tracking-tight">Courses</h1>
+            </div>
+        </div>
+        <p className="text-muted-foreground mt-4">
           Start your journey into web development. Choose a course to begin.
         </p>
       </Header>

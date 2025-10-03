@@ -78,10 +78,10 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   variant = 'default',
   children,
 }) => {
-  const MainNav = () => (
+  const MainNav = ({className}: {className?: string}) => (
      <DropdownMenu>
         <DropdownMenuTrigger asChild>
-        <div className="flex items-center gap-2 shrink-0 cursor-pointer p-1 rounded-md transition-colors active:bg-primary/20">
+        <div className={cn("flex items-center gap-2 shrink-0 cursor-pointer p-1 rounded-md transition-colors active:bg-primary/20", className)}>
             <LogoIcon className="w-6 h-6" />
             <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
         </div>
@@ -96,13 +96,11 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
     return (
       <header className="bg-background border-b">
         <div className="container mx-auto p-4 md:p-8">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center">
             <MainNav />
-            <div className="flex-grow" />
-            {React.Children.toArray(children).find(child => (child as React.ReactElement)?.type === Button)}
           </div>
-          <div>
-            {React.Children.toArray(children).filter(child => (child as React.ReactElement)?.type !== Button)}
+          <div className="mt-4">
+            {children}
           </div>
         </div>
       </header>
