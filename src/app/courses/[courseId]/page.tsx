@@ -39,8 +39,8 @@ export default function CoursePage({ params: propsParams }: CoursePageProps) {
             Back to Courses
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">{course.title}</h1>
-        <p className="text-muted-foreground mt-2 text-sm">{course.description}</p>
+        <h1 className="text-3xl font-bold tracking-tight">{course.title}</h1>
+        <p className="text-muted-foreground mt-2">{course.description}</p>
       </Header>
 
       <div className="container mx-auto p-4 md:p-8">

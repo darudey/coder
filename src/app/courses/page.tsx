@@ -18,8 +18,8 @@ export default function CoursesPage() {
   return (
     <>
       <Header variant="page">
-        <h1 className="text-2xl font-bold tracking-tight">Courses</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
+        <h1 className="text-3xl font-bold tracking-tight">Courses</h1>
+        <p className="text-muted-foreground mt-2">
           Start your journey into web development. Choose a course to begin.
         </p>
       </Header>
@@ -36,7 +36,7 @@ export default function CoursesPage() {
                   <CardTitle>{course.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground text-xs">{course.description}</p>
+                  <p className="text-muted-foreground text-sm">{course.description}</p>
                 </CardContent>
               </Card>
             </Link>
