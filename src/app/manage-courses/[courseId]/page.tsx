@@ -35,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/use-courses';
 import { LoadingPage } from '@/components/loading-page';
+import { Header } from '@/components/codeweave/header';
 
 
 interface ManageChapterPageProps {
@@ -126,19 +127,20 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
 
   return (
     <>
-      <div className="container mx-auto p-4 md:p-8">
-        <header className="mb-8 flex justify-between items-center">
-          <div>
-              <Button asChild variant="outline" size="sm" className="mb-4">
-              <Link href="/manage-courses">
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Back to Courses
-              </Link>
-              </Button>
-              <h1 className="text-lg font-bold tracking-tight">Manage Chapters for: {course.title}</h1>
-              <p className="text-muted-foreground mt-2 text-sm">{course.description}</p>
-          </div>
-          <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
+      <Header variant="page">
+        <div className="flex justify-between items-center w-full">
+            <div className="flex items-center gap-4">
+                <Button asChild variant="outline" size="sm">
+                <Link href="/manage-courses">
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    Back to Courses
+                </Link>
+                </Button>
+                <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
+                    <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Manage: {course.title}</h1>
+                </div>
+            </div>
+            <Dialog open={isAddChapterOpen} onOpenChange={setIsAddChapterOpen}>
               <DialogTrigger asChild>
                   <Button>
                       <Plus className="w-4 h-4 mr-2" />
@@ -182,8 +184,10 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
                   </DialogFooter>
               </DialogContent>
           </Dialog>
-        </header>
-
+        </div>
+      </Header>
+      <div className="container mx-auto p-4 md:p-8">
+        <p className="text-muted-foreground mt-4 mb-8">{course.description}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {course.chapters.map((chapter) => (
             <Card key={chapter.id} className="h-full flex flex-col">

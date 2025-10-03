@@ -30,6 +30,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { getSmartIndentation } from '@/lib/indentation';
 import { getCaretCoordinates } from '@/lib/caret-position';
+import { Header } from '@/components/codeweave/header';
 
 
 const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search' }>(({ value, onChange, className, ...props }, ref) => {
@@ -295,27 +296,37 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   return (
     <>
-      <Button disabled className="fixed top-[56px] right-4 z-50 h-9 px-4">
-          <Save className="w-4 h-4" />
-          <span className="ml-1.5 hidden sm:inline">Saved</span>
-      </Button>
-      <div className="flex flex-col">
+      <Header variant="page">
+        <div className="flex justify-between items-center w-full">
+            <div className="flex items-center gap-4">
+                <Button asChild variant="outline" size="sm">
+                    <Link href={`/manage-courses/${course.id}`}>
+                        <ChevronLeft className="w-4 h-4 mr-2" />
+                        Back to Chapters
+                    </Link>
+                </Button>
+                <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
+                    <Input 
+                        className="text-base sm:text-lg lg:text-xl font-bold tracking-tight h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent truncate"
+                        value={topic.title}
+                        onChange={(e) => handleFieldChange('title', e.target.value)}
+                    />
+                </div>
+            </div>
+            <Button disabled className="h-9 px-4">
+                <Save className="w-4 h-4" />
+                <span className="ml-1.5 hidden sm:inline">Saved</span>
+            </Button>
+        </div>
+      </Header>
+
+      <div className="container mx-auto px-4 md:px-8">
+        <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
+      </div>
+
+      <div className="flex flex-col mt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
-            <header className="mb-4 px-4 md:px-8 pt-4 md:pt-8">
-              <Button asChild variant="outline" className="mb-2 h-8 px-2 text-xs">
-                <Link href={`/manage-courses/${course.id}`}>
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Back to {course.title}
-                </Link>
-              </Button>
-              <Input 
-                className="text-lg font-bold tracking-tight h-auto p-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                value={topic.title}
-                onChange={(e) => handleFieldChange('title', e.target.value)}
-              />
-              <p className="text-muted-foreground text-xs mt-1">{chapter.title}</p>
-            </header>
-            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30">
+            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30 border-b">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
                 <TabsTrigger value="syntax"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>
