@@ -18,7 +18,7 @@ interface CoursesContextValue {
   addChapter: (courseId: string, title: string, description: string) => Promise<void>;
   updateChapter: (courseId: string, chapterId: string, updatedChapter: Partial<Chapter>) => Promise<void>;
   deleteChapter: (courseId: string, chapterId: string) => Promise<void>;
-  updateTopicInDb: (courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => Promise<void>;
+  updateTopic: (courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => void;
 }
 
 const CoursesContext = createContext<CoursesContextValue | undefined>(undefined);
@@ -47,7 +47,7 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
             await writeCoursesToDb(initialCoursesData);
             setCourses(initialCoursesData);
           } else {
-            const coursesFromDb = querySnapshot.docs.map(doc => doc.data() as Course);
+            const coursesFromDb = querySnapshot.docs.map(doc => doc.data() as Course).sort((a, b) => a.title.localeCompare(b.title));
             setCourses(coursesFromDb);
           }
         } catch (error) {
@@ -66,7 +66,7 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
       description,
       chapters: [],
     };
-    const updatedCourses = [...courses, newCourse];
+    const updatedCourses = [...courses, newCourse].sort((a, b) => a.title.localeCompare(b.title));
     setCourses(updatedCourses); // Optimistic update
     try {
       await setDoc(doc(db, 'courses', newCourse.id), newCourse);
@@ -80,7 +80,7 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
     const originalCourses = courses;
     const updatedCourses = courses.map(course =>
       course.id === courseId ? { ...course, ...updatedCourseData } : course
-    );
+    ).sort((a, b) => a.title.localeCompare(b.title));
     setCourses(updatedCourses); // Optimistic update
     
     const courseToUpdate = updatedCourses.find(c => c.id === courseId);
@@ -107,8 +107,9 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const addChapter = useCallback(async (courseId: string, title: string, description: string) => {
+    const newTopicId = nanoid();
     const defaultTopic: Topic = {
-        id: nanoid(),
+        id: newTopicId,
         title: 'New Topic',
         videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         notes: [
@@ -208,33 +209,24 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [courses]);
 
-  const updateTopicInDb = useCallback(async (courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => {
-    const originalCourses = [...courses];
-    const course = originalCourses.find(c => c.id === courseId);
-    if (!course) return;
+  const updateTopic = useCallback((courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => {
+    setCourses(prevCourses => {
+        const newCourses = prevCourses.map(course => {
+            if (course.id !== courseId) return course;
 
-    const updatedCourse = {
-        ...course,
-        chapters: course.chapters.map(chapter => {
-            if (chapter.id !== chapterId) return chapter;
-            return {
-                ...chapter,
-                topics: chapter.topics.map(topic =>
+            const newChapters = course.chapters.map(chapter => {
+                if (chapter.id !== chapterId) return chapter;
+
+                const newTopics = chapter.topics.map(topic => 
                     topic.id === topicId ? updatedTopic : topic
-                )
-            };
-        })
-    };
-    const updatedCourses = originalCourses.map(c => c.id === courseId ? updatedCourse : c);
-    setCourses(updatedCourses);
-
-    try {
-        await setDoc(doc(db, 'courses', courseId), updatedCourse);
-    } catch (e) {
-        console.error("Failed to update topic in DB: ", e);
-        setCourses(originalCourses); // Revert on failure
-    }
-  }, [courses]);
+                );
+                return { ...chapter, topics: newTopics };
+            });
+            return { ...course, chapters: newChapters };
+        });
+        return newCourses;
+    });
+  }, []);
 
 
   const value = useMemo(() => ({
@@ -246,8 +238,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
     addChapter,
     updateChapter,
     deleteChapter,
-    updateTopicInDb,
-  }), [courses, loading, addCourse, updateCourse, deleteCourse, addChapter, updateChapter, deleteChapter, updateTopicInDb]);
+    updateTopic,
+  }), [courses, loading, addCourse, updateCourse, deleteCourse, addChapter, updateChapter, deleteChapter, updateTopic]);
 
   return (
     <CoursesContext.Provider value={value}>
@@ -263,5 +255,3 @@ export function useCourses() {
   }
   return context;
 }
-
-    

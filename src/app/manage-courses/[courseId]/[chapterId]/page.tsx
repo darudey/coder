@@ -31,6 +31,8 @@ import { cn } from '@/lib/utils';
 import { getSmartIndentation } from '@/lib/indentation';
 import { getCaretCoordinates } from '@/lib/caret-position';
 import { Header } from '@/components/codeweave/header';
+import { db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 
 const AutoResizingTextarea = React.forwardRef<HTMLTextAreaElement, { value: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, inputMode?: 'text' | 'none' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search' }>(({ value, onChange, className, ...props }, ref) => {
@@ -77,7 +79,7 @@ interface ManageTopicPageProps {
 export default function ManageTopicPage({ params: propsParams }: ManageTopicPageProps) {
   const params = useParams() as { courseId: string; chapterId: string };
   const { toast } = useToast();
-  const { courses, updateTopicInDb, loading } = useCourses();
+  const { courses, updateTopic, loading } = useCourses();
 
   const isMobile = useIsMobile();
   const [isCompiling, setIsCompiling] = useState(false);
@@ -101,7 +103,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   useEffect(() => {
     if (!loading && course && chapter) {
         const initialTopic = chapter.topics.find(t => t.id === chapter.id); // Assuming topic ID might match chapter ID or it's the first.
-        setTopic(initialTopic || chapter.topics[0]);
+        setTopic(JSON.parse(JSON.stringify(initialTopic || chapter.topics[0])));
         if (!initialTopic && !chapter.topics[0]) {
             notFound();
         }
@@ -216,8 +218,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   
   const handleTopicUpdate = (updatedTopicData: Partial<Topic>) => {
     if (!topic) return;
-    const newTopic = { ...topic, ...updatedTopicData };
-    setTopic(newTopic);
+    setTopic(prevTopic => ({ ...prevTopic!, ...updatedTopicData }));
     setHasUnsavedChanges(true);
   };
   
@@ -295,13 +296,40 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const handleSaveChanges = async () => {
     if (!topic || !course || !chapter) return;
     setIsSaving(true);
-    await updateTopicInDb(course.id, chapter.id, topic.id, topic);
-    setIsSaving(false);
-    setHasUnsavedChanges(false);
-    toast({
-        title: "Changes Saved",
-        description: "Your topic has been successfully updated.",
-    });
+    
+    // Create an updated course object to save to DB
+    const updatedCourse = {
+        ...course,
+        chapters: course.chapters.map(chap => {
+            if (chap.id !== chapter.id) return chap;
+            return {
+                ...chap,
+                topics: chap.topics.map(t => t.id === topic.id ? topic : t)
+            };
+        })
+    };
+    
+    try {
+        await setDoc(doc(db, 'courses', course.id), updatedCourse);
+        
+        // Also update the local global state for immediate consistency on other pages
+        updateTopic(course.id, chapter.id, topic.id, topic);
+        
+        setIsSaving(false);
+        setHasUnsavedChanges(false);
+        toast({
+            title: "Changes Saved",
+            description: "Your topic has been successfully updated.",
+        });
+    } catch (e) {
+        console.error("Failed to save changes: ", e);
+        setIsSaving(false);
+        toast({
+            title: "Error Saving",
+            description: "Could not save your changes. Please try again.",
+            variant: "destructive",
+        });
+    }
   }
 
   const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
@@ -327,10 +355,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
       <div className="flex flex-col mt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
             <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30 border-b">
-                <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
-                <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
-                <TabsTrigger value="syntax"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>
-                <TabsTrigger value="practice"><BrainCircuit className="w-4 h-4 mr-2" />Practice</TabsTrigger>
+                <TabsTrigger value="video" className="active:bg-primary/20"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
+                <TabsTrigger value="notes" className="active:bg-primary/20"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
+                <TabsTrigger value="syntax" className="active:bg-primary/20"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>
+                <TabsTrigger value="practice" className="active:bg-primary/20"><BrainCircuit className="w-4 h-4 mr-2" />Practice</TabsTrigger>
             </TabsList>
             <div className="pb-8">
                 <TabsContent value="video" className="mt-4 px-4 md:px-8">
@@ -593,5 +621,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    
