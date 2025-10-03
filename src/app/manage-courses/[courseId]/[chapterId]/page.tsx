@@ -107,10 +107,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const [activeTab, setActiveTab] = useState('video');
   const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
 
-  const [activeEditor, setActiveEditor] = useState<{type: 'markdown' | 'code', index: number} | null>(null);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [ctrlActive, setCtrlActive] = useState(false);
-
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -384,8 +380,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                                 id={`note-code-editor-${index}`}
                                                 initialCode={segment.content}
                                                 onContentChange={markAsDirty}
-                                                onFocus={() => { if(isMobile) setIsKeyboardVisible(true); }}
-                                                onClick={() => { if(isMobile) setIsKeyboardVisible(true); }}
                                             />
                                         </div>
                                     )}
@@ -563,18 +557,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             </Button>
         )}
       </div>
-      {isMobile && <div id="coder-keyboard" className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
-        isKeyboardVisible ? "translate-y-0" : "translate-y-full"
-      )}>
-        <CoderKeyboard 
-            onKeyPress={() => {}}
-            onHide={() => setIsKeyboardVisible(false)}
-            isSuggestionsOpen={false}
-            onNavigateSuggestions={() => {}}
-            onSelectSuggestion={() => {}}
-        />
-      </div>}
     </>
   );
 }

@@ -5,6 +5,9 @@ import React, { useState, useCallback, useRef, useLayoutEffect, useEffect, useIm
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
+import { CoderKeyboard } from './coder-keyboard';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { getSmartIndentation } from '@/lib/indentation';
 
 export interface NoteCodeEditorRef {
   getValue: () => string;
@@ -14,12 +17,13 @@ interface NoteCodeEditorProps {
     id: string;
     initialCode: string;
     onContentChange: () => void;
-    onFocus?: () => void;
-    onClick?: () => void;
 }
 
-export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditorProps>(({ id, initialCode, onContentChange, onFocus, onClick }, ref) => {
+export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditorProps>(({ id, initialCode, onContentChange }, ref) => {
     const [code, setCode] = useState(initialCode);
+    const isMobile = useIsMobile();
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    const [ctrlActive, setCtrlActive] = useState(false);
     
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const gutterRef = useRef<HTMLDivElement>(null);
@@ -34,10 +38,82 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         setCode(initialCode);
     }, [initialCode]);
 
-    const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setCode(e.target.value);
+    const handleCodeChange = (newCode: string) => {
+        setCode(newCode);
         onContentChange();
     };
+
+    const handleEnterPress = useCallback(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+
+        const { textToInsert, newCursorPosition } = getSmartIndentation(code, start, end);
+        
+        const newCode = code.substring(0, start) + textToInsert + code.substring(end);
+        handleCodeChange(newCode);
+        
+        requestAnimationFrame(() => {
+            textarea.selectionStart = newCursorPosition;
+            textarea.selectionEnd = newCursorPosition;
+            textarea.focus();
+        });
+    }, [code]);
+
+    const handleKeyPress = useCallback(async (key: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        if (key === 'Enter') {
+            handleEnterPress();
+            return;
+        }
+        if (key === 'Ctrl') {
+            setCtrlActive(prev => !prev);
+            return;
+        }
+
+        // Basic handling for other keys, can be expanded
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+
+        let newCode = code;
+        let newCursorPosition = start;
+        
+        if (key === 'Backspace') {
+            if (start === end && start > 0) {
+              newCode = code.substring(0, start - 1) + code.substring(end);
+              newCursorPosition = start - 1;
+            } else {
+              newCode = code.substring(0, start) + code.substring(end);
+              newCursorPosition = start;
+            }
+        } else if (key === 'Tab') {
+            newCode = code.substring(0, start) + '  ' + code.substring(end);
+            newCursorPosition = start + 2;
+        } else if (!['Shift', 'CapsLock'].includes(key)){
+            const pairMap: {[key:string]: string} = { '(': ')', '{': '}', '[': ']', "'": "'", '"': '"', '`': '`' };
+            if (pairMap[key] && key.length === 1) {
+                newCode = code.substring(0, start) + key + pairMap[key] + code.substring(end);
+                newCursorPosition = start + 1;
+            } else {
+                newCode = code.substring(0, start) + key + code.substring(end);
+                newCursorPosition = start + key.length;
+            }
+        } else {
+            return;
+        }
+
+        handleCodeChange(newCode);
+
+        requestAnimationFrame(() => {
+          textarea.selectionStart = newCursorPosition;
+          textarea.selectionEnd = newCursorPosition;
+          textarea.focus();
+        });
+    }, [code, handleEnterPress]);
 
     const updateLineNumbersAndResize = useCallback(() => {
         const ta = textareaRef.current;
@@ -115,62 +191,78 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     };
     
     const gutterWidth = gutterRef.current?.offsetWidth || 0;
+    const showKeyboard = isMobile && isKeyboardVisible;
 
     return (
-        <div ref={editorWrapperRef} className="relative group">
-            <div 
-                ref={gutterRef}
-                className="absolute top-0 left-0 h-full box-border pr-1 text-right text-gray-500 bg-gray-100 border-r select-none dark:bg-gray-900 dark:border-gray-700"
-                style={{
-                    ...editorStyles,
-                    paddingLeft: '0.5rem', 
-                    paddingRight: '0.5rem', 
-                    borderRight: '1px solid hsl(var(--border))'
-                }}
-            />
-            <div
-                aria-hidden="true"
-                className="absolute inset-0 m-0 pointer-events-none"
-                style={{...editorStyles, left: `${gutterWidth}px`, paddingLeft: '0.5rem' }}
-            >
-                {highlightedCode}
+        <>
+            <div ref={editorWrapperRef} className="relative group">
+                <div 
+                    ref={gutterRef}
+                    className="absolute top-0 left-0 h-full box-border pr-1 text-right text-gray-500 bg-gray-100 border-r select-none dark:bg-gray-900 dark:border-gray-700"
+                    style={{
+                        ...editorStyles,
+                        paddingLeft: '0.5rem', 
+                        paddingRight: '0.5rem', 
+                        borderRight: '1px solid hsl(var(--border))'
+                    }}
+                />
+                <div
+                    aria-hidden="true"
+                    className="absolute inset-0 m-0 pointer-events-none"
+                    style={{...editorStyles, left: `${gutterWidth}px`, paddingLeft: '0.5rem' }}
+                >
+                    {highlightedCode}
+                </div>
+                <Textarea
+                    id={id}
+                    ref={textareaRef}
+                    value={code}
+                    inputMode={isMobile ? 'none' : 'text'}
+                    onChange={(e) => handleCodeChange(e.target.value)}
+                    onFocus={() => { if(isMobile) setIsKeyboardVisible(true) }}
+                    onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
+                    className={cn(
+                        "font-code text-sm resize-none",
+                        "absolute inset-0 w-full h-full bg-transparent z-10",
+                        "caret-black dark:caret-white"
+                    )}
+                    style={{
+                        ...editorStyles, 
+                        color: 'transparent',
+                        border: 'none', 
+                        left: `${gutterWidth}px`, 
+                        overflow: 'hidden', 
+                        paddingLeft: '0.5rem',
+                        outline: 'none',
+                        boxShadow: 'none'
+                    }}
+                    spellCheck="false"
+                />
+                <div 
+                    ref={mirrorRef}
+                    aria-hidden="true"
+                    className="absolute top-0 left-0 invisible pointer-events-none"
+                    style={{
+                        ...editorStyles,
+                        left: `${gutterWidth}px`,
+                        width: `calc(100% - ${gutterWidth}px)`,
+                        paddingLeft: '0.5rem'
+                    }}
+                />
             </div>
-             <Textarea
-                id={id}
-                ref={textareaRef}
-                value={code}
-                onChange={handleCodeChange}
-                onFocus={onFocus}
-                onClick={onClick}
-                className={cn(
-                    "font-code text-sm resize-none",
-                    "absolute inset-0 w-full h-full bg-transparent z-10",
-                    "caret-black dark:caret-white"
-                )}
-                style={{
-                    ...editorStyles, 
-                    color: 'transparent',
-                    border: 'none', 
-                    left: `${gutterWidth}px`, 
-                    overflow: 'hidden', 
-                    paddingLeft: '0.5rem',
-                    outline: 'none',
-                    boxShadow: 'none'
-                }}
-                spellCheck="false"
-            />
-             <div 
-                ref={mirrorRef}
-                aria-hidden="true"
-                className="absolute top-0 left-0 invisible pointer-events-none"
-                style={{
-                    ...editorStyles,
-                    left: `${gutterWidth}px`,
-                    width: `calc(100% - ${gutterWidth}px)`,
-                    paddingLeft: '0.5rem'
-                }}
-            />
-        </div>
+            {showKeyboard && <div id="coder-keyboard" className={cn(
+                "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+                isKeyboardVisible ? "translate-y-0" : "translate-y-full"
+            )}>
+                <CoderKeyboard 
+                    onKeyPress={handleKeyPress}
+                    onHide={() => setIsKeyboardVisible(false)}
+                    isSuggestionsOpen={false}
+                    onNavigateSuggestions={() => {}}
+                    onSelectSuggestion={() => {}}
+                />
+            </div>}
+        </>
     );
 });
 NoteCodeEditor.displayName = 'NoteCodeEditor';
