@@ -5,7 +5,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useEffect } from 'react';
@@ -77,7 +77,7 @@ interface ManageTopicPageProps {
 export default function ManageTopicPage({ params: propsParams }: ManageTopicPageProps) {
   const params = useParams() as { courseId: string; chapterId: string };
   const { toast } = useToast();
-  const { courses, updateTopic, loading } = useCourses();
+  const { courses, updateTopicInDb, loading } = useCourses();
 
   const isMobile = useIsMobile();
   const [isCompiling, setIsCompiling] = useState(false);
@@ -95,16 +95,17 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [ctrlActive, setCtrlActive] = useState(false);
 
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
     if (!loading && course && chapter) {
-        const initialTopic = chapter.topics[0];
-        setTopic(initialTopic);
-        if (!initialTopic) {
-            // This should not happen if addChapter creates a default topic.
-            // But as a fallback, we can redirect or show an error.
-            // For now, let's use notFound, but ideally we'd have a better UX.
+        const initialTopic = chapter.topics.find(t => t.id === chapter.id); // Assuming topic ID might match chapter ID or it's the first.
+        setTopic(initialTopic || chapter.topics[0]);
+        if (!initialTopic && !chapter.topics[0]) {
             notFound();
         }
+        setHasUnsavedChanges(false);
     }
   }, [course, chapter, loading]);
 
@@ -214,9 +215,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   }
   
   const handleTopicUpdate = (updatedTopicData: Partial<Topic>) => {
+    if (!topic) return;
     const newTopic = { ...topic, ...updatedTopicData };
     setTopic(newTopic);
-    updateTopic(course.id, chapter.id, topic.id, newTopic);
+    setHasUnsavedChanges(true);
   };
   
   const handleFieldChange = (field: keyof Topic, value: any) => {
@@ -288,6 +290,18 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const handleNextQuestion = () => {
     setPracticeQuestionIndex(prev => Math.min((topic.practice?.length || 0) - 1, prev + 1));
+  }
+
+  const handleSaveChanges = async () => {
+    if (!topic || !course || !chapter) return;
+    setIsSaving(true);
+    await updateTopicInDb(course.id, chapter.id, topic.id, topic);
+    setIsSaving(false);
+    setHasUnsavedChanges(false);
+    toast({
+        title: "Changes Saved",
+        description: "Your topic has been successfully updated.",
+    });
   }
 
   const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
@@ -547,12 +561,28 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             onSelectSuggestion={() => {}}
         />
       </div>
-       <div className="fixed top-20 right-8 z-50">
+      <div className="fixed top-20 right-8 z-50">
+        {!hasUnsavedChanges ? (
             <Button disabled size="lg" className="rounded-full shadow-lg">
                 <Check className="w-5 h-5 mr-2" />
                 Saved
             </Button>
-        </div>
+        ) : (
+            <Button onClick={handleSaveChanges} disabled={isSaving} size="lg" className="rounded-full shadow-lg">
+                {isSaving ? (
+                    <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Saving...
+                    </>
+                ) : (
+                    <>
+                        <Save className="w-5 h-5 mr-2" />
+                        Save Changes
+                    </>
+                )}
+            </Button>
+        )}
+      </div>
     </>
   );
 }
@@ -563,3 +593,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    

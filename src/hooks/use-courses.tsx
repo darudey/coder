@@ -18,7 +18,7 @@ interface CoursesContextValue {
   addChapter: (courseId: string, title: string, description: string) => Promise<void>;
   updateChapter: (courseId: string, chapterId: string, updatedChapter: Partial<Chapter>) => Promise<void>;
   deleteChapter: (courseId: string, chapterId: string) => Promise<void>;
-  updateTopic: (courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => Promise<void>;
+  updateTopicInDb: (courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => Promise<void>;
 }
 
 const CoursesContext = createContext<CoursesContextValue | undefined>(undefined);
@@ -208,8 +208,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [courses]);
 
-  const updateTopic = useCallback(async (courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => {
-    const originalCourses = courses;
+  const updateTopicInDb = useCallback(async (courseId: string, chapterId: string, topicId: string, updatedTopic: Topic) => {
+    const originalCourses = [...courses];
     const course = originalCourses.find(c => c.id === courseId);
     if (!course) return;
 
@@ -226,13 +226,13 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
         })
     };
     const updatedCourses = originalCourses.map(c => c.id === courseId ? updatedCourse : c);
-    setCourses(updatedCourses); // Optimistic update
+    setCourses(updatedCourses);
 
     try {
         await setDoc(doc(db, 'courses', courseId), updatedCourse);
     } catch (e) {
-        console.error("Failed to update topic: ", e);
-        setCourses(originalCourses); // Revert
+        console.error("Failed to update topic in DB: ", e);
+        setCourses(originalCourses); // Revert on failure
     }
   }, [courses]);
 
@@ -246,8 +246,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
     addChapter,
     updateChapter,
     deleteChapter,
-    updateTopic,
-  }), [courses, loading, addCourse, updateCourse, deleteCourse, addChapter, updateChapter, deleteChapter, updateTopic]);
+    updateTopicInDb,
+  }), [courses, loading, addCourse, updateCourse, deleteCourse, addChapter, updateChapter, deleteChapter, updateTopicInDb]);
 
   return (
     <CoursesContext.Provider value={value}>
@@ -263,3 +263,5 @@ export function useCourses() {
   }
   return context;
 }
+
+    
