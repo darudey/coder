@@ -137,7 +137,7 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {course.chapters.map((chapter) => (
             <Card key={chapter.id} className="h-full flex flex-col">
-              <Link href={`/manage-courses/${course.id}/${chapter.id}`} className="flex-grow group">
+              <Link href={`/manage-courses/${course.id}/${chapter.id}`} className="flex-grow group active:bg-muted">
                 <CardHeader className="flex-grow group-hover:bg-muted/50 transition-colors">
                   <CardTitle className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-primary/80"/>

@@ -122,7 +122,7 @@ export default function ManageCoursesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses.map((course) => (
                 <Card key={course.id} className="h-full flex flex-col">
-                    <Link href={`/manage-courses/${course.id}`} className="flex-grow group">
+                    <Link href={`/manage-courses/${course.id}`} className="flex-grow group active:bg-muted">
                         <CardHeader className="flex flex-row items-center gap-4 group-hover:bg-muted/50 transition-colors">
                         <div className="bg-primary/10 p-3 rounded-md">
                             <BookOpen className="w-6 h-6 text-primary" />
