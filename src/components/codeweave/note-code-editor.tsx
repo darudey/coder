@@ -15,9 +15,10 @@ interface NoteCodeEditorProps {
     initialCode: string;
     onContentChange: () => void;
     onFocus?: () => void;
+    onClick?: () => void;
 }
 
-export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditorProps>(({ id, initialCode, onContentChange, onFocus }, ref) => {
+export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditorProps>(({ id, initialCode, onContentChange, onFocus, onClick }, ref) => {
     const [code, setCode] = useState(initialCode);
     
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -115,15 +116,8 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     
     const gutterWidth = gutterRef.current?.offsetWidth || 0;
 
-    const handleFocus = () => {
-        textareaRef.current?.focus();
-        if (onFocus) {
-            onFocus();
-        }
-    };
-
     return (
-        <div ref={editorWrapperRef} className="relative group" onClick={handleFocus}>
+        <div ref={editorWrapperRef} className="relative group">
             <div 
                 ref={gutterRef}
                 className="absolute top-0 left-0 h-full box-border pr-1 text-right text-gray-500 bg-gray-100 border-r select-none dark:bg-gray-900 dark:border-gray-700"
@@ -145,8 +139,9 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                 id={id}
                 ref={textareaRef}
                 value={code}
-                inputMode="none"
                 onChange={handleCodeChange}
+                onFocus={onFocus}
+                onClick={onClick}
                 className={cn(
                     "font-code text-sm resize-none",
                     "absolute inset-0 w-full h-full bg-transparent z-10",
@@ -179,3 +174,5 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     );
 });
 NoteCodeEditor.displayName = 'NoteCodeEditor';
+
+    

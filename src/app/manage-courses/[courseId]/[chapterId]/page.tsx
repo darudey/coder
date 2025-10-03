@@ -43,7 +43,7 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
     const [value, setValue] = useState(initialValue);
 
     useImperativeHandle(ref, () => ({
-        getValue: () => internalRef.current?.value || '',
+        getValue: () => value,
     }));
 
     useEffect(() => {
@@ -96,7 +96,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const syntaxCompilerRef = useRef<CompilerRef>(null);
   const solutionCompilerRef = useRef<CompilerRef>(null);
   const practiceInitialCodeRefs = useRef<{[key: string]: CompilerRef | null}>({});
-  const noteSegmentRefs = useRef<{[key: number]: NoteCodeEditorRef | AutoResizingTextareaRef | null}>({});
+  const noteSegmentRefs = useRef<{[key: string]: NoteCodeEditorRef | AutoResizingTextareaRef | null}>({});
 
 
   const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
@@ -236,7 +236,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     
     // Get notes content
     finalTopic.notes = topic.notes.map((segment, index) => {
-        const segmentRef = noteSegmentRefs.current[index];
+        const segmentRef = noteSegmentRefs.current[`note-${index}`];
         if (segmentRef) {
             return { ...segment, content: segmentRef.getValue() };
         }
@@ -275,7 +275,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         await setDoc(doc(db, 'courses', course.id), updatedCourse);
         
         // Also update the local global state for immediate consistency on other pages
-        updateTopic(course.id, chapter.id, finalTopic.id, finalTopic);
+        updateTopic(course.id, chapter.id, finalTopic);
         
         setIsSaving(false);
         setHasUnsavedChanges(false);
@@ -366,7 +366,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Markdown</Label>
                                             <AutoResizingTextarea
-                                                ref={ref => noteSegmentRefs.current[index] = ref}
+                                                ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
                                                 key={`md-${topic.id}-${index}`}
                                                 id={`note-markdown-editor-${index}`}
                                                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
@@ -379,14 +379,13 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <div className="space-y-2">
                                             <Label className="px-4 pt-2 text-xs text-muted-foreground">Code Block</Label>
                                             <NoteCodeEditor
-                                                ref={ref => noteSegmentRefs.current[index] = ref}
+                                                ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
                                                 key={`code-${topic.id}-${index}`}
                                                 id={`note-code-editor-${index}`}
                                                 initialCode={segment.content}
                                                 onContentChange={markAsDirty}
-                                                onFocus={() => {
-                                                    if(isMobile) setIsKeyboardVisible(true)
-                                                }}
+                                                onFocus={() => { if(isMobile) setIsKeyboardVisible(true); }}
+                                                onClick={() => { if(isMobile) setIsKeyboardVisible(true); }}
                                             />
                                         </div>
                                     )}
@@ -564,6 +563,18 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             </Button>
         )}
       </div>
+      {isMobile && <div id="coder-keyboard" className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+        isKeyboardVisible ? "translate-y-0" : "translate-y-full"
+      )}>
+        <CoderKeyboard 
+            onKeyPress={() => {}}
+            onHide={() => setIsKeyboardVisible(false)}
+            isSuggestionsOpen={false}
+            onNavigateSuggestions={() => {}}
+            onSelectSuggestion={() => {}}
+        />
+      </div>}
     </>
   );
 }
@@ -574,9 +585,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
-
-    
-
-    
 
     
