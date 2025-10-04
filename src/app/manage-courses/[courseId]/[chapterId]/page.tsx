@@ -35,6 +35,9 @@ import { NoteCodeEditor, type NoteCodeEditorRef } from '@/components/codeweave/n
 import { Header } from '@/components/codeweave/header';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
+import { cn } from '@/lib/utils';
 
 
 interface MarkdownEditorRef {
@@ -46,6 +49,11 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
     const [history, setHistory] = useState([initialValue]);
     const [historyIndex, setHistoryIndex] = useState(0);
     const value = history[historyIndex];
+
+    const isMobile = useIsMobile();
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    const [ctrlActive, setCtrlActive] = useState(false);
+
 
     useImperativeHandle(ref, () => ({
         getValue: () => value,
@@ -100,6 +108,86 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
         });
     };
 
+    const handleKeyPress = async (key: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        if (key === 'Ctrl') {
+            setCtrlActive(prev => !prev);
+            return;
+        }
+
+        if (ctrlActive) {
+            setCtrlActive(false);
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            switch (key.toLowerCase()) {
+                case 'a': textarea.select(); break;
+                case 'z': undo(); break;
+                case 'y': redo(); break;
+                case 'c':
+                    if (start !== end) await navigator.clipboard.writeText(value.substring(start, end));
+                    break;
+                case 'x':
+                    if (start !== end) {
+                        await navigator.clipboard.writeText(value.substring(start, end));
+                        const newValue = value.substring(0, start) + value.substring(end);
+                        handleChange(newValue);
+                        requestAnimationFrame(() => { textarea.selectionStart = textarea.selectionEnd = start; });
+                    }
+                    break;
+                case 'v':
+                    const text = await navigator.clipboard.readText();
+                    const newValue = value.substring(0, start) + text + value.substring(end);
+                    handleChange(newValue);
+                    requestAnimationFrame(() => {
+                        const newCursorPos = start + text.length;
+                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+                    });
+                    break;
+                case 'b': applyFormat({ prefix: '**', suffix: '**' }); break;
+                case 'i': applyFormat({ prefix: '*', suffix: '*' }); break;
+                case 'l': applyFormat({ prefix: '- ' }); break;
+            }
+            return;
+        }
+
+        if (key === 'Enter') {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const newValue = value.substring(0, start) + '\n' + value.substring(end);
+            handleChange(newValue);
+            requestAnimationFrame(() => { textarea.selectionStart = textarea.selectionEnd = start + 1; });
+            return;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        let newValue, newCursorPosition;
+        
+        if (key === 'Backspace') {
+            if (start === end && start > 0) {
+              newValue = value.substring(0, start - 1) + value.substring(end);
+              newCursorPosition = start - 1;
+            } else {
+              newValue = value.substring(0, start) + value.substring(end);
+              newCursorPosition = start;
+            }
+        } else if (!['Shift', 'CapsLock'].includes(key)){
+            newValue = value.substring(0, start) + key + value.substring(end);
+            newCursorPosition = start + key.length;
+        } else {
+            return;
+        }
+
+        handleChange(newValue);
+        requestAnimationFrame(() => {
+          textarea.selectionStart = newCursorPosition;
+          textarea.selectionEnd = newCursorPosition;
+          textarea.focus();
+        });
+    }
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.ctrlKey || e.metaKey) {
             switch(e.key.toLowerCase()) {
@@ -142,9 +230,26 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
                 value={value}
                 onChange={(e) => handleChange(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
+                inputMode={isMobile ? 'none' : 'text'}
                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-t-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                 rows={1}
             />
+            {isMobile && isKeyboardVisible && (
+                <div id="coder-keyboard" className={cn(
+                    "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+                    isKeyboardVisible ? "translate-y-0" : "translate-y-full"
+                )}>
+                    <CoderKeyboard 
+                        onKeyPress={handleKeyPress}
+                        ctrlActive={ctrlActive}
+                        onHide={() => setIsKeyboardVisible(false)}
+                        isSuggestionsOpen={false}
+                        onNavigateSuggestions={() => {}}
+                        onSelectSuggestion={() => {}}
+                    />
+                </div>
+            )}
         </div>
     )
 });
@@ -635,3 +740,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
+
+    
