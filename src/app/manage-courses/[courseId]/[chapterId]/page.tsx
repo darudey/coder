@@ -6,22 +6,16 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, Underline } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
-import React, { useRef, useState, useEffect, useImperativeHandle, useCallback } from 'react';
+import React, 'use client';
 import {
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger,
   } from "@/components/ui/tabs"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -35,329 +29,91 @@ import { NoteCodeEditor, type NoteCodeEditorRef } from '@/components/codeweave/n
 import { Header } from '@/components/codeweave/header';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
-import { cn } from '@/lib/utils';
 
 
-interface MarkdownEditorRef {
+interface RichTextEditorRef {
   getValue: () => string;
 }
 
-const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: string; onContentChange: () => void; }>(({ initialValue, onContentChange }, ref) => {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [history, setHistory] = useState([initialValue]);
-    const [historyIndex, setHistoryIndex] = useState(0);
-    const value = history[historyIndex];
-
-    const isMobile = useIsMobile();
-    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-    const [ctrlActive, setCtrlActive] = useState(false);
-    const [currentBlockType, setCurrentBlockType] = useState('Paragraph');
-
-
-    useImperativeHandle(ref, () => ({
-        getValue: () => value,
+const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: string; onContentChange: () => void }>(({ initialValue, onContentChange }, ref) => {
+    const editorRef = React.useRef<HTMLDivElement>(null);
+    const [content, setContent] = React.useState(initialValue);
+    const [activeStyles, setActiveStyles] = React.useState<string[]>([]);
+    
+    React.useImperativeHandle(ref, () => ({
+        getValue: () => editorRef.current?.innerHTML || '',
     }));
     
-    useEffect(() => {
-        setHistory([initialValue]);
-        setHistoryIndex(0);
-    }, [initialValue]);
-
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
-    }, [value]);
-    
-    const updateBlockType = useCallback(() => {
-        if (!textareaRef.current) return;
-        const { selectionStart } = textareaRef.current;
-        const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-        const line = value.substring(lineStart, value.indexOf('\n', lineStart) === -1 ? value.length : value.indexOf('\n', lineStart));
-        
-        if (line.startsWith('### ')) setCurrentBlockType('Headline 3');
-        else if (line.startsWith('## ')) setCurrentBlockType('Headline 2');
-        else if (line.startsWith('# ')) setCurrentBlockType('Headline 1');
-        else setCurrentBlockType('Paragraph');
-    }, [value]);
-
-    useEffect(() => {
-        updateBlockType();
-    }, [value, updateBlockType]);
-
-
-    const handleChange = (newValue: string) => {
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(newValue);
-        setHistory(newHistory);
-        setHistoryIndex(i => i + 1);
+    const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
         onContentChange();
     };
 
-    const undo = () => { if (historyIndex > 0) setHistoryIndex(i => i - 1); }
-    const redo = () => { if (historyIndex < history.length - 1) setHistoryIndex(i => i + 1); }
-    
-    const applyFormat = (syntax: { prefix: string; suffix?: string; }) => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = value.substring(start, end);
-
-        let newValue, newCursorPosition;
-
-        if (selectedText) {
-            newValue = `${value.substring(0, start)}${syntax.prefix}${selectedText}${syntax.suffix || ''}${value.substring(end)}`;
-            newCursorPosition = end + syntax.prefix.length + (syntax.suffix?.length || 0);
-        } else {
-            newValue = `${value.substring(0, start)}${syntax.prefix}${syntax.suffix || ''}${value.substring(end)}`;
-            newCursorPosition = start + syntax.prefix.length;
-        }
-
-        handleChange(newValue);
-        
-        requestAnimationFrame(() => {
-            textarea.focus();
-            textarea.selectionStart = textarea.selectionEnd = newCursorPosition;
-        });
+    const execCommand = (command: string, value?: string) => {
+        document.execCommand(command, false, value);
+        editorRef.current?.focus();
+        updateActiveStyles();
     };
-    
-    const cycleHeadline = () => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-        
-        const { selectionStart } = textarea;
-        const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-        const lineEnd = value.indexOf('\n', selectionStart) === -1 ? value.length : value.indexOf('\n', selectionStart);
-        const line = value.substring(lineStart, lineEnd);
-        
-        const currentPrefixMatch = line.match(/^(#* ?)/);
-        const currentPrefix = currentPrefixMatch ? currentPrefixMatch[0] : '';
-        
-        let newPrefix;
-        if (currentPrefix === '# ') newPrefix = '## ';
-        else if (currentPrefix === '## ') newPrefix = '### ';
-        else if (currentPrefix === '### ') newPrefix = '';
-        else newPrefix = '# ';
-        
-        const newLine = newPrefix + line.substring(currentPrefix.length);
-        const newValue = value.substring(0, lineStart) + newLine + value.substring(lineEnd);
-        
-        handleChange(newValue);
-        
-        const newCursorPosition = selectionStart - currentPrefix.length + newPrefix.length;
-        requestAnimationFrame(() => {
-            textarea.focus();
-            textarea.selectionStart = textarea.selectionEnd = newCursorPosition;
-        });
-    }
 
-    const handleKeyPress = async (key: string) => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
+    const updateActiveStyles = () => {
+        const styles: string[] = [];
+        if (document.queryCommandState('bold')) styles.push('bold');
+        if (document.queryCommandState('italic')) styles.push('italic');
+        if (document.queryCommandState('underline')) styles.push('underline');
+        if (document.queryCommandState('insertUnorderedList')) styles.push('ul');
+        if (document.queryCommandState('insertOrderedList')) styles.push('ol');
+        setActiveStyles(styles);
+    };
 
-        if (key === 'Ctrl') {
-            setCtrlActive(prev => !prev);
-            return;
+    const handleSelectionChange = () => {
+        if (editorRef.current && document.getSelection()?.containsNode(editorRef.current, true)) {
+            updateActiveStyles();
         }
-        
-        if (key === 'Tab') {
-            const start = textarea.selectionStart;
-            const textAfter = value.substring(start);
-            const pairMap: {[key:string]: string} = { '**': '**', '*': '*', '`': '`', '(': ')', '{': '}', '[': ']' };
+    };
 
-            let jumped = false;
-            for (const key in pairMap) {
-                const closingPair = pairMap[key];
-                if (textAfter.startsWith(closingPair)) {
-                    const newCursorPos = start + closingPair.length;
-                    
-                    requestAnimationFrame(() => {
-                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
-                        textarea.focus();
-                    });
-                    jumped = true;
-                    break;
-                }
-            }
+    React.useEffect(() => {
+        document.addEventListener('selectionchange', handleSelectionChange);
+        return () => document.removeEventListener('selectionchange', handleSelectionChange);
+    }, []);
 
-            if (!jumped) {
-                applyFormat({ prefix: '  ' });
-            }
-            return;
-        }
-
-        if (ctrlActive) {
-            setCtrlActive(false);
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            switch (key.toLowerCase()) {
-                case 'a': textarea.select(); break;
-                case 'z': undo(); break;
-                case 'y': redo(); break;
-                case 'h': cycleHeadline(); break;
-                case 'c':
-                    if (start !== end) await navigator.clipboard.writeText(value.substring(start, end));
-                    break;
-                case 'x':
-                    if (start !== end) {
-                        await navigator.clipboard.writeText(value.substring(start, end));
-                        const newValue = value.substring(0, start) + value.substring(end);
-                        handleChange(newValue);
-                        requestAnimationFrame(() => { textarea.selectionStart = textarea.selectionEnd = start; });
-                    }
-                    break;
-                case 'v':
-                    const text = await navigator.clipboard.readText();
-                    const newValue = value.substring(0, start) + text + value.substring(end);
-                    handleChange(newValue);
-                    requestAnimationFrame(() => {
-                        const newCursorPos = start + text.length;
-                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
-                    });
-                    break;
-                case 'b': applyFormat({ prefix: '**', suffix: '**' }); break;
-                case 'i': applyFormat({ prefix: '*', suffix: '*' }); break;
-                case 'l': applyFormat({ prefix: '- ' }); break;
-            }
-            return;
-        }
-
-        if (key === 'Enter') {
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            const newValue = value.substring(0, start) + '\n' + value.substring(end);
-            handleChange(newValue);
-            requestAnimationFrame(() => { textarea.selectionStart = textarea.selectionEnd = start + 1; });
-            return;
-        }
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        let newValue, newCursorPosition;
-        
-        if (key === 'Backspace') {
-            if (start === end && start > 0) {
-              newValue = value.substring(0, start - 1) + value.substring(end);
-              newCursorPosition = start - 1;
-            } else {
-              newValue = value.substring(0, start) + value.substring(end);
-              newCursorPosition = start;
-            }
-        } else if (!['Shift', 'CapsLock'].includes(key)){
-            newValue = value.substring(0, start) + key + value.substring(end);
-            newCursorPosition = start + key.length;
-        } else {
-            return;
-        }
-
-        handleChange(newValue);
-        requestAnimationFrame(() => {
-          textarea.selectionStart = newCursorPosition;
-          textarea.selectionEnd = newCursorPosition;
-          textarea.focus();
-        });
-    }
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const start = textarea.selectionStart;
-            const textAfter = value.substring(start);
-            const pairMap: {[key:string]: string} = { '**': '**', '*': '*', '`': '`', '(': ')', '{': '}', '[': ']' };
-
-            let jumped = false;
-            for (const key in pairMap) {
-                const closingPair = pairMap[key];
-                if (textAfter.startsWith(closingPair)) {
-                    // Check if the cursor is immediately before this closing pair
-                    const newCursorPos = start + closingPair.length;
-                    textarea.selectionStart = textarea.selectionEnd = newCursorPos;
-                    jumped = true;
-                    break;
-                }
-            }
-
-            if (!jumped) {
-                applyFormat({ prefix: '  ' }); // Default to indent
-            }
-            return;
-        }
-
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.ctrlKey || e.metaKey) {
             switch(e.key.toLowerCase()) {
-                case 'b': e.preventDefault(); applyFormat({ prefix: '**', suffix: '**' }); break;
-                case 'i': e.preventDefault(); applyFormat({ prefix: '*', suffix: '*' }); break;
-                case 'l': e.preventDefault(); applyFormat({ prefix: '- ' }); break;
-                case 'h': e.preventDefault(); cycleHeadline(); break;
-                case 'z': e.preventDefault(); undo(); break;
-                case 'y': e.preventDefault(); redo(); break;
+                case 'b': e.preventDefault(); execCommand('bold'); break;
+                case 'i': e.preventDefault(); execCommand('italic'); break;
+                case 'u': e.preventDefault(); execCommand('underline'); break;
             }
         }
-        if (e.key === 'Enter' && e.shiftKey) {
-            e.preventDefault();
-            applyFormat({prefix: '<br />\n'});
-        }
-    };
-
+    }
 
     return (
         <div className="border rounded-md">
-            <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="sm" className="gap-1 w-32 justify-start">
-                            {currentBlockType} <ChevronDownIcon className="w-4 h-4 ml-auto" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '# ' })}>Headline 1</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '## ' })}>Headline 2</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '### ' })}>Headline 3</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat({ prefix: '**', suffix: '**' })}><Bold className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat({ prefix: '*', suffix: '*' })}><Italic className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat({ prefix: '- ' })}><List className="w-4 h-4" /></Button>
+            <div className="flex items-center gap-1 p-1 border-b bg-muted/50">
+                <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} data-state={activeStyles.includes('bold') ? 'on' : 'off'}>
+                    <Bold className="w-4 h-4" />
+                </Button>
+                <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('italic')} data-state={activeStyles.includes('italic') ? 'on' : 'off'}>
+                    <Italic className="w-4 h-4" />
+                </Button>
+                 <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('underline')} data-state={activeStyles.includes('underline') ? 'on' : 'off'}>
+                    <Underline className="w-4 h-4" />
+                </Button>
+                 <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} data-state={activeStyles.includes('ul') ? 'on' : 'off'}>
+                    <List className="w-4 h-4" />
+                </Button>
             </div>
-             <Textarea
-                ref={textareaRef}
-                value={value}
-                onChange={(e) => handleChange(e.target.value)}
+            <div
+                ref={editorRef}
+                contentEditable
+                onInput={handleInput}
                 onKeyDown={handleKeyDown}
-                onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
-                onSelect={updateBlockType}
-                onKeyUp={updateBlockType}
-                inputMode={isMobile ? 'none' : 'text'}
-                className="min-h-[120px] w-full overflow-hidden resize-none rounded-t-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
-                rows={1}
+                onBlur={() => setContent(editorRef.current?.innerHTML || '')}
+                dangerouslySetInnerHTML={{ __html: content }}
+                className="min-h-[120px] w-full p-4 prose dark:prose-invert max-w-none focus:outline-none"
             />
-            {isMobile && isKeyboardVisible && (
-                <div id="coder-keyboard" className={cn(
-                    "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
-                    isKeyboardVisible ? "translate-y-0" : "translate-y-full"
-                )}>
-                    <CoderKeyboard 
-                        onKeyPress={handleKeyPress}
-                        ctrlActive={ctrlActive}
-                        onHide={() => setIsKeyboardVisible(false)}
-                        isSuggestionsOpen={false}
-                        onNavigateSuggestions={() => {}}
-                        onSelectSuggestion={() => {}}
-                    />
-                </div>
-            )}
         </div>
-    )
+    );
 });
-MarkdownEditor.displayName = 'MarkdownEditor';
+RichTextEditor.displayName = 'RichTextEditor';
 
 
 interface ManageTopicPageProps {
@@ -372,26 +128,26 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const { toast } = useToast();
   const { courses, updateTopic, loading } = useCourses();
   
-  const [isCompiling, setIsCompiling] = useState(false);
+  const [isCompiling, setIsCompiling] = React.useState(false);
   
-  const syntaxCompilerRef = useRef<CompilerRef>(null);
-  const solutionCompilerRef = useRef<CompilerRef>(null);
-  const practiceInitialCodeRefs = useRef<{[key: string]: CompilerRef | null}>({});
-  const noteSegmentRefs = useRef<{[key: string]: NoteCodeEditorRef | MarkdownEditorRef | null}>({});
+  const syntaxCompilerRef = React.useRef<CompilerRef>(null);
+  const solutionCompilerRef = React.useRef<CompilerRef>(null);
+  const practiceInitialCodeRefs = React.useRef<{[key: string]: CompilerRef | null}>({});
+  const noteSegmentRefs = React.useRef<{[key: string]: NoteCodeEditorRef | RichTextEditorRef | null}>({});
 
 
   const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
   const chapter = !loading ? course?.chapters.find((ch) => ch.id === params.chapterId) : undefined;
   
-  const [topic, setTopic] = useState<Topic | undefined>(undefined);
+  const [topic, setTopic] = React.useState<Topic | undefined>(undefined);
   
-  const [activeTab, setActiveTab] = useState('video');
-  const [practiceQuestionIndex, setPracticeQuestionIndex] = useState(0);
+  const [activeTab, setActiveTab] = React.useState('video');
+  const [practiceQuestionIndex, setPracticeQuestionIndex] = React.useState(0);
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!loading && course && chapter) {
         const initialTopic = chapter.topics.find(t => t.id === chapter.id) || chapter.topics[0];
         if (initialTopic) {
@@ -403,7 +159,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     }
   }, [course, chapter, loading]);
 
-  useEffect(() => {
+  React.useEffect(() => {
       setPracticeQuestionIndex(0);
   }, [topic?.id])
   
@@ -641,7 +397,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
                                     {segment.type === 'html' ? (
                                         <div className="p-4">
-                                            <MarkdownEditor
+                                            <RichTextEditor
                                                 ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
                                                 key={`md-${topic.id}-${index}`}
                                                 initialValue={segment.content}
@@ -664,7 +420,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <div className="absolute bottom-[-16px] left-1/2 -translate-x-1/2 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
                                             <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('html', index)}>
-                                                <Plus className="w-3 h-3 mr-1" /> Markdown
+                                                <Plus className="w-3 h-3 mr-1" /> Text
                                             </Button>
                                             <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('code', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Code
@@ -678,7 +434,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <p>No content yet. Add your first block.</p>
                                      <div className="flex items-center justify-center gap-2 mt-2">
                                         <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('html', -1)}>
-                                            <Plus className="w-3 h-3 mr-1" /> Add Markdown
+                                            <Plus className="w-3 h-3 mr-1" /> Add Text
                                         </Button>
                                         <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('code', -1)}>
                                             <Plus className="w-3 h-3 mr-1" /> Add Code
@@ -844,3 +600,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
+
+    
