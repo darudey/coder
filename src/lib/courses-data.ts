@@ -27,6 +27,7 @@ export interface Chapter {
     title: string;
     description: string;
     topics: Topic[];
+    order: number;
 }
 
 export interface Course {
@@ -34,6 +35,7 @@ export interface Course {
     title: string;
     description: string;
     chapters: Chapter[];
+    order: number;
 }
 
 export const courses: Course[] = [
@@ -41,11 +43,13 @@ export const courses: Course[] = [
         id: 'js-fundamentals',
         title: 'JavaScript Fundamentals',
         description: 'Master the core concepts of JavaScript, from variables to functions and beyond.',
+        order: 0,
         chapters: [
             {
                 id: 'variables-and-data-types',
                 title: 'Variables and Data Types',
                 description: 'Learn how to store and manage data in JavaScript.',
+                order: 0,
                 topics: [
                     {
                         id: 'declaring-variables',
@@ -148,6 +152,7 @@ console.log(country); // India
                 id: 'functions',
                 title: 'Functions',
                 description: 'Understand how to write and use reusable blocks of code.',
+                order: 1,
                 topics: [
                     {
                         id: 'defining-functions',
@@ -185,12 +190,14 @@ console.log('Product:', multiply(4, 5));
         id: 'es6-and-beyond',
         title: 'ES6 and Beyond',
         description: 'Explore modern JavaScript features that make your code more powerful and readable.',
+        order: 1,
         chapters: []
     },
     {
         id: 'dom-manipulation',
         title: 'DOM Manipulation',
         description: 'Learn how to interact with the web page and create dynamic user experiences.',
+        order: 2,
         chapters: []
     }
 ];

@@ -5,7 +5,7 @@ import { type Chapter } from '@/lib/courses-data';
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, ChevronLeft, Plus, Pencil, Trash2 } from 'lucide-react';
+import { FileText, ChevronLeft, Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
 import {
@@ -48,7 +48,7 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
   const params = useParams() as { courseId: string };
   const router = useRouter();
   const { toast } = useToast();
-  const { courses, addChapter, updateChapter, deleteChapter, loading } = useCourses();
+  const { courses, addChapter, updateChapter, deleteChapter, reorderChapter, loading } = useCourses();
 
   const course = courses.find((c) => c.id === params.courseId);
 
@@ -135,9 +135,17 @@ export default function ManageChapterPage({ params: propsParams }: ManageChapter
       <div className="container mx-auto p-4 md:p-8">
         <p className="text-muted-foreground mt-4 mb-8">{course.description}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {course.chapters.map((chapter) => (
-            <div key={chapter.id} className="flex flex-col">
-               <Link href={`/manage-courses/${course.id}/${chapter.id}`} className="group h-full">
+          {course.chapters.map((chapter, index) => (
+            <div key={chapter.id} className="group relative flex flex-col">
+               <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => reorderChapter(course.id, chapter.id, 'up')} disabled={index === 0}>
+                        <ArrowUp className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => reorderChapter(course.id, chapter.id, 'down')} disabled={index === course.chapters.length - 1}>
+                        <ArrowDown className="w-4 h-4" />
+                    </Button>
+                </div>
+               <Link href={`/manage-courses/${course.id}/${chapter.id}`} className="h-full">
                 <Card className="h-full group-hover:border-primary group-active:bg-primary/20 transition-colors flex flex-col">
                   <CardHeader className="flex-grow">
                     <CardTitle className="flex items-center gap-3">

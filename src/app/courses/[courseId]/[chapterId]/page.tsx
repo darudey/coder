@@ -21,6 +21,7 @@ import { OutputDisplay } from '@/components/codeweave/output-display';
 import { useCourses } from '@/hooks/use-courses';
 import { LoadingPage } from '@/components/loading-page';
 import { Header } from '@/components/codeweave/header';
+import { getYouTubeVideoId } from '@/lib/utils';
 
 
 interface ChapterPageProps {
@@ -57,6 +58,7 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   const topic = chapter.topics[0];
   const practiceQuestions = topic?.practice || [];
   const currentPracticeQuestion = practiceQuestions[practiceQuestionIndex];
+  const videoId = getYouTubeVideoId(topic?.videoUrl || '');
 
   const handleRunCode = async () => {
     let ref: React.RefObject<CompilerRef> | null = null;
@@ -123,7 +125,7 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
       <div className="flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="video">
             <Header variant="page">
-              <div className="border rounded-md px-4 py-1.5 bg-muted">
+              <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
                 <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">{topic.title}</h1>
               </div>
             </Header>
@@ -146,9 +148,21 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="flex items-center justify-center">
-                            <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center max-w-3xl">
-                                <p className="text-muted-foreground">Video placeholder</p>
-                            </div>
+                             {videoId ? (
+                                <div className="w-full aspect-video max-w-3xl">
+                                    <iframe
+                                        className="w-full h-full rounded-md"
+                                        src={`https://www.youtube.com/embed/${videoId}`}
+                                        title="YouTube video player"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    ></iframe>
+                                </div>
+                            ) : (
+                                <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center max-w-3xl">
+                                    <p className="text-muted-foreground">Video not available or invalid URL.</p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

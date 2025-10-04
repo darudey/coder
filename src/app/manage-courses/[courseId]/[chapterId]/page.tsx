@@ -32,10 +32,10 @@ import { doc, setDoc } from 'firebase/firestore';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
-import { cn } from '@/lib/utils';
+import { cn, getYouTubeVideoId } from '@/lib/utils';
 
 
-interface RichTextEditorRef {
+export interface RichTextEditorRef {
   getValue: () => string;
 }
 
@@ -435,6 +435,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   }
 
   const currentPracticeQuestion = topic.practice?.[practiceQuestionIndex];
+  const videoId = getYouTubeVideoId(topic.videoUrl || '');
 
   return (
     <>
@@ -476,9 +477,21 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     onChange={(e) => handleFieldChange('videoUrl', e.target.value)}
                                 />
                             </div>
-                            <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center max-w-3xl">
-                                <p className="text-muted-foreground">Video preview placeholder</p>
-                            </div>
+                            {videoId ? (
+                                <div className="w-full aspect-video max-w-3xl">
+                                    <iframe
+                                        className="w-full h-full rounded-md"
+                                        src={`https://www.youtube.com/embed/${videoId}`}
+                                        title="YouTube video player"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    ></iframe>
+                                </div>
+                            ) : (
+                                <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center max-w-3xl">
+                                    <p className="text-muted-foreground">Video preview will appear here</p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

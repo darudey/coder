@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { type Course } from '@/lib/courses-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -37,7 +37,7 @@ import { LoadingPage } from '@/components/loading-page';
 import { Header } from '@/components/codeweave/header';
 
 export default function ManageCoursesPage() {
-  const { courses, addCourse, updateCourse, deleteCourse, loading } = useCourses();
+  const { courses, addCourse, updateCourse, deleteCourse, reorderCourse, loading } = useCourses();
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [newCourse, setNewCourse] = useState({ title: '', description: '' });
   
@@ -116,13 +116,21 @@ export default function ManageCoursesPage() {
         </Header>
         <div className="container mx-auto p-4 md:p-8">
             <p className="text-muted-foreground mt-4 mb-8">
-                Create, edit, and manage your interactive courses here.
+                Create, edit, reorder, and manage your interactive courses here.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {courses.map((course) => (
-                <div key={course.id} className="flex flex-col">
-                    <Link href={`/manage-courses/${course.id}`} className="group flex-grow">
+                {courses.map((course, index) => (
+                <div key={course.id} className="group relative flex flex-col">
+                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => reorderCourse(course.id, 'up')} disabled={index === 0}>
+                            <ArrowUp className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => reorderCourse(course.id, 'down')} disabled={index === courses.length - 1}>
+                            <ArrowDown className="w-4 h-4" />
+                        </Button>
+                    </div>
+                    <Link href={`/manage-courses/${course.id}`} className="flex-grow">
                         <Card className="h-full flex flex-col group-hover:border-primary group-active:bg-primary/20 transition-colors">
                             <CardHeader className="flex-grow flex flex-row items-center gap-4">
                                 <div className="bg-primary/10 p-3 rounded-md">
