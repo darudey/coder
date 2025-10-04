@@ -6,7 +6,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon, Star } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useEffect, useImperativeHandle, useCallback } from 'react';
@@ -53,6 +53,7 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
     const isMobile = useIsMobile();
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [ctrlActive, setCtrlActive] = useState(false);
+    const [currentBlockType, setCurrentBlockType] = useState('Paragraph');
 
 
     useImperativeHandle(ref, () => ({
@@ -70,6 +71,23 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         }
     }, [value]);
+    
+    const updateBlockType = useCallback(() => {
+        if (!textareaRef.current) return;
+        const { selectionStart } = textareaRef.current;
+        const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+        const line = value.substring(lineStart, value.indexOf('\n', lineStart) === -1 ? value.length : value.indexOf('\n', lineStart));
+        
+        if (line.startsWith('### ')) setCurrentBlockType('Headline 3');
+        else if (line.startsWith('## ')) setCurrentBlockType('Headline 2');
+        else if (line.startsWith('# ')) setCurrentBlockType('Headline 1');
+        else setCurrentBlockType('Paragraph');
+    }, [value]);
+
+    useEffect(() => {
+        updateBlockType();
+    }, [value, updateBlockType]);
+
 
     const handleChange = (newValue: string) => {
         const newHistory = history.slice(0, historyIndex + 1);
@@ -107,6 +125,36 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
             textarea.selectionStart = textarea.selectionEnd = newCursorPosition;
         });
     };
+    
+    const cycleHeadline = () => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        
+        const { selectionStart } = textarea;
+        const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+        const lineEnd = value.indexOf('\n', selectionStart) === -1 ? value.length : value.indexOf('\n', selectionStart);
+        const line = value.substring(lineStart, lineEnd);
+        
+        const currentPrefixMatch = line.match(/^(#* ?)/);
+        const currentPrefix = currentPrefixMatch ? currentPrefixMatch[0] : '';
+        
+        let newPrefix;
+        if (currentPrefix === '# ') newPrefix = '## ';
+        else if (currentPrefix === '## ') newPrefix = '### ';
+        else if (currentPrefix === '### ') newPrefix = '';
+        else newPrefix = '# ';
+        
+        const newLine = newPrefix + line.substring(currentPrefix.length);
+        const newValue = value.substring(0, lineStart) + newLine + value.substring(lineEnd);
+        
+        handleChange(newValue);
+        
+        const newCursorPosition = selectionStart - currentPrefix.length + newPrefix.length;
+        requestAnimationFrame(() => {
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = newCursorPosition;
+        });
+    }
 
     const handleKeyPress = async (key: string) => {
         const textarea = textareaRef.current;
@@ -126,7 +174,6 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
             for (const key in pairMap) {
                 const closingPair = pairMap[key];
                 if (textAfter.startsWith(closingPair)) {
-                    // Check if the cursor is immediately before this closing pair
                     const newCursorPos = start + closingPair.length;
                     
                     requestAnimationFrame(() => {
@@ -139,7 +186,7 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
             }
 
             if (!jumped) {
-                applyFormat({ prefix: '  ' }); // Default to indent
+                applyFormat({ prefix: '  ' });
             }
             return;
         }
@@ -152,6 +199,7 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
                 case 'a': textarea.select(); break;
                 case 'z': undo(); break;
                 case 'y': redo(); break;
+                case 'h': cycleHeadline(); break;
                 case 'c':
                     if (start !== end) await navigator.clipboard.writeText(value.substring(start, end));
                     break;
@@ -248,7 +296,7 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
                 case 'b': e.preventDefault(); applyFormat({ prefix: '**', suffix: '**' }); break;
                 case 'i': e.preventDefault(); applyFormat({ prefix: '*', suffix: '*' }); break;
                 case 'l': e.preventDefault(); applyFormat({ prefix: '- ' }); break;
-                case 'h': e.preventDefault(); /* Open dropdown or cycle through headers */ break;
+                case 'h': e.preventDefault(); cycleHeadline(); break;
                 case 'z': e.preventDefault(); undo(); break;
                 case 'y': e.preventDefault(); redo(); break;
             }
@@ -265,14 +313,14 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
             <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="sm" className="gap-1">
-                            Headlines <ChevronDownIcon className="w-4 h-4" />
+                         <Button variant="ghost" size="sm" className="gap-1 w-32 justify-start">
+                            {currentBlockType} <ChevronDownIcon className="w-4 h-4 ml-auto" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '# ' })}>H1</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '## ' })}>H2</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '### ' })}>H3</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '# ' })}>Headline 1</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '## ' })}>Headline 2</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '### ' })}>Headline 3</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat({ prefix: '**', suffix: '**' })}><Bold className="w-4 h-4" /></Button>
@@ -285,6 +333,8 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
                 onChange={(e) => handleChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
+                onSelect={updateBlockType}
+                onKeyUp={updateBlockType}
                 inputMode={isMobile ? 'none' : 'text'}
                 className="min-h-[120px] w-full overflow-hidden resize-none rounded-t-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                 rows={1}
