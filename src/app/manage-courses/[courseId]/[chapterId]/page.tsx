@@ -6,7 +6,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2 } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useEffect, useImperativeHandle, useCallback } from 'react';
@@ -16,6 +16,12 @@ import {
     TabsList,
     TabsTrigger,
   } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -26,42 +32,34 @@ import { ChevronRight } from 'lucide-react';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { LoadingPage } from '@/components/loading-page';
 import { NoteCodeEditor, type NoteCodeEditorRef } from '@/components/codeweave/note-code-editor';
-import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
-import { getSmartIndentation } from '@/lib/indentation';
 import { Header } from '@/components/codeweave/header';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
 
-interface AutoResizingTextareaRef {
+interface MarkdownEditorRef {
   getValue: () => string;
 }
 
-const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initialValue: string; onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; className?: string, placeholder?: string, readOnly?: boolean, onFocus?: () => void, onContentChange: () => void }>(({ initialValue, onChange, className, onContentChange, ...props }, ref) => {
-    const internalRef = useRef<HTMLTextAreaElement>(null);
+const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: string; onContentChange: () => void; }>(({ initialValue, onContentChange }, ref) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [history, setHistory] = useState([initialValue]);
     const [historyIndex, setHistoryIndex] = useState(0);
     const value = history[historyIndex];
 
-    const isMobile = useIsMobile();
-    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-    const [ctrlActive, setCtrlActive] = useState(false);
-
     useImperativeHandle(ref, () => ({
         getValue: () => value,
     }));
-
+    
     useEffect(() => {
         setHistory([initialValue]);
         setHistoryIndex(0);
     }, [initialValue]);
 
     useEffect(() => {
-        if (internalRef.current) {
-            internalRef.current.style.height = 'auto';
-            internalRef.current.style.height = `${internalRef.current.scrollHeight}px`;
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         }
     }, [value]);
 
@@ -72,137 +70,85 @@ const AutoResizingTextarea = React.forwardRef<AutoResizingTextareaRef, { initial
         setHistoryIndex(i => i + 1);
         onContentChange();
     };
-    
-    const undo = () => {
-        if (historyIndex > 0) setHistoryIndex(i => i - 1);
-    }
-    const redo = () => {
-        if (historyIndex < history.length - 1) setHistoryIndex(i => i + 1);
-    }
 
-    const handleKeyPress = useCallback(async (key: string) => {
-        const textarea = internalRef.current;
+    const undo = () => { if (historyIndex > 0) setHistoryIndex(i => i - 1); }
+    const redo = () => { if (historyIndex < history.length - 1) setHistoryIndex(i => i + 1); }
+    
+    const applyFormat = (syntax: { prefix: string; suffix?: string; }) => {
+        const textarea = textareaRef.current;
         if (!textarea) return;
 
-        if (key === 'Ctrl') {
-            setCtrlActive(p => !p);
-            return;
-        }
-
-        if (ctrlActive) {
-            setCtrlActive(false);
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            switch (key.toLowerCase()) {
-                case 'a':
-                    textarea.select();
-                    break;
-                case 'z': undo(); break;
-                case 'y': redo(); break;
-                case 'c':
-                    if (start !== end) await navigator.clipboard.writeText(value.substring(start, end));
-                    break;
-                case 'x':
-                    if (start !== end) {
-                        await navigator.clipboard.writeText(value.substring(start, end));
-                        const newValue = value.substring(0, start) + value.substring(end);
-                        handleChange(newValue);
-                        requestAnimationFrame(() => {
-                            textarea.selectionStart = textarea.selectionEnd = start;
-                        });
-                    }
-                    break;
-                case 'v':
-                    const text = await navigator.clipboard.readText();
-                    const newValue = value.substring(0, start) + text + value.substring(end);
-                    handleChange(newValue);
-                    requestAnimationFrame(() => {
-                        const newCursorPos = start + text.length;
-                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
-                    });
-                    break;
-            }
-            return;
-        }
-    
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-    
-        let newValue = value;
-        let newCursorPosition = start;
-    
-        if (key === 'Enter') {
-          const { textToInsert, newCursorPosition: cursorPos } = getSmartIndentation(value, start, end);
-          newValue = value.substring(0, start) + textToInsert + value.substring(end);
-          newCursorPosition = cursorPos;
-        } else if (key === 'Backspace') {
-          if (start === end && start > 0) {
-            newValue = value.substring(0, start - 1) + value.substring(end);
-            newCursorPosition = start - 1;
-          } else {
-            newValue = value.substring(0, start) + value.substring(end);
-            newCursorPosition = start;
-          }
-        } else if (key === 'Tab') {
-          newValue = value.substring(0, start) + '  ' + value.substring(end);
-          newCursorPosition = start + 2;
-        } else if (!['Shift', 'CapsLock'].includes(key)) {
-          const pairMap: {[key:string]: string} = { '(': ')', '{': '}', '[': ']', "'": "'", '"': '"', '`': '`' };
-          if (pairMap[key] && key.length === 1) {
-            newValue = value.substring(0, start) + key + pairMap[key] + value.substring(end);
-            newCursorPosition = start + 1;
-          } else {
-            newValue = value.substring(0, start) + key + value.substring(end);
-            newCursorPosition = start + key.length;
-          }
-        } else {
-            return; // Don't handle shift/capslock here
-        }
-    
-        handleChange(newValue);
-    
-        requestAnimationFrame(() => {
-          textarea.selectionStart = newCursorPosition;
-          textarea.selectionEnd = newCursorPosition;
-          textarea.focus();
-        });
-      }, [value, onContentChange, ctrlActive, history.length, historyIndex]);
+        const selectedText = value.substring(start, end);
 
-    const showKeyboard = isMobile && isKeyboardVisible;
+        let newValue, newCursorPosition;
+
+        if (selectedText) {
+            newValue = `${value.substring(0, start)}${syntax.prefix}${selectedText}${syntax.suffix || ''}${value.substring(end)}`;
+            newCursorPosition = end + syntax.prefix.length + (syntax.suffix?.length || 0);
+        } else {
+            newValue = `${value.substring(0, start)}${syntax.prefix}${syntax.suffix || ''}${value.substring(end)}`;
+            newCursorPosition = start + syntax.prefix.length;
+        }
+
+        handleChange(newValue);
+        
+        requestAnimationFrame(() => {
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = newCursorPosition;
+        });
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key.toLowerCase()) {
+                case 'b': e.preventDefault(); applyFormat({ prefix: '**', suffix: '**' }); break;
+                case 'i': e.preventDefault(); applyFormat({ prefix: '*', suffix: '*' }); break;
+                case 'l': e.preventDefault(); applyFormat({ prefix: '- ' }); break;
+                case 'h': e.preventDefault(); /* Open dropdown or cycle through headers */ break;
+                case 'z': e.preventDefault(); undo(); break;
+                case 'y': e.preventDefault(); redo(); break;
+            }
+        }
+        if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
+            applyFormat({prefix: '<br />\n'});
+        }
+    };
+
 
     return (
-        <>
-            <Textarea
-                ref={internalRef}
+        <div className="border rounded-md">
+            <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="ghost" size="sm" className="gap-1">
+                            Headlines <ChevronDownIcon className="w-4 h-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '# ' })}>H1</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '## ' })}>H2</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => applyFormat({ prefix: '### ' })}>H3</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat({ prefix: '**', suffix: '**' })}><Bold className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat({ prefix: '*', suffix: '*' })}><Italic className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat({ prefix: '- ' })}><List className="w-4 h-4" /></Button>
+            </div>
+             <Textarea
+                ref={textareaRef}
                 value={value}
                 onChange={(e) => handleChange(e.target.value)}
-                onFocus={() => setIsKeyboardVisible(true)}
-                onClick={() => setIsKeyboardVisible(true)}
-                className={className}
+                onKeyDown={handleKeyDown}
+                className="min-h-[120px] w-full overflow-hidden resize-none rounded-t-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                 rows={1}
-                inputMode={isMobile ? 'none' : 'text'}
-                {...props}
             />
-             {showKeyboard && (
-              <div id="coder-keyboard-markdown" className={cn(
-                  "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
-                  isKeyboardVisible ? "translate-y-0" : "translate-y-full"
-              )}>
-                  <CoderKeyboard 
-                      onKeyPress={handleKeyPress}
-                      ctrlActive={ctrlActive}
-                      onHide={() => setIsKeyboardVisible(false)}
-                      isSuggestionsOpen={false} // No suggestions for markdown for now
-                      onNavigateSuggestions={() => {}}
-                      onSelectSuggestion={() => {}}
-                  />
-              </div>
-            )}
-        </>
-    );
+        </div>
+    )
 });
-AutoResizingTextarea.displayName = 'AutoResizingTextarea';
-
+MarkdownEditor.displayName = 'MarkdownEditor';
 
 
 interface ManageTopicPageProps {
@@ -217,13 +163,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   const { toast } = useToast();
   const { courses, updateTopic, loading } = useCourses();
   
-  const isMobile = useIsMobile();
   const [isCompiling, setIsCompiling] = useState(false);
   
   const syntaxCompilerRef = useRef<CompilerRef>(null);
   const solutionCompilerRef = useRef<CompilerRef>(null);
   const practiceInitialCodeRefs = useRef<{[key: string]: CompilerRef | null}>({});
-  const noteSegmentRefs = useRef<{[key: string]: NoteCodeEditorRef | AutoResizingTextareaRef | null}>({});
+  const noteSegmentRefs = useRef<{[key: string]: NoteCodeEditorRef | MarkdownEditorRef | null}>({});
 
 
   const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
@@ -486,13 +431,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     </div>
 
                                     {segment.type === 'html' ? (
-                                        <div className="space-y-2">
-                                            <Label className="px-4 pt-2 text-xs text-muted-foreground">Markdown</Label>
-                                            <AutoResizingTextarea
+                                        <div className="p-4">
+                                            <MarkdownEditor
                                                 ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
                                                 key={`md-${topic.id}-${index}`}
-                                                id={`note-markdown-editor-${index}`}
-                                                className="min-h-[120px] w-full overflow-hidden resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-4"
                                                 initialValue={segment.content}
                                                 onContentChange={markAsDirty}
                                             />
@@ -693,9 +635,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
-
-    
-
-    
-
-
