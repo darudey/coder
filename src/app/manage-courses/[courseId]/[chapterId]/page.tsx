@@ -37,12 +37,17 @@ interface RichTextEditorRef {
 
 const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: string; onContentChange: () => void }>(({ initialValue, onContentChange }, ref) => {
     const editorRef = React.useRef<HTMLDivElement>(null);
-    const [content, setContent] = React.useState(initialValue);
     const [activeStyles, setActiveStyles] = React.useState<string[]>([]);
     
     React.useImperativeHandle(ref, () => ({
         getValue: () => editorRef.current?.innerHTML || '',
     }));
+
+    React.useEffect(() => {
+        if (editorRef.current) {
+            editorRef.current.innerHTML = initialValue;
+        }
+    }, [initialValue]);
     
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
         onContentChange();
@@ -106,8 +111,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 contentEditable
                 onInput={handleInput}
                 onKeyDown={handleKeyDown}
-                onBlur={() => setContent(editorRef.current?.innerHTML || '')}
-                dangerouslySetInnerHTML={{ __html: content }}
                 className="min-h-[120px] w-full p-4 prose dark:prose-invert max-w-none focus:outline-none"
             />
         </div>
