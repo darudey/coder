@@ -6,7 +6,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon, Star } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useEffect, useImperativeHandle, useCallback } from 'react';
@@ -189,6 +189,35 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const textAfter = value.substring(start);
+            const pairMap: {[key:string]: string} = { '**': '**', '*': '*', '`': '`', '(': ')', '{': '}', '[': ']' };
+
+            let jumped = false;
+            for (const key in pairMap) {
+                if (textAfter.startsWith(pairMap[key])) {
+                    const newCursorPos = start + pairMap[key].length;
+                     // Check if we are right before this pair
+                    const textBefore = value.substring(0, start);
+                    if (textBefore.endsWith(key)) {
+                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+                        jumped = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!jumped) {
+                applyFormat({ prefix: '  ' }); // Default to indent
+            }
+            return;
+        }
+
         if (e.ctrlKey || e.metaKey) {
             switch(e.key.toLowerCase()) {
                 case 'b': e.preventDefault(); applyFormat({ prefix: '**', suffix: '**' }); break;
