@@ -116,6 +116,33 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
             setCtrlActive(prev => !prev);
             return;
         }
+        
+        if (key === 'Tab') {
+            const start = textarea.selectionStart;
+            const textAfter = value.substring(start);
+            const pairMap: {[key:string]: string} = { '**': '**', '*': '*', '`': '`', '(': ')', '{': '}', '[': ']' };
+
+            let jumped = false;
+            for (const key in pairMap) {
+                const closingPair = pairMap[key];
+                if (textAfter.startsWith(closingPair)) {
+                    // Check if the cursor is immediately before this closing pair
+                    const newCursorPos = start + closingPair.length;
+                    
+                    requestAnimationFrame(() => {
+                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+                        textarea.focus();
+                    });
+                    jumped = true;
+                    break;
+                }
+            }
+
+            if (!jumped) {
+                applyFormat({ prefix: '  ' }); // Default to indent
+            }
+            return;
+        }
 
         if (ctrlActive) {
             setCtrlActive(false);
@@ -769,4 +796,5 @@ declare module '@/components/codeweave/compiler' {
 }
 
     
+
 
