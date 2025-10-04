@@ -42,6 +42,7 @@ interface RichTextEditorRef {
 const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: string; onContentChange: () => void }>(({ initialValue, onContentChange }, ref) => {
     const editorRef = React.useRef<HTMLDivElement>(null);
     const [activeStyles, setActiveStyles] = React.useState<string[]>([]);
+    const [currentBlockType, setCurrentBlockType] = React.useState('Paragraph');
     const isMobile = useIsMobile();
     const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
     const [ctrlActive, setCtrlActive] = React.useState(false);
@@ -58,6 +59,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
         onContentChange();
+        updateActiveStyles();
     };
 
     const execCommand = (command: string, value?: string) => {
@@ -66,32 +68,46 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         updateActiveStyles();
     };
 
+    const cycleHeadline = () => {
+        const currentBlock = currentBlockType.toLowerCase();
+        let nextBlock = 'p'; // Default to paragraph
+        if (currentBlock === 'paragraph') nextBlock = 'h1';
+        else if (currentBlock === 'headline 1') nextBlock = 'h2';
+        else if (currentBlock === 'headline 2') nextBlock = 'h3';
+        else if (currentBlock === 'headline 3') nextBlock = 'h4';
+        else if (currentBlock === 'headline 4') nextBlock = 'p';
+
+        execCommand('formatBlock', nextBlock);
+    }
+
     const updateActiveStyles = () => {
         const styles: string[] = [];
         if (document.queryCommandState('bold')) styles.push('bold');
         if (document.queryCommandState('italic')) styles.push('italic');
         if (document.queryCommandState('underline')) styles.push('underline');
         if (document.queryCommandState('insertUnorderedList')) styles.push('ul');
-        if (document.queryCommandState('insertOrderedList')) styles.push('ol');
         
         const blockType = document.queryCommandValue('formatBlock');
         if (blockType.startsWith('h')) {
             styles.push(blockType);
+            setCurrentBlockType(`Headline ${blockType.charAt(1)}`);
+        } else {
+            setCurrentBlockType('Paragraph');
         }
 
         setActiveStyles(styles);
     };
-
-    const handleSelectionChange = () => {
+    
+    const handleSelectionChange = React.useCallback(() => {
         if (editorRef.current && document.getSelection()?.containsNode(editorRef.current, true)) {
             updateActiveStyles();
         }
-    };
+    }, []);
 
     React.useEffect(() => {
         document.addEventListener('selectionchange', handleSelectionChange);
         return () => document.removeEventListener('selectionchange', handleSelectionChange);
-    }, []);
+    }, [handleSelectionChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.ctrlKey || e.metaKey) {
@@ -99,6 +115,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'b': e.preventDefault(); execCommand('bold'); break;
                 case 'i': e.preventDefault(); execCommand('italic'); break;
                 case 'u': e.preventDefault(); execCommand('underline'); break;
+                case 'l': e.preventDefault(); execCommand('insertUnorderedList'); break;
+                case 'h': e.preventDefault(); cycleHeadline(); break;
             }
         }
     }
@@ -120,21 +138,22 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'b': execCommand('bold'); break;
                 case 'i': execCommand('italic'); break;
                 case 'u': execCommand('underline'); break;
+                case 'l': execCommand('insertUnorderedList'); break;
+                case 'h': cycleHeadline(); break;
+                default:
+                    // Allow combining Ctrl with other keys if needed in future
+                    document.execCommand('insertText', false, key);
             }
             return;
         }
-
-        // For other keys, we might need to manually insert them
-        // For simplicity, we'll let the browser handle typing for now
-        // and just handle special keys.
-    }
-
-    const getHeadlineText = () => {
-        const headline = activeStyles.find(s => s.startsWith('h'));
-        if (headline) {
-            return `Headline ${headline.charAt(1)}`;
+        
+        if (key === 'Backspace') {
+            document.execCommand('delete');
+        } else if (key === 'Enter') {
+            document.execCommand('insertHTML', false, '<br><br>');
+        } else if (key.length === 1) {
+            document.execCommand('insertText', false, key);
         }
-        return 'Paragraph';
     }
 
     const showKeyboard = isMobile && isKeyboardVisible;
@@ -142,11 +161,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     return (
         <>
             <div className="border rounded-md">
-                <div className="flex items-center gap-1 p-1 border-b bg-muted/50">
+                <div className="flex items-center gap-1 p-1 border-b bg-muted/50 flex-wrap">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 px-2 text-xs">
-                                {getHeadlineText()}
+                                {currentBlockType}
                                 <ChevronDown className="w-4 h-4 ml-1" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -178,6 +197,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     onKeyDown={handleKeyDown}
                     onFocus={() => { if(isMobile) setIsKeyboardVisible(true) }}
                     onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
+                    onSelect={updateActiveStyles}
                     inputMode={isMobile ? 'none' : 'text'}
                     className="min-h-[120px] w-full p-4 prose dark:prose-invert max-w-none focus:outline-none"
                 />
@@ -687,5 +707,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
-
-    
