@@ -30,6 +30,9 @@ import { Header } from '@/components/codeweave/header';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
+import { cn } from '@/lib/utils';
 
 
 interface RichTextEditorRef {
@@ -39,6 +42,9 @@ interface RichTextEditorRef {
 const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: string; onContentChange: () => void }>(({ initialValue, onContentChange }, ref) => {
     const editorRef = React.useRef<HTMLDivElement>(null);
     const [activeStyles, setActiveStyles] = React.useState<string[]>([]);
+    const isMobile = useIsMobile();
+    const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
+    const [ctrlActive, setCtrlActive] = React.useState(false);
     
     React.useImperativeHandle(ref, () => ({
         getValue: () => editorRef.current?.innerHTML || '',
@@ -97,6 +103,32 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         }
     }
     
+    const handleKeyPress = (key: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+
+        editor.focus();
+
+        if (key === 'Ctrl') {
+            setCtrlActive(prev => !prev);
+            return;
+        }
+
+        if (ctrlActive) {
+            setCtrlActive(false);
+            switch(key.toLowerCase()) {
+                case 'b': execCommand('bold'); break;
+                case 'i': execCommand('italic'); break;
+                case 'u': execCommand('underline'); break;
+            }
+            return;
+        }
+
+        // For other keys, we might need to manually insert them
+        // For simplicity, we'll let the browser handle typing for now
+        // and just handle special keys.
+    }
+
     const getHeadlineText = () => {
         const headline = activeStyles.find(s => s.startsWith('h'));
         if (headline) {
@@ -105,45 +137,67 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         return 'Paragraph';
     }
 
+    const showKeyboard = isMobile && isKeyboardVisible;
+
     return (
-        <div className="border rounded-md">
-            <div className="flex items-center gap-1 p-1 border-b bg-muted/50">
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 px-2 text-xs">
-                            {getHeadlineText()}
-                            <ChevronDown className="w-4 h-4 ml-1" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => execCommand('formatBlock', 'p')}>Paragraph</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h1')}>Headline 1</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h2')}>Headline 2</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h3')}>Headline 3</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h4')}>Headline 4</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} data-state={activeStyles.includes('bold') ? 'on' : 'off'}>
-                    <Bold className="w-4 h-4" />
-                </Button>
-                <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('italic')} data-state={activeStyles.includes('italic') ? 'on' : 'off'}>
-                    <Italic className="w-4 h-4" />
-                </Button>
-                 <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('underline')} data-state={activeStyles.includes('underline') ? 'on' : 'off'}>
-                    <Underline className="w-4 h-4" />
-                </Button>
-                 <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} data-state={activeStyles.includes('ul') ? 'on' : 'off'}>
-                    <List className="w-4 h-4" />
-                </Button>
+        <>
+            <div className="border rounded-md">
+                <div className="flex items-center gap-1 p-1 border-b bg-muted/50">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 px-2 text-xs">
+                                {getHeadlineText()}
+                                <ChevronDown className="w-4 h-4 ml-1" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => execCommand('formatBlock', 'p')}>Paragraph</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h1')}>Headline 1</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h2')}>Headline 2</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h3')}>Headline 3</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => execCommand('formatBlock', 'h4')}>Headline 4</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} data-state={activeStyles.includes('bold') ? 'on' : 'off'}>
+                        <Bold className="w-4 h-4" />
+                    </Button>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('italic')} data-state={activeStyles.includes('italic') ? 'on' : 'off'}>
+                        <Italic className="w-4 h-4" />
+                    </Button>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('underline')} data-state={activeStyles.includes('underline') ? 'on' : 'off'}>
+                        <Underline className="w-4 h-4" />
+                    </Button>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} data-state={activeStyles.includes('ul') ? 'on' : 'off'}>
+                        <List className="w-4 h-4" />
+                    </Button>
+                </div>
+                <div
+                    ref={editorRef}
+                    contentEditable
+                    onInput={handleInput}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => { if(isMobile) setIsKeyboardVisible(true) }}
+                    onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
+                    inputMode={isMobile ? 'none' : 'text'}
+                    className="min-h-[120px] w-full p-4 prose dark:prose-invert max-w-none focus:outline-none"
+                />
             </div>
-            <div
-                ref={editorRef}
-                contentEditable
-                onInput={handleInput}
-                onKeyDown={handleKeyDown}
-                className="min-h-[120px] w-full p-4 prose dark:prose-invert max-w-none focus:outline-none"
-            />
-        </div>
+             {showKeyboard && (
+                <div id="coder-keyboard" className={cn(
+                    "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+                    isKeyboardVisible ? "translate-y-0" : "translate-y-full"
+                )}>
+                    <CoderKeyboard 
+                        onKeyPress={handleKeyPress}
+                        ctrlActive={ctrlActive}
+                        onHide={() => setIsKeyboardVisible(false)}
+                        isSuggestionsOpen={false}
+                        onNavigateSuggestions={() => {}}
+                        onSelectSuggestion={() => {}}
+                    />
+                </div>
+             )}
+        </>
     );
 });
 RichTextEditor.displayName = 'RichTextEditor';
