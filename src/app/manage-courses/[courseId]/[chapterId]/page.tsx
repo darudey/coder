@@ -6,7 +6,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon, Star } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, ChevronDown as ChevronDownIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState, useEffect, useImperativeHandle, useCallback } from 'react';
@@ -200,15 +200,13 @@ const MarkdownEditor = React.forwardRef<MarkdownEditorRef, { initialValue: strin
 
             let jumped = false;
             for (const key in pairMap) {
-                if (textAfter.startsWith(pairMap[key])) {
-                    const newCursorPos = start + pairMap[key].length;
-                     // Check if we are right before this pair
-                    const textBefore = value.substring(0, start);
-                    if (textBefore.endsWith(key)) {
-                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
-                        jumped = true;
-                        break;
-                    }
+                const closingPair = pairMap[key];
+                if (textAfter.startsWith(closingPair)) {
+                    // Check if the cursor is immediately before this closing pair
+                    const newCursorPos = start + closingPair.length;
+                    textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+                    jumped = true;
+                    break;
                 }
             }
 
@@ -771,3 +769,4 @@ declare module '@/components/codeweave/compiler' {
 }
 
     
+
