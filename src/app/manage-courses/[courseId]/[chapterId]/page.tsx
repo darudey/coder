@@ -5,7 +5,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, Underline, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, Underline, ChevronDown, ListOrdered } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React from 'react';
@@ -85,6 +85,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (document.queryCommandState('italic')) styles.push('italic');
         if (document.queryCommandState('underline')) styles.push('underline');
         if (document.queryCommandState('insertUnorderedList')) styles.push('ul');
+        if (document.queryCommandState('insertOrderedList')) styles.push('ol');
         
         const blockType = document.queryCommandValue('formatBlock');
         if (blockType.startsWith('h')) {
@@ -116,6 +117,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'u': e.preventDefault(); execCommand('underline'); break;
                 case 'l': e.preventDefault(); execCommand('insertUnorderedList'); break;
                 case 'h': e.preventDefault(); cycleHeadline(); break;
+            }
+            if (e.shiftKey && e.key === '7') {
+                e.preventDefault();
+                execCommand('insertOrderedList');
             }
         }
     }
@@ -187,6 +192,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     </Button>
                     <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} data-state={activeStyles.includes('ul') ? 'on' : 'off'}>
                         <List className="w-4 h-4" />
+                    </Button>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('insertOrderedList')} data-state={activeStyles.includes('ol') ? 'on' : 'off'}>
+                        <ListOrdered className="w-4 h-4" />
                     </Button>
                 </div>
                 <div
@@ -724,3 +732,6 @@ declare module '@/components/codeweave/compiler' {
 
     
 
+
+
+    
