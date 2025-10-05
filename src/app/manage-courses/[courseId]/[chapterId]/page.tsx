@@ -207,7 +207,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
                     onSelect={updateActiveStyles}
                     inputMode={isMobile ? 'none' : 'text'}
-                    className="min-h-[120px] w-full p-4 prose dark:prose-invert max-w-none focus:outline-none"
+                    className="min-h-[120px] w-full p-2 prose dark:prose-invert max-w-none focus:outline-none"
                 />
             </div>
              {showKeyboard && (
@@ -505,8 +505,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                 </TabsContent>
                 <TabsContent value="notes" className="mt-0">
                     <Card className="rounded-none border-x-0">
-                        <CardHeader>
-                            <CardTitle className="text-sm">Topic Notes</CardTitle>
+                        <CardHeader className="flex flex-row items-center justify-between px-4 py-2">
+                            <CardTitle className="text-xs text-muted-foreground font-normal">
+                                Topic Notes
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
@@ -547,7 +549,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         />
                                     )}
 
-                                    <div className="absolute bottom-2 left-1/2 w-full -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                    <div className="absolute bottom-2 left-1/2 w-full -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 z-10">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
                                             <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => handleAddNoteSegment('html', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Text
@@ -732,4 +734,5 @@ declare module '@/components/codeweave/compiler' {
     }
 }
 
+    
     
