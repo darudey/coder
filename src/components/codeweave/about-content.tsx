@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot } from "lucide-react";
+import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot, BookOpen } from "lucide-react";
 
 export function AboutContent() {
 
@@ -35,6 +35,10 @@ export function AboutContent() {
         </p>
         
         <div className="space-y-4">
+            <FeatureCard title="Interactive Courses" icon={<BookOpen className="text-primary"/>}>
+                <p>Learn web development from the ground up with structured courses. Each chapter includes video lectures, detailed notes, and hands-on coding exercises with automated checks to test your knowledge.</p>
+            </FeatureCard>
+
             <FeatureCard title="Smart Editing" icon={<Sparkles className="text-primary"/>}>
                 <p>The editor automatically color-codes your JavaScript to make it more readable and provides intelligent suggestions to speed up your coding.</p>
             </FeatureCard>
