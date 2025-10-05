@@ -117,3 +117,28 @@ body {
     animation: bounce 1s infinite;
   }
 }
+
+@layer components {
+    .prose h1, .prose h2, .prose h3, .prose h4 {
+        color: hsl(var(--card-foreground));
+    }
+    .prose h1 {
+        font-size: 1.5rem; /* 24px */
+        font-weight: 600;
+    }
+    .prose h2 {
+        font-size: 1.25rem; /* 20px */
+        font-weight: 600;
+    }
+    .prose h3 {
+        font-size: 1.125rem; /* 18px */
+        font-weight: 600;
+    }
+    .prose h4 {
+        font-size: 1rem; /* 16px */
+        font-weight: 600;
+    }
+    .dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4 {
+        color: hsl(var(--foreground));
+    }
+}
