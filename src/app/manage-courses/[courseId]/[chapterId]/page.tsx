@@ -166,7 +166,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     return (
         <>
             <div className="border rounded-md">
-                <div className="flex items-center gap-1 p-1 border-b bg-muted/50 flex-wrap">
+                <div className="flex items-center gap-1 p-1 border-b bg-muted/50 flex-wrap mb-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 px-2 text-xs">
