@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft } from "lucide-react";
+import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot } from "lucide-react";
 
 export function AboutContent() {
 
@@ -31,27 +31,24 @@ export function AboutContent() {
   return (
     <div className="space-y-6 text-sm py-4">
         <p className="text-muted-foreground">
-            24HrCoding is a lightweight, mobile-friendly JavaScript playground packed with powerful features to make coding on the go a breeze.
+            24HrCoding is a lightweight, mobile-friendly JavaScript playground packed with powerful features to make coding on the go a breeze. It's built with a modern tech stack including Next.js, Firebase, and Google's Gemini AI.
         </p>
         
         <div className="space-y-4">
-            <FeatureCard title="Syntax Highlighting" icon={<Sparkles className="text-primary"/>}>
-                <p>The editor automatically color-codes your JavaScript to make it more readable. Different colors are used for keywords, strings, numbers, and comments, helping you spot mistakes at a glance.</p>
-                <div className="flex items-center gap-4">
-                    <span className="text-blue-600">keywords</span>
-                    <span className="text-green-600">'strings'</span>
-                    <span className="text-purple-600">123</span>
-                    <span className="text-gray-500 italic">// comments</span>
-                </div>
+            <FeatureCard title="Smart Editing" icon={<Sparkles className="text-primary"/>}>
+                <p>The editor automatically color-codes your JavaScript to make it more readable and provides intelligent suggestions to speed up your coding.</p>
             </FeatureCard>
-
-            <FeatureCard title="File System" icon={<Folder className="text-primary"/>}>
-                <p>All your code is saved directly in your browser—no account needed! You can organize your work into folders and files.</p>
+            
+            <FeatureCard title="Offline-First File System" icon={<Database className="text-primary"/>}>
+                <p>All your code is saved directly in your browser using IndexedDB—no account needed! You can organize your work into folders and files, and it's all available even when you're offline.</p>
                 <ul className="list-disc pl-5 space-y-1">
                     <li>Click the <Plus className="inline h-4 w-4 mx-1"/> button in the settings panel or the tab bar to create a new file.</li>
                     <li>Double-click a tab to rename a file.</li>
-                    <li>Files are grouped into folders in the "Saved Code" section.</li>
                 </ul>
+            </FeatureCard>
+
+             <FeatureCard title="AI-Powered Features" icon={<Bot className="text-primary"/>}>
+                <p>Leveraging Google's Gemini models via Genkit, the app offers AI-driven error checking to help you find and fix bugs faster.</p>
             </FeatureCard>
 
             <FeatureCard title="Spacebar Power-ups" icon={<Keyboard className="text-primary"/>} badge="Mobile">
@@ -67,14 +64,25 @@ export function AboutContent() {
                  <ul className="space-y-2">
                     <li className="flex items-center justify-between"><span>Undo</span> <Key>Ctrl/Cmd + Z</Key></li>
                     <li className="flex items-center justify-between"><span>Redo</span> <Key>Ctrl/Cmd + Y</Key></li>
-                    <li className="flex items-center justify-between"><span>Save As</span> <Key>Ctrl/Cmd + S (Not implemented, use button)</Key></li>
+                    <li className="flex items-center justify-between"><span>Copy Line</span> <Key>Ctrl/Cmd + C</Key></li>
+                    <li className="flex items-center justify-between"><span>Cut Line</span> <Key>Ctrl/Cmd + X</Key></li>
+                    <li className="flex items-center justify-between"><span>Paste</span> <Key>Ctrl/Cmd + V</Key></li>
                     <li className="flex items-center justify-between"><span>Delete File</span> <Key>Ctrl/Cmd + D</Key></li>
                     <li className="flex items-center justify-between"><span>Indent (Tab)</span> <Key>Tab</Key></li>
-                    <li className="flex items-center justify-between"><span>Select suggestion</span> <Key>Enter</Key> or <Key>Tab</Key></li>
+                    <li className="flex items-center justify-between"><span>Select suggestion</span> <div><Key>Enter</Key> or <Key>Tab</Key></div></li>
+                 </ul>
+            </FeatureCard>
+
+             <FeatureCard title="Virtual Keyboard Shortcuts" icon={<Keyboard className="text-primary" />} badge="Mobile">
+                 <p>Use the <Key>Ctrl</Key> key on the virtual keyboard to activate shortcuts for common actions.</p>
+                 <ul className="space-y-2">
+                    <li className="flex items-center justify-between"><span>Undo / Redo</span> <div><Key>Ctrl</Key> + <Key>Z</Key> / <Key>Y</Key></div></li>
+                    <li className="flex items-center justify-between"><span>Select All</span> <div><Key>Ctrl</Key> + <Key>A</Key></div></li>
+                     <li className="flex items-center justify-between"><span>Copy / Cut / Paste</span> <div><Key>Ctrl</Key> + <Key>C</Key> / <Key>X</Key> / <Key>V</Key></div></li>
+                    <li className="flex items-center justify-between"><span>Bold / Italic / Underline</span> <div><Key>Ctrl</Key> + <Key>B</Key> / <Key>I</Key> / <Key>U</Key></div></li>
                  </ul>
             </FeatureCard>
         </div>
     </div>
   );
 }
-

@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -20,6 +20,9 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { usePathname } from 'next/navigation';
 import { useSettings } from '@/hooks/use-settings';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { ScrollArea } from '../ui/scroll-area';
+import { AboutContent } from './about-content';
 
 interface HeaderProps {
   onRun?: () => void;
@@ -39,6 +42,7 @@ const NavItems = () => {
   const pathname = usePathname();
   const { theme, toggleTheme } = useSettings();
   const [effectiveTheme, setEffectiveTheme] = React.useState(theme);
+  const [isAboutOpen, setIsAboutOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (theme === 'system') {
@@ -91,6 +95,23 @@ const NavItems = () => {
 
       <DropdownMenuSeparator />
       
+       <Dialog open={isAboutOpen} onOpenChange={setIsAboutOpen}>
+          <DialogTrigger asChild>
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="my-1 border focus:bg-primary/20 active:bg-primary/30">
+                <Info className="mr-2 h-4 w-4" />
+                <span>About</span>
+            </DropdownMenuItem>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>About 24HrCoding</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="flex-grow pr-6 -mr-6">
+                <AboutContent />
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
       <DropdownMenuItem onClick={toggleTheme} className="my-1 border focus:bg-primary/20 active:bg-primary/30">
         {effectiveTheme === 'dark' ? (
           <Sun className="mr-2 h-4 w-4" />
@@ -99,7 +120,6 @@ const NavItems = () => {
         )}
         <span>{effectiveTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
       </DropdownMenuItem>
-
     </div>
   )
 }
@@ -229,5 +249,3 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
-
-    

@@ -50,8 +50,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const { settings, setSettings, theme, toggleTheme } = useSettings();
+  const { settings, setSettings, toggleTheme } = useSettings();
 
   useEffect(() => {
     if (open) {
@@ -196,22 +195,6 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         </div>
 
         <SheetFooter className="mt-4">
-            <Dialog open={isAboutOpen} onOpenChange={setIsAboutOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="w-full">
-                    <Info className="mr-2 h-4 w-4" />
-                    About 24HrCoding
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl h-4/5 flex flex-col">
-                <DialogHeader>
-                  <DialogTitle>About 24HrCoding</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="flex-grow pr-6 -mr-6">
-                    <AboutContent />
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
         </SheetFooter>
 
       </SheetContent>
