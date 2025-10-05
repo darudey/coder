@@ -511,7 +511,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
                                 <Card key={segment.type + index} className="note-editor-segment rounded-none border-x-0 group">
-                                     <CardHeader>
+                                     <CardHeader className="px-4 py-2">
                                         <div className="flex justify-between items-center">
                                             <CardTitle className="text-xs text-muted-foreground font-normal">
                                                 {segment.type === 'html' ? 'Text Block' : 'Code Block'}
@@ -731,3 +731,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
+
+    
