@@ -30,9 +30,6 @@ export function AboutContent() {
 
   return (
     <div className="space-y-6 text-sm py-4">
-        <p className="text-muted-foreground">
-            24HrCoding is a lightweight, mobile-friendly JavaScript playground packed with powerful features to make coding on the go a breeze. It's built with a modern tech stack including Next.js, Firebase, and Google's Gemini AI.
-        </p>
         
         <div className="space-y-4">
             <FeatureCard title="Interactive Courses" icon={<BookOpen className="text-primary"/>}>
