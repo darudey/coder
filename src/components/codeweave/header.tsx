@@ -96,12 +96,15 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 
   if (variant === 'page') {
     return (
-      <header className="bg-background border-b">
-        <div className="pb-2 px-2 flex items-center gap-4">
-          <MainNav />
-          <div className="flex-1 min-w-0">{children}</div>
+      <header className="bg-background">
+        <div className="flex items-center justify-between py-2 px-2 gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <MainNav />
+            <div className="flex-1 min-w-0">{children}</div>
+          </div>
           {actions && <div className="shrink-0">{actions}</div>}
         </div>
+        <Separator />
       </header>
     );
   }
@@ -189,3 +192,5 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
+
+    
