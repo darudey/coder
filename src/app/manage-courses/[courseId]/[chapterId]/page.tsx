@@ -537,12 +537,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         </div>
                                     )}
 
-                                    <div className="absolute bottom-[-16px] left-1/2 -translate-x-1/2 w-full flex justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                    <div className="absolute bottom-[-16px] left-1/2 -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
-                                            <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('html', index)}>
+                                            <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => handleAddNoteSegment('html', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Text
                                             </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => handleAddNoteSegment('code', index)}>
+                                            <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => handleAddNoteSegment('code', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Code
                                             </Button>
                                         </div>
