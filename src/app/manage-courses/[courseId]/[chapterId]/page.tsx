@@ -480,7 +480,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                 <div className="w-full aspect-video max-w-3xl">
                                     <iframe
                                         className="w-full h-full rounded-md"
-                                        src={`https://www.youtube.com/embed/${videoId}`}
+                                        src={`https://www.youtube.com/embed/${videoId}?rel=0&showinfo=0&modestbranding=1`}
                                         title="YouTube video player"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
@@ -536,7 +536,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         </div>
                                     )}
 
-                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                    <div className="absolute bottom-[-16px] left-1/2 w-full -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
                                             <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => handleAddNoteSegment('html', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Text
