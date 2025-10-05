@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
@@ -509,39 +510,41 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         </CardHeader>
                         <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
-                                <div key={segment.type + index} className="relative group border-y note-editor-segment overflow-hidden pb-8">
-                                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background p-1 rounded-md border z-10">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'up')} disabled={index === 0}>
-                                            <ArrowUp className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'down')} disabled={index === topic.notes.length - 1}>
-                                            <ArrowDown className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteNoteSegment(index)}>
-                                            <Trash2 className="w-4 h-4 text-destructive" />
-                                        </Button>
-                                    </div>
-
+                                <Card key={segment.type + index} className="note-editor-segment rounded-none border-x-0 group">
+                                     <CardHeader>
+                                        <div className="flex justify-between items-center">
+                                            <CardTitle className="text-xs text-muted-foreground font-normal">
+                                                {segment.type === 'html' ? 'Text Block' : 'Code Block'}
+                                            </CardTitle>
+                                            <div className="flex items-center gap-1">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'up')} disabled={index === 0}>
+                                                    <ArrowUp className="w-4 h-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'down')} disabled={index === topic.notes.length - 1}>
+                                                    <ArrowDown className="w-4 h-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteNoteSegment(index)}>
+                                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="relative pb-8">
                                     {segment.type === 'html' ? (
-                                        <div className="p-4">
-                                            <RichTextEditor
-                                                ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
-                                                key={`md-${topic.id}-${index}`}
-                                                initialValue={segment.content}
-                                                onContentChange={markAsDirty}
-                                            />
-                                        </div>
+                                        <RichTextEditor
+                                            ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
+                                            key={`md-${topic.id}-${index}`}
+                                            initialValue={segment.content}
+                                            onContentChange={markAsDirty}
+                                        />
                                     ) : (
-                                        <div className="space-y-2">
-                                            <Label className="px-4 pt-2 text-xs text-muted-foreground">Code Block</Label>
-                                            <NoteCodeEditor
-                                                ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
-                                                key={`code-${topic.id}-${index}`}
-                                                id={`note-code-editor-${index}`}
-                                                initialCode={segment.content}
-                                                onContentChange={markAsDirty}
-                                            />
-                                        </div>
+                                        <NoteCodeEditor
+                                            ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
+                                            key={`code-${topic.id}-${index}`}
+                                            id={`note-code-editor-${index}`}
+                                            initialCode={segment.content}
+                                            onContentChange={markAsDirty}
+                                        />
                                     )}
 
                                     <div className="absolute bottom-2 left-1/2 w-full -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -554,7 +557,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                             </Button>
                                         </div>
                                     </div>
-                                </div>
+                                    </CardContent>
+                                </Card>
                             ))}
                              {(topic.notes?.length || 0) === 0 && (
                                 <div className="text-center text-muted-foreground p-4 border-2 border-dashed rounded-md m-4">
@@ -727,11 +731,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
-
-    
-
-    
-
-
-
-    
