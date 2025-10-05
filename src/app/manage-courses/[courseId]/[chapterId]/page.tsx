@@ -166,7 +166,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     return (
         <>
             <div className="border rounded-md">
-                <div className="flex items-center gap-1 p-1 border-b bg-muted/50 flex-wrap mb-2">
+                <div className="flex items-center gap-1 p-1 border-b bg-muted/50 flex-wrap">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 px-2 text-xs">
@@ -207,7 +207,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
                     onSelect={updateActiveStyles}
                     inputMode={isMobile ? 'none' : 'text'}
-                    className="min-h-[120px] w-full p-2 prose dark:prose-invert max-w-none focus:outline-none"
+                    className="min-h-[120px] w-full p-4 prose dark:prose-invert max-w-none focus:outline-none"
                 />
             </div>
              {showKeyboard && (
