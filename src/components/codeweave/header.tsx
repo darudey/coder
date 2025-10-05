@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { usePathname } from 'next/navigation';
 import { useSettings } from '@/hooks/use-settings';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface HeaderProps {
   onRun?: () => void;
@@ -64,15 +65,7 @@ const NavItems = () => {
           </DropdownMenuItem>
         </Link>
       ))}
-
-      <DropdownMenuSeparator />
       
-      <DropdownMenuItem onClick={toggleTheme} className="my-1 border focus:bg-primary/20 active:bg-primary/30">
-          <Sun className="mr-2 h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute mr-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span>Toggle Theme</span>
-      </DropdownMenuItem>
-
       {visibleAdminItems.length > 0 && <DropdownMenuSeparator />}
       
       {visibleAdminItems.map(item => (
@@ -86,6 +79,23 @@ const NavItems = () => {
             </DropdownMenuItem>
          </Link>
       ))}
+
+      <DropdownMenuSeparator />
+      
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuItem onClick={toggleTheme} className="my-1 border focus:bg-primary/20 active:bg-primary/30">
+                <Sun className="mr-2 h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute mr-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span>Day/Night</span>
+            </DropdownMenuItem>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Toggle Day/Night Mode</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
     </div>
   )

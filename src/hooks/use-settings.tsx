@@ -79,7 +79,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   };
   
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    setTheme(prevTheme => {
+      if (prevTheme === 'system') {
+        const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return systemIsDark ? 'light' : 'dark';
+      }
+      return prevTheme === 'light' ? 'dark' : 'light';
+    });
   };
 
   const value = useMemo(() => ({
