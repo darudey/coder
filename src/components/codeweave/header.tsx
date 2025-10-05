@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Home, Book, User, Edit3, Check, Plus } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -19,6 +19,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { usePathname } from 'next/navigation';
+import { useSettings } from '@/hooks/use-settings';
 
 interface HeaderProps {
   onRun?: () => void;
@@ -36,26 +37,26 @@ interface HeaderProps {
 const NavItems = () => {
   const { userRole } = useAuth();
   const pathname = usePathname();
-  const defaultNavItems = [
-    { href: '/', label: 'Compiler', icon: Home },
-    { href: '/courses', label: 'Courses', icon: Book },
-    { href: '/profile', label: 'Profile', icon: User },
-  ];
-  const adminNavItems = [
-      { href: '/manage-courses', label: 'Manage Courses', icon: Edit3, roles: ['teacher', 'developer'] },
-  ];
+  const { toggleTheme } = useSettings();
 
   const navItems = [
-      ...defaultNavItems,
-      ...adminNavItems.filter(item => item.roles.includes(userRole || ''))
-  ]
+    { href: '/profile', label: 'Profile', icon: User },
+    { href: '/courses', label: 'Courses', icon: Book },
+    { href: '/', label: 'Compiler', icon: Code },
+  ];
+  
+  const adminNavItems = [
+    { href: '/manage-courses', label: 'Manage Courses', icon: Edit3, roles: ['teacher', 'developer'] },
+  ];
+
+  const visibleAdminItems = adminNavItems.filter(item => item.roles.includes(userRole || ''));
 
   return (
     <div className="p-1">
       {navItems.map(item => (
         <Link href={item.href} key={item.label} passHref>
           <DropdownMenuItem className={cn(
-            "my-2 border focus:bg-primary/20 active:bg-primary/30",
+            "my-1 border focus:bg-primary/20 active:bg-primary/30",
             pathname === item.href && "border-primary"
           )}>
             <item.icon className="mr-2 h-4 w-4" />
@@ -63,6 +64,29 @@ const NavItems = () => {
           </DropdownMenuItem>
         </Link>
       ))}
+
+      <DropdownMenuSeparator />
+      
+      <DropdownMenuItem onClick={toggleTheme} className="my-1 border focus:bg-primary/20 active:bg-primary/30">
+          <Sun className="mr-2 h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute mr-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span>Toggle Theme</span>
+      </DropdownMenuItem>
+
+      {visibleAdminItems.length > 0 && <DropdownMenuSeparator />}
+      
+      {visibleAdminItems.map(item => (
+         <Link href={item.href} key={item.label} passHref>
+            <DropdownMenuItem className={cn(
+                "my-1 border focus:bg-primary/20 active:bg-primary/30",
+                pathname === item.href && "border-primary"
+            )}>
+                <item.icon className="mr-2 h-4 w-4" />
+                <span>{item.label}</span>
+            </DropdownMenuItem>
+         </Link>
+      ))}
+
     </div>
   )
 }
@@ -88,7 +112,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
             <h1 className="text-base font-bold font-headline text-gray-900 dark:text-gray-100">24HrCoding</h1>
         </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="p-0 bg-popover/20 backdrop-blur-sm border-0">
+        <DropdownMenuContent align="start" className="p-0 bg-popover/80 backdrop-blur-sm border-border/50">
             <NavItems />
         </DropdownMenuContent>
     </DropdownMenu>
@@ -159,7 +183,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 md:gap-2 shrink-0 pr-2">
+        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
             {isCompiling ? (
               <DotLoader />
