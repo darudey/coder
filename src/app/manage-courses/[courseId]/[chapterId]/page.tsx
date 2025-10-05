@@ -68,6 +68,14 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         updateActiveStyles();
     };
 
+    const undo = () => {
+        document.execCommand('undo');
+    }
+
+    const redo = () => {
+        document.execCommand('redo');
+    }
+
     const cycleHeadline = () => {
         const currentBlock = currentBlockType.toLowerCase();
         let nextBlock = 'p'; // Default to paragraph
@@ -118,6 +126,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'u': e.preventDefault(); execCommand('underline'); break;
                 case 'l': e.preventDefault(); execCommand('insertUnorderedList'); break;
                 case 'h': e.preventDefault(); cycleHeadline(); break;
+                case 'z': e.preventDefault(); undo(); break;
+                case 'y': e.preventDefault(); redo(); break;
+                case 'a': e.preventDefault(); document.execCommand('selectAll'); break;
             }
             if (e.shiftKey && e.key === '7') {
                 e.preventDefault();
@@ -145,6 +156,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'u': execCommand('underline'); break;
                 case 'l': execCommand('insertUnorderedList'); break;
                 case 'h': cycleHeadline(); break;
+                case 'z': undo(); break;
+                case 'y': redo(); break;
+                case 'a': document.execCommand('selectAll'); break;
                 default:
                     // Allow combining Ctrl with other keys if needed in future
                     document.execCommand('insertText', false, key);
@@ -733,6 +747,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
-
-    
-    
