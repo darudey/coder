@@ -177,6 +177,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         } else if (key === 'Enter') {
             if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
               document.execCommand('insertLineBreak');
+              return;
             } else {
               document.execCommand('insertHTML', false, '<br><br>');
             }
