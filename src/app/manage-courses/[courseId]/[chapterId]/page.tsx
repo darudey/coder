@@ -120,7 +120,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.key === 'Enter') {
-          // Let browser handle Enter in lists
+          // Let browser handle Enter in lists for creating new list items
           if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
             return;
           }
@@ -175,8 +175,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (key === 'Backspace') {
             document.execCommand('delete');
         } else if (key === 'Enter') {
+            // Let browser handle Enter in lists
             if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
-              document.execCommand('insertLineBreak');
+              document.execCommand('insertLineBreak'); // Should be handled natively, but this is a fallback.
+              // A better way would be to just allow default behavior.
+              // For simplicity, let's just insert a line break. The native behavior is complex to replicate.
+              // The best fix is in handleKeyDown to just `return`. This is a compromise for the virtual keyboard.
               return;
             } else {
               document.execCommand('insertHTML', false, '<br><br>');
@@ -758,5 +762,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
-
-    
