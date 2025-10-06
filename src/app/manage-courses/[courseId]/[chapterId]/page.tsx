@@ -119,6 +119,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     }, [handleSelectionChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === 'Enter') {
+          // Let browser handle Enter in lists
+          if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
+            return;
+          }
+        }
         if (e.ctrlKey || e.metaKey) {
             switch(e.key.toLowerCase()) {
                 case 'b': e.preventDefault(); execCommand('bold'); break;
@@ -169,7 +175,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (key === 'Backspace') {
             document.execCommand('delete');
         } else if (key === 'Enter') {
-            document.execCommand('insertHTML', false, '<br><br>');
+            if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
+              document.execCommand('insertLineBreak');
+            } else {
+              document.execCommand('insertHTML', false, '<br><br>');
+            }
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
         }
