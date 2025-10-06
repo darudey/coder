@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useCallback, useRef, useLayoutEffect, useEffect, useImperativeHandle } from 'react';
@@ -66,9 +65,9 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
 
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-
-        const { textToInsert, newCursorPosition } = getSmartIndentation(code, start, end);
         
+        const { textToInsert, newCursorPosition } = getSmartIndentation(code, start, end);
+    
         const newCode = code.substring(0, start) + textToInsert + code.substring(end);
         handleCodeChange(newCode);
         
@@ -83,59 +82,102 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         const textarea = textareaRef.current;
         if (!textarea) return;
 
+        if (key === 'Enter') {
+            handleEnterPress();
+            return;
+        }
+
         if (key === 'Ctrl') {
             setCtrlActive(prev => !prev);
             return;
         }
 
         if (ctrlActive) {
-            setCtrlActive(false);
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            switch (key.toLowerCase()) {
-                case 'a':
-                    textarea.select();
-                    break;
-                case 'z': undo(); break;
-                case 'y': redo(); break;
-                case 'c':
-                    if (start !== end) await navigator.clipboard.writeText(code.substring(start, end));
-                    break;
-                case 'x':
-                    if (start !== end) {
-                        await navigator.clipboard.writeText(code.substring(start, end));
-                        const newCode = code.substring(0, start) + code.substring(end);
-                        handleCodeChange(newCode);
-                        requestAnimationFrame(() => {
-                            textarea.selectionStart = textarea.selectionEnd = start;
-                        });
-                    }
-                    break;
-                case 'v':
-                    const text = await navigator.clipboard.readText();
-                    const newCode = code.substring(0, start) + text + code.substring(end);
-                    handleCodeChange(newCode);
-                    requestAnimationFrame(() => {
-                        const newCursorPos = start + text.length;
-                        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
-                    });
-                    break;
+          setCtrlActive(false); // Consume the Ctrl press
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+
+          switch (key.toLowerCase()) {
+            case 'a':
+                textarea.select();
+                break;
+            case 'z':
+                undo();
+                break;
+            case 'y':
+                redo();
+                break;
+            case 'c': { // Copy
+                let textToCopy = code.substring(start, end);
+                if (start === end) {
+                    const lineStart = code.lastIndexOf('\n', start - 1) + 1;
+                    const lineEnd = code.indexOf('\n', start);
+                    textToCopy = code.substring(lineStart, lineEnd === -1 ? code.length : lineEnd);
+                }
+                await navigator.clipboard.writeText(textToCopy);
+                break;
             }
-            return;
+            case 'x': { // Cut
+                let textToCut = code.substring(start, end);
+                let selectionStart = start;
+                let selectionEnd = end;
+
+                if (start === end) {
+                    selectionStart = code.lastIndexOf('\n', start - 1) + 1;
+                    const lineEnd = code.indexOf('\n', start);
+                    selectionEnd = lineEnd === -1 ? code.length : lineEnd + (lineEnd === code.length -1 ? 0 : 1);
+                    textToCut = code.substring(selectionStart, selectionEnd);
+                }
+                
+                await navigator.clipboard.writeText(textToCut);
+                
+                const newCode = code.substring(0, selectionStart) + code.substring(selectionEnd);
+                handleCodeChange(newCode);
+
+                requestAnimationFrame(() => {
+                    textarea.selectionStart = selectionStart;
+                    textarea.selectionEnd = selectionStart;
+                    textarea.focus();
+                });
+                break;
+            }
+            case 'v': { // Paste
+                const textFromClipboard = await navigator.clipboard.readText();
+                const newCode = code.substring(0, start) + textFromClipboard + code.substring(end);
+                const newCursorPosition = start + textFromClipboard.length;
+                
+                handleCodeChange(newCode);
+
+                requestAnimationFrame(() => {
+                    textarea.selectionStart = newCursorPosition;
+                    textarea.selectionEnd = newCursorPosition;
+                    textarea.focus();
+                });
+                break;
+            }
+          }
+          return;
         }
 
-        if (key === 'Enter') {
-            handleEnterPress();
-            return;
-        }
 
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
 
         let newCode = code;
         let newCursorPosition = start;
-        
-        if (key === 'Backspace') {
+
+        switch (key) {
+          case 'ArrowLeft':
+            if (start > 0) {
+              newCursorPosition = start - 1;
+            }
+            break;
+          case 'ArrowRight':
+            if (start < code.length) {
+                newCursorPosition = start + 1;
+            }
+            break;
+          case 'Backspace':
             if (start === end && start > 0) {
               newCode = code.substring(0, start - 1) + code.substring(end);
               newCursorPosition = start - 1;
@@ -143,20 +185,33 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
               newCode = code.substring(0, start) + code.substring(end);
               newCursorPosition = start;
             }
-        } else if (key === 'Tab') {
+            break;
+          case 'Tab':
             newCode = code.substring(0, start) + '  ' + code.substring(end);
             newCursorPosition = start + 2;
-        } else if (!['Shift', 'CapsLock'].includes(key)){
-            const pairMap: {[key:string]: string} = { '(': ')', '{': '}', '[': ']', "'": "'", '"': '"', '`': '`' };
-            if (pairMap[key] && key.length === 1) {
-                newCode = code.substring(0, start) + key + pairMap[key] + code.substring(end);
+            break;
+          case 'CapsLock':
+          case 'Shift':
+            return;
+          default:
+            const pairMap: {[key:string]: string} = {
+                '(': ')',
+                '{': '}',
+                '[': ']',
+                "'": "'",
+                '"': '"',
+                '`': '`',
+            };
+
+            if (pairMap[key] && key.length === 1 && !/^\d$/.test(key)) {
+                const open = key;
+                const close = pairMap[key];
+                newCode = code.substring(0, start) + open + close + code.substring(end);
                 newCursorPosition = start + 1;
             } else {
                 newCode = code.substring(0, start) + key + code.substring(end);
                 newCursorPosition = start + key.length;
             }
-        } else {
-            return;
         }
 
         handleCodeChange(newCode);
@@ -167,6 +222,35 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
           textarea.focus();
         });
     }, [code, handleEnterPress, ctrlActive, undo, redo]);
+    
+    const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleEnterPress();
+          return;
+        }
+
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo();
+                return;
+            }
+            if (e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo();
+                return;
+            }
+        }
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            handleKeyPress('Tab');
+        }
+      }, [undo, redo, handleKeyPress, handleEnterPress]);
 
     const updateLineNumbersAndResize = useCallback(() => {
         const ta = textareaRef.current;
@@ -198,7 +282,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     
         const newGutterWidth = (String(lines.length).length * 8 + 16);
         gutter.style.width = `${newGutterWidth}px`;
-
+        
         const computedStyle = getComputedStyle(ta);
         const paddingTop = parseFloat(computedStyle.paddingTop);
         const paddingBottom = parseFloat(computedStyle.paddingBottom);
@@ -208,6 +292,17 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         wrapper.style.height = `${newHeight}px`;
     
     }, [code]);
+    
+    const syncScroll = useCallback(() => {
+        if (textareaRef.current && gutterRef.current) {
+            const scrollTop = textareaRef.current.scrollTop;
+            gutterRef.current.scrollTop = scrollTop;
+            const highlightDiv = textareaRef.current?.previousSibling as HTMLDivElement;
+            if (highlightDiv) {
+                highlightDiv.scrollTop = scrollTop;
+            }
+        }
+    }, []);
 
     useLayoutEffect(() => {
         updateLineNumbersAndResize();
@@ -236,10 +331,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         lineHeight: '1.5',
         whiteSpace: 'pre-wrap',
         overflowWrap: 'anywhere',
-        paddingTop: '0.5rem',
-        paddingBottom: '0.5rem',
-        paddingRight: '0.5rem',
-        paddingLeft: '0rem', // No left padding on the editor itself
+        padding: '0.5rem',
         boxSizing: 'border-box',
     };
     
@@ -248,7 +340,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
 
     return (
         <>
-            <div ref={editorWrapperRef} className="relative group">
+            <div ref={editorWrapperRef} className="relative group border rounded-md overflow-hidden">
                 <div 
                     ref={gutterRef}
                     className="absolute top-0 left-0 h-full box-border pr-1 text-right text-gray-500 bg-gray-100 border-r select-none dark:bg-gray-900 dark:border-gray-700"
@@ -256,15 +348,21 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                         ...editorStyles,
                         paddingLeft: '0.5rem', 
                         paddingRight: '0.5rem', 
-                        borderRight: '1px solid hsl(var(--border))'
+                        borderRight: '1px solid hsl(var(--border))',
+                        overflowY: 'hidden',
                     }}
                 />
-                <div
-                    aria-hidden="true"
-                    className="absolute inset-0 m-0 pointer-events-none"
-                    style={{...editorStyles, left: `${gutterWidth}px`, paddingLeft: '0.5rem' }}
+                <div 
+                    className="absolute top-0 left-0 w-full h-full overflow-y-scroll"
+                    style={{...editorStyles, left: `${gutterWidth}px`, scrollbarWidth: 'none'}}
                 >
-                    {highlightedCode}
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none"
+                        style={{...editorStyles, paddingTop: 0, paddingBottom: 0, paddingRight: 0, paddingLeft: 0}}
+                    >
+                        {highlightedCode}
+                    </div>
                 </div>
                 <Textarea
                     id={id}
@@ -272,6 +370,8 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                     value={code}
                     inputMode={isMobile ? 'none' : 'text'}
                     onChange={(e) => handleCodeChange(e.target.value)}
+                    onKeyDown={handleNativeKeyDown}
+                    onScroll={syncScroll}
                     onFocus={() => { if(isMobile) setIsKeyboardVisible(true) }}
                     onClick={() => { if(isMobile) setIsKeyboardVisible(true) }}
                     className={cn(
@@ -283,9 +383,8 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                         ...editorStyles, 
                         color: 'transparent',
                         border: 'none', 
-                        left: `${gutterWidth}px`, 
-                        overflow: 'hidden', 
-                        paddingLeft: '0.5rem',
+                        overflowY: 'auto',
+                        paddingLeft: `${gutterWidth + 8}px`,
                         outline: 'none',
                         boxShadow: 'none'
                     }}
@@ -322,4 +421,3 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
 NoteCodeEditor.displayName = 'NoteCodeEditor';
 
     
-

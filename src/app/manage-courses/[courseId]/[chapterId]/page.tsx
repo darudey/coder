@@ -33,6 +33,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { cn, getYouTubeVideoId } from '@/lib/utils';
+import { getSmartIndentation } from '@/lib/indentation';
 
 
 export interface RichTextEditorRef {
@@ -119,12 +120,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     }, [handleSelectionChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === 'Enter') {
-          // Let browser handle Enter in lists for creating new list items
-          if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
-            return;
-          }
-        }
         if (e.ctrlKey || e.metaKey) {
             switch(e.key.toLowerCase()) {
                 case 'b': e.preventDefault(); execCommand('bold'); break;
@@ -175,13 +170,8 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (key === 'Backspace') {
             document.execCommand('delete');
         } else if (key === 'Enter') {
-            // Let browser handle Enter in lists
             if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
-              document.execCommand('insertLineBreak'); // Should be handled natively, but this is a fallback.
-              // A better way would be to just allow default behavior.
-              // For simplicity, let's just insert a line break. The native behavior is complex to replicate.
-              // The best fix is in handleKeyDown to just `return`. This is a compromise for the virtual keyboard.
-              return;
+              document.execCommand('insertLineBreak');
             } else {
               document.execCommand('insertHTML', false, '<br><br>');
             }
@@ -762,3 +752,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
+
+    
