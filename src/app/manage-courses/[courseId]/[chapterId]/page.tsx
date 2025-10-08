@@ -33,7 +33,6 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { cn, getYouTubeVideoId } from '@/lib/utils';
-import { getSmartIndentation } from '@/lib/indentation';
 
 
 export interface RichTextEditorRef {
@@ -72,37 +71,49 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
         const editor = editorRef.current;
         if (!editor) return;
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            execCommand(command);
+            return;
+        }
+
+        const range = selection.getRangeAt(0);
+        let container = range.startContainer;
+
+        // Traverse up to find the list element if it exists
+        let listNode = container;
+        while (listNode.parentElement && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
+            listNode = listNode.parentElement;
+        }
+
+        const isInList = listNode.nodeName === 'UL' || listNode.nodeName === 'OL';
+        const isTargetList = (command === 'insertUnorderedList' && listNode.nodeName === 'UL') || (command === 'insertOrderedList' && listNode.nodeName === 'OL');
     
-        const isAlreadyList = document.queryCommandState(command);
-    
-        if (isAlreadyList) {
-            // Find the list node and add a paragraph after it
-            const selection = window.getSelection();
-            if (!selection || selection.rangeCount === 0) return;
-    
-            let container = selection.getRangeAt(0).startContainer;
-            let listNode = container;
-    
-            while (listNode.parentElement && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
-                listNode = listNode.parentElement;
+        if (isInList && isTargetList) {
+            // If already in the target list, jump out
+            const newPara = document.createElement('p');
+            newPara.innerHTML = '&#8203;'; // Zero-width space to make it focusable
+            
+            // Find the top-level list element to place the paragraph after
+            let topList = listNode;
+            while(topList.parentElement && topList.parentElement !== editor && (topList.parentElement.nodeName === 'UL' || topList.parentElement.nodeName === 'OL' || topList.parentElement.nodeName === 'LI')) {
+                topList = topList.parentElement;
             }
+
+            topList.after(newPara);
     
-            if (listNode.nodeName === 'UL' || listNode.nodeName === 'OL') {
-                const newPara = document.createElement('p');
-                newPara.innerHTML = '&#8203;'; // Zero-width space to make it focusable
-                listNode.after(newPara);
-    
-                const newRange = document.createRange();
-                newRange.setStart(newPara, 0);
-                newRange.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(newRange);
-                editor.focus();
-            }
+            const newRange = document.createRange();
+            newRange.setStart(newPara, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
         } else {
+            // Otherwise, just execute the command to create a new list or switch list type
             execCommand(command);
         }
         
+        editor.focus();
         updateActiveStyles();
     }
 
@@ -199,7 +210,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'y': redo(); break;
                 case 'a': document.execCommand('selectAll'); break;
                 default:
-                    // Allow combining Ctrl with other keys if needed in future
                     document.execCommand('insertText', false, key);
             }
             return;
@@ -208,7 +218,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (key === 'Backspace') {
             document.execCommand('delete');
         } else if (key === 'Enter') {
-            document.execCommand('insertHTML', false, '<br><br>');
+             // Let the browser handle Enter natively
+             document.execCommand('insertLineBreak');
+             const selection = window.getSelection();
+             if (selection && selection.focusNode && selection.focusNode.parentNode && selection.focusNode.parentNode.nodeName !== 'LI') {
+                document.execCommand('insertHTML', false, '<br>');
+             }
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
         }
