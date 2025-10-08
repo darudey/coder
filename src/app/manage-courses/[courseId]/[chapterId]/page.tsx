@@ -82,23 +82,23 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         let container = selection.getRangeAt(0).startContainer;
 
         // Find if we are inside a list already
-        let listNode = container;
-        while (listNode.parentElement && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
+        let listNode: Node | null = container;
+        while (listNode && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
             listNode = listNode.parentElement;
         }
         
-        const isInList = listNode.nodeName === 'UL' || listNode.nodeName === 'OL';
+        const isInList = listNode && (listNode.nodeName === 'UL' || listNode.nodeName === 'OL');
         
         if (isInList) {
              const newPara = document.createElement('p');
              newPara.innerHTML = '&#8203;'; // Zero-width space
              
-             let topList = listNode;
+             let topList: Node = listNode;
              while(topList.parentElement && topList.parentElement !== editor && (topList.parentElement.nodeName === 'UL' || topList.parentElement.nodeName === 'OL' || topList.parentElement.nodeName === 'LI')) {
                  topList = topList.parentElement;
              }
  
-             topList.after(newPara);
+             (topList as HTMLElement).after(newPara);
      
              const newRange = document.createRange();
              newRange.setStart(newPara, 0);
@@ -166,6 +166,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     }, [handleSelectionChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.execCommand('insertParagraph', false);
+            return;
+        }
         if (e.ctrlKey || e.metaKey) {
             switch(e.key.toLowerCase()) {
                 case 'b': e.preventDefault(); execCommand('bold'); break;
@@ -189,6 +194,11 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (!editor) return;
 
         editor.focus();
+
+        if (key === 'Enter') {
+            document.execCommand('insertParagraph', false);
+            return;
+        }
 
         if (key === 'Ctrl') {
             setCtrlActive(prev => !prev);
@@ -790,3 +800,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    
