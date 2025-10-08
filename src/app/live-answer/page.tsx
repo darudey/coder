@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -67,7 +68,7 @@ export default function LiveAnswerPage() {
                 </div>
             </Header>
 
-            <div className="container mx-auto p-4 md:p-8">
+            <div className="p-4">
                 {liveQuestion ? (
                     <Card>
                         <CardHeader>

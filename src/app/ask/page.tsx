@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -64,14 +65,14 @@ export default function AskQuestionPage() {
         </div>
       </Header>
 
-      <div className="container mx-auto p-4 md:p-8">
-        <Tabs defaultValue="question">
+      <div className="space-y-4">
+        <Tabs defaultValue="question" className="p-4">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="question">Question</TabsTrigger>
                 <TabsTrigger value="solution">Solution</TabsTrigger>
                 <TabsTrigger value="studentAnswer">Student's Answer</TabsTrigger>
             </TabsList>
-            <TabsContent value="question">
+            <TabsContent value="question" className="mt-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>Compose Question</CardTitle>
@@ -113,7 +114,7 @@ export default function AskQuestionPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="solution">
+            <TabsContent value="solution" className="mt-4">
                  <Card>
                     <CardHeader>
                         <CardTitle>Your Solution</CardTitle>
@@ -133,7 +134,7 @@ export default function AskQuestionPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="studentAnswer">
+            <TabsContent value="studentAnswer" className="mt-4">
                  <Card>
                     <CardHeader>
                         <CardTitle>Student's Answer</CardTitle>

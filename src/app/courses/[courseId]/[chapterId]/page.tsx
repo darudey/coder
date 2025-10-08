@@ -139,8 +139,8 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                 <TabsTrigger value="practice"><BrainCircuit className="w-4 h-4 mr-2" />Practice</TabsTrigger>
             </TabsList>
             <div className="pb-8">
-                <TabsContent value="video" className="mt-4 px-4 md:px-8">
-                    <Card>
+                <TabsContent value="video" className="mt-4">
+                    <Card className="rounded-none border-x-0">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-3 text-sm">
                                 <Video className="w-5 h-5 text-primary" />
@@ -166,8 +166,8 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="notes" className="mt-4 px-4 md:px-8">
-                    <Card>
+                <TabsContent value="notes" className="mt-4">
+                    <Card className="rounded-none border-x-0">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-3 text-sm">
                                 <StickyNote className="w-5 h-5 text-primary" />
