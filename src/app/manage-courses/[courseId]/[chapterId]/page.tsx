@@ -72,39 +72,37 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
         const editor = editorRef.current;
         if (!editor) return;
-
-        const isList = document.queryCommandState(command);
-
-        if (isList) {
-            // If it's already a list, exit to a new paragraph
+    
+        const isAlreadyList = document.queryCommandState(command);
+    
+        if (isAlreadyList) {
+            // Find the list node and add a paragraph after it
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0) return;
-            
+    
             let container = selection.getRangeAt(0).startContainer;
-            
-            // Find the root list element (ul or ol)
             let listNode = container;
-            while(listNode.parentElement && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
+    
+            while (listNode.parentElement && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
                 listNode = listNode.parentElement;
             }
-
+    
             if (listNode.nodeName === 'UL' || listNode.nodeName === 'OL') {
                 const newPara = document.createElement('p');
-                newPara.innerHTML = '&#8203;'; // Zero-width space to make it selectable
+                newPara.innerHTML = '&#8203;'; // Zero-width space to make it focusable
                 listNode.after(newPara);
-                
+    
                 const newRange = document.createRange();
                 newRange.setStart(newPara, 0);
                 newRange.collapse(true);
                 selection.removeAllRanges();
                 selection.addRange(newRange);
+                editor.focus();
             }
         } else {
-             // If not a list, just execute the command to create one
             execCommand(command);
         }
         
-        editor.focus();
         updateActiveStyles();
     }
 
