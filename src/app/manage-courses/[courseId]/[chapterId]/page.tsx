@@ -166,11 +166,21 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     }, [handleSelectionChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            document.execCommand('insertParagraph', false);
-            return;
+        if (e.key === 'Backspace') {
+            const selection = window.getSelection();
+            if (selection && selection.isCollapsed && selection.anchorOffset === 0) {
+                let node = selection.anchorNode;
+                if (node && node.nodeType === Node.TEXT_NODE && node.parentElement?.tagName === 'LI') {
+                    node = node.parentElement;
+                }
+                if (node && node.nodeName === 'LI' && (node as HTMLElement).textContent?.length === 0) {
+                     e.preventDefault();
+                    document.execCommand('formatBlock', false, 'p');
+                    return;
+                }
+            }
         }
+        
         if (e.ctrlKey || e.metaKey) {
             switch(e.key.toLowerCase()) {
                 case 'b': e.preventDefault(); execCommand('bold'); break;
@@ -223,6 +233,17 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         }
         
         if (key === 'Backspace') {
+            const selection = window.getSelection();
+            if (selection && selection.isCollapsed && selection.anchorOffset === 0) {
+                let node = selection.anchorNode;
+                if (node && node.nodeType === Node.TEXT_NODE && node.parentElement?.tagName === 'LI') {
+                    node = node.parentElement;
+                }
+                if (node && node.nodeName === 'LI' && (node as HTMLElement).textContent?.length === 0) {
+                    document.execCommand('formatBlock', false, 'p');
+                    return;
+                }
+            }
             document.execCommand('delete');
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
@@ -435,16 +456,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const handleNoteContentChange = (index: number, newContent: string) => {
     if (!topic) return;
-    const newNotes = topic.notes.map((note, i) => i === index ? {...note, content: newContent} : note);
-    setTopic(prevTopic => ({ ...prevTopic!, notes: newNotes }));
-    markAsDirty();
-  }
-  
-  const handleCodeContentChange = (index: number, newContent: string) => {
-    if (!topic) return;
-    const newNotes = [...topic.notes];
-    (newNotes[index] as any).content = newContent;
-    setTopic(prevTopic => ({...prevTopic!, notes: newNotes}));
+    setTopic(prevTopic => {
+        if (!prevTopic) return prevTopic;
+        const newNotes = [...prevTopic.notes];
+        newNotes[index] = { ...newNotes[index], content: newContent };
+        return { ...prevTopic, notes: newNotes };
+    });
     markAsDirty();
   }
 
@@ -613,7 +630,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         <NoteCodeEditor
                                             key={segment.id}
                                             code={segment.content}
-                                            onCodeChange={(newCode) => handleCodeContentChange(index, newCode)}
+                                            onCodeChange={(newCode) => handleNoteContentChange(index, newCode)}
                                         />
                                     )}
 
@@ -800,5 +817,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    
