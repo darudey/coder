@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
@@ -90,11 +91,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         const isTargetList = (command === 'insertUnorderedList' && listNode.nodeName === 'UL') || (command === 'insertOrderedList' && listNode.nodeName === 'OL');
     
         if (isInList && isTargetList) {
-            // If already in the target list, jump out
+            // If already in the target list, jump out to a new paragraph
             const newPara = document.createElement('p');
             newPara.innerHTML = '&#8203;'; // Zero-width space to make it focusable
             
-            // Find the top-level list element to place the paragraph after
             let topList = listNode;
             while(topList.parentElement && topList.parentElement !== editor && (topList.parentElement.nodeName === 'UL' || topList.parentElement.nodeName === 'OL' || topList.parentElement.nodeName === 'LI')) {
                 topList = topList.parentElement;
@@ -108,7 +108,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
             selection.removeAllRanges();
             selection.addRange(newRange);
         } else {
-            // Otherwise, just execute the command to create a new list or switch list type
             execCommand(command);
         }
         
@@ -216,6 +215,12 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         
         if (key === 'Backspace') {
             document.execCommand('delete');
+        } else if (key === 'Enter') {
+             document.execCommand('insertLineBreak');
+             const selection = window.getSelection();
+             if (selection && selection.focusNode && selection.focusNode.parentNode && selection.focusNode.parentNode.nodeName !== 'LI') {
+                document.execCommand('insertHTML', false, '<br>');
+             }
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
         }
