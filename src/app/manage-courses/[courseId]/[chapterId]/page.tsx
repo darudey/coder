@@ -74,28 +74,24 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (!editor) return;
 
         const isList = document.queryCommandState(command);
-        execCommand(command);
 
         if (isList) {
-            // If it was a list, we've now turned it off.
-            // Move cursor to a new paragraph after the list.
+            // If it's already a list, exit to a new paragraph
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0) return;
             
-            const range = selection.getRangeAt(0);
-            let container = range.startContainer;
+            let container = selection.getRangeAt(0).startContainer;
             
-            // Find the root element of the editor
-            while (container.parentElement && container.parentElement !== editor) {
-                container = container.parentElement;
+            // Find the root list element (ul or ol)
+            let listNode = container;
+            while(listNode.parentElement && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
+                listNode = listNode.parentElement;
             }
 
-            // After turning off the list, the container might be the UL/OL itself or its parent.
-            // We want to insert a new paragraph after it.
-            if (container.parentElement === editor) {
+            if (listNode.nodeName === 'UL' || listNode.nodeName === 'OL') {
                 const newPara = document.createElement('p');
-                newPara.innerHTML = '&#8203;'; // Zero-width space
-                editor.insertBefore(newPara, container.nextSibling);
+                newPara.innerHTML = '&#8203;'; // Zero-width space to make it selectable
+                listNode.after(newPara);
                 
                 const newRange = document.createRange();
                 newRange.setStart(newPara, 0);
@@ -103,8 +99,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 selection.removeAllRanges();
                 selection.addRange(newRange);
             }
+        } else {
+             // If not a list, just execute the command to create one
+            execCommand(command);
         }
+        
         editor.focus();
+        updateActiveStyles();
     }
 
 
