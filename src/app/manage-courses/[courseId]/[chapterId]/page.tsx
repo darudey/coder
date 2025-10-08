@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
@@ -217,13 +216,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         
         if (key === 'Backspace') {
             document.execCommand('delete');
-        } else if (key === 'Enter') {
-             // Let the browser handle Enter natively
-             document.execCommand('insertLineBreak');
-             const selection = window.getSelection();
-             if (selection && selection.focusNode && selection.focusNode.parentNode && selection.focusNode.parentNode.nodeName !== 'LI') {
-                document.execCommand('insertHTML', false, '<br>');
-             }
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
         }
