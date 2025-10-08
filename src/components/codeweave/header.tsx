@@ -1,9 +1,8 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -38,7 +37,7 @@ interface HeaderProps {
 }
 
 const NavItems = () => {
-  const { userRole } = useAuth();
+  const { user, userRole } = useAuth();
   const pathname = usePathname();
   const { theme, toggleTheme } = useSettings();
   const [effectiveTheme, setEffectiveTheme] = React.useState(theme);
@@ -63,8 +62,14 @@ const NavItems = () => {
     { href: '/manage-courses', label: 'Manage Courses', icon: Edit3, roles: ['teacher', 'developer'] },
     { href: '/ask', label: 'Ask a Question', icon: HelpCircle, roles: ['teacher', 'developer'] },
   ];
+  
+  const studentNavItems = [
+      { href: '/live-answer', label: 'Live Answer', icon: MessageSquare, roles: ['student'] },
+  ]
 
   const visibleAdminItems = adminNavItems.filter(item => item.roles.includes(userRole || ''));
+  const visibleStudentItems = user ? studentNavItems.filter(item => item.roles.includes(userRole || 'student')) : [];
+
 
   return (
     <div className="p-1">
@@ -83,6 +88,20 @@ const NavItems = () => {
       {visibleAdminItems.length > 0 && <DropdownMenuSeparator />}
       
       {visibleAdminItems.map(item => (
+         <Link href={item.href} key={item.label} passHref>
+            <DropdownMenuItem className={cn(
+                "my-1 border focus:bg-primary/20 active:bg-primary/30",
+                pathname.startsWith(item.href) && "border-primary"
+            )}>
+                <item.icon className="mr-2 h-4 w-4" />
+                <span>{item.label}</span>
+            </DropdownMenuItem>
+         </Link>
+      ))}
+
+      {visibleStudentItems.length > 0 && <DropdownMenuSeparator />}
+
+       {visibleStudentItems.map(item => (
          <Link href={item.href} key={item.label} passHref>
             <DropdownMenuItem className={cn(
                 "my-1 border focus:bg-primary/20 active:bg-primary/30",
