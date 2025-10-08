@@ -69,6 +69,45 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         updateActiveStyles();
     };
 
+    const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
+        const editor = editorRef.current;
+        if (!editor) return;
+
+        const isList = document.queryCommandState(command);
+        execCommand(command);
+
+        if (isList) {
+            // If it was a list, we've now turned it off.
+            // Move cursor to a new paragraph after the list.
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) return;
+            
+            const range = selection.getRangeAt(0);
+            let container = range.startContainer;
+            
+            // Find the root element of the editor
+            while (container.parentElement && container.parentElement !== editor) {
+                container = container.parentElement;
+            }
+
+            // After turning off the list, the container might be the UL/OL itself or its parent.
+            // We want to insert a new paragraph after it.
+            if (container.parentElement === editor) {
+                const newPara = document.createElement('p');
+                newPara.innerHTML = '&#8203;'; // Zero-width space
+                editor.insertBefore(newPara, container.nextSibling);
+                
+                const newRange = document.createRange();
+                newRange.setStart(newPara, 0);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+            }
+        }
+        editor.focus();
+    }
+
+
     const undo = () => {
         document.execCommand('undo');
     }
@@ -125,7 +164,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'b': e.preventDefault(); execCommand('bold'); break;
                 case 'i': e.preventDefault(); execCommand('italic'); break;
                 case 'u': e.preventDefault(); execCommand('underline'); break;
-                case 'l': e.preventDefault(); execCommand('insertUnorderedList'); break;
+                case 'l': e.preventDefault(); toggleList('insertUnorderedList'); break;
                 case 'h': e.preventDefault(); cycleHeadline(); break;
                 case 'z': e.preventDefault(); undo(); break;
                 case 'y': e.preventDefault(); redo(); break;
@@ -133,7 +172,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
             }
             if (e.shiftKey && e.key === '7') {
                 e.preventDefault();
-                execCommand('insertOrderedList');
+                toggleList('insertOrderedList');
             }
         }
     }
@@ -155,7 +194,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'b': execCommand('bold'); break;
                 case 'i': execCommand('italic'); break;
                 case 'u': execCommand('underline'); break;
-                case 'l': execCommand('insertUnorderedList'); break;
+                case 'l': toggleList('insertUnorderedList'); break;
                 case 'h': cycleHeadline(); break;
                 case 'z': undo(); break;
                 case 'y': redo(); break;
@@ -170,11 +209,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (key === 'Backspace') {
             document.execCommand('delete');
         } else if (key === 'Enter') {
-            if (document.queryCommandState('insertOrderedList') || document.queryCommandState('insertUnorderedList')) {
-              document.execCommand('insertLineBreak');
-            } else {
-              document.execCommand('insertHTML', false, '<br><br>');
-            }
+            document.execCommand('insertHTML', false, '<br><br>');
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
         }
@@ -210,10 +245,10 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('underline')} data-state={activeStyles.includes('underline') ? 'on' : 'off'}>
                         <Underline className="w-4 h-4" />
                     </Button>
-                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} data-state={activeStyles.includes('ul') ? 'on' : 'off'}>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => toggleList('insertUnorderedList')} data-state={activeStyles.includes('ul') ? 'on' : 'off'}>
                         <List className="w-4 h-4" />
                     </Button>
-                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => execCommand('insertOrderedList')} data-state={activeStyles.includes('ol') ? 'on' : 'off'}>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => toggleList('insertOrderedList')} data-state={activeStyles.includes('ol') ? 'on' : 'off'}>
                         <ListOrdered className="w-4 h-4" />
                     </Button>
                 </div>
@@ -752,5 +787,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
-
-    
