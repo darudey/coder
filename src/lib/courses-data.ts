@@ -1,6 +1,7 @@
 
 
 export interface NoteSegment {
+    id: string;
     type: 'html' | 'code';
     content: string;
 }
@@ -56,18 +57,21 @@ export const courses: Course[] = [
                         title: 'Variables & Constants in JavaScript',
                         notes: [
                             {
+                                id: 'note1',
                                 type: 'html',
                                 content: `
 <h4>What is a variable?</h4><p>A variable is a container for storing data. Think of it as a box with a name, where you can put a value and use it later.</p><p>In JS, you can declare variables with:</p><ol><li><b>var</b><ul><li>Old way (before 2015).</li><li>Function-scoped, not block-scoped.</li><li>Hoisted (accessible before declaration, but gives undefined).</li><li>Avoid in modern code.</li></ul></li><li><b>let</b><ul><li>Introduced in ES6 (2015).</li><li>Block-scoped → only exists inside {}.</li><li>Value can be reassigned.</li><li>Most commonly used.</li></ul></li><li><b>const</b><ul><li>Block-scoped like let.</li><li>Value cannot be reassigned.</li><li>Must be initialized at the time of declaration.</li></ul></li></ol>
                                 `
                             },
                             {
+                                id: 'note2',
                                 type: 'html',
                                 content: `
 <hr class="my-4"><h4>Rules for Naming Variables</h4><p><b>Allowed:</b></p><ul><li>Letters, numbers, _, $</li><li>Must not start with a number</li><li>Case-sensitive (myName ≠ myname)</li><li>Can’t use reserved words (let, class, function, etc.)</li></ul>
                                 `
                             },
                             {
+                                id: 'note3',
                                 type: 'code',
                                 content: `let firstName = "John";  // ✅ camelCase (best practice)
 let _id = 101;           // ✅ allowed
@@ -75,18 +79,21 @@ let $price = 499;        // ✅ allowed
 // let 1student = "Ram";    // ❌ Error: Invalid or unexpected token`
                             },
                             {
+                                id: 'note4',
                                 type: 'html',
                                 content: `
 <hr class="my-4"><h4>Best Practices</h4><ul><li>Use <code>const</code> by default → safer.</li><li>Use <code>let</code> when value needs to change.</li><li>Avoid <code>var</code>.</li><li>Use meaningful names (not x, y, z unless temporary).</li></ul>
                                 `
                             },
                              {
+                                id: 'note5',
                                 type: 'html',
                                 content: `
 <hr class="my-4"><h4>Practice Exercises</h4><ol><li>Create variables for your name, age, and city. Print them.</li><li>Try changing a <code>let</code> variable → works.</li><li>Try changing a <code>const</code> variable → see the error.</li><li>What happens if you declare <code>var x = 10;</code> inside a block {} and print it outside?</li><li><b>Bonus:</b> Test case sensitivity:</li></ol>
                                 `
                             },
                             {
+                                id: 'note6',
                                 type: 'code',
                                 content: `let myName = "A";
 let MyName = "B";
@@ -159,6 +166,7 @@ console.log(country); // India
                         title: 'Defining Functions',
                         notes: [
                            {
+                                id: 'f_note1',
                                 type: 'html',
                                 content: `<p>Functions are one of the fundamental building blocks in JavaScript. A function is a reusable set of statements that performs a task or calculates a value.</p><p>There are several ways to define a function:</p><ul><li><strong>Function Declaration:</strong> The most common way. These are hoisted, meaning they can be called before they are defined in the code.</li><li><strong>Function Expression:</strong> A function can be defined and assigned to a variable. These are not hoisted.</li><li><strong>Arrow Function:</strong> A more concise syntax for writing function expressions, introduced in ES6. They are anonymous and have a different behavior for the <code>this</code> keyword.</li></ul>`
                            }
@@ -201,5 +209,3 @@ console.log('Product:', multiply(4, 5));
         chapters: []
     }
 ];
-
-    

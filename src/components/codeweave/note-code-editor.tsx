@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import React, { useState, useCallback, useRef, useLayoutEffect, useEffect, useImperativeHandle } from 'react';
+import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
@@ -9,20 +10,15 @@ import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getSmartIndentation } from '@/lib/indentation';
 
-export interface NoteCodeEditorRef {
-  getValue: () => string;
-}
-
 interface NoteCodeEditorProps {
-    id: string;
-    initialCode: string;
-    onContentChange: () => void;
+    code: string;
+    onCodeChange: (newCode: string) => void;
 }
 
-export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditorProps>(({ id, initialCode, onContentChange }, ref) => {
-    const [history, setHistory] = useState([initialCode]);
+export const NoteCodeEditor = React.forwardRef<HTMLTextAreaElement, NoteCodeEditorProps>(({ code, onCodeChange }, ref) => {
+    const [history, setHistory] = useState([code]);
     const [historyIndex, setHistoryIndex] = useState(0);
-    const code = history[historyIndex];
+    const internalCode = history[historyIndex];
 
     const isMobile = useIsMobile();
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -33,21 +29,20 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     const mirrorRef = useRef<HTMLDivElement>(null);
     const editorWrapperRef = useRef<HTMLDivElement>(null);
 
-    useImperativeHandle(ref, () => ({
-        getValue: () => code,
-    }));
-
     useEffect(() => {
-        setHistory([initialCode]);
-        setHistoryIndex(0);
-    }, [initialCode]);
+        if(internalCode !== code) {
+            setHistory([code]);
+            setHistoryIndex(0);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [code]);
 
     const handleCodeChange = (newCode: string) => {
         const newHistory = history.slice(0, historyIndex + 1);
         newHistory.push(newCode);
         setHistory(newHistory);
         setHistoryIndex(i => i + 1);
-        onContentChange();
+        onCodeChange(newCode);
     };
 
     const undo = useCallback(() => {
@@ -66,9 +61,9 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         
-        const { textToInsert, newCursorPosition } = getSmartIndentation(code, start, end);
+        const { textToInsert, newCursorPosition } = getSmartIndentation(internalCode, start, end);
     
-        const newCode = code.substring(0, start) + textToInsert + code.substring(end);
+        const newCode = internalCode.substring(0, start) + textToInsert + internalCode.substring(end);
         handleCodeChange(newCode);
         
         requestAnimationFrame(() => {
@@ -76,7 +71,8 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
             textarea.selectionEnd = newCursorPosition;
             textarea.focus();
         });
-    }, [code]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [internalCode]);
 
     const handleKeyPress = useCallback(async (key: string) => {
         const textarea = textareaRef.current;
@@ -108,30 +104,30 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                 redo();
                 break;
             case 'c': { // Copy
-                let textToCopy = code.substring(start, end);
+                let textToCopy = internalCode.substring(start, end);
                 if (start === end) {
-                    const lineStart = code.lastIndexOf('\n', start - 1) + 1;
-                    const lineEnd = code.indexOf('\n', start);
-                    textToCopy = code.substring(lineStart, lineEnd === -1 ? code.length : lineEnd);
+                    const lineStart = internalCode.lastIndexOf('\n', start - 1) + 1;
+                    const lineEnd = internalCode.indexOf('\n', start);
+                    textToCopy = internalCode.substring(lineStart, lineEnd === -1 ? internalCode.length : lineEnd);
                 }
                 await navigator.clipboard.writeText(textToCopy);
                 break;
             }
             case 'x': { // Cut
-                let textToCut = code.substring(start, end);
+                let textToCut = internalCode.substring(start, end);
                 let selectionStart = start;
                 let selectionEnd = end;
 
                 if (start === end) {
-                    selectionStart = code.lastIndexOf('\n', start - 1) + 1;
-                    const lineEnd = code.indexOf('\n', start);
-                    selectionEnd = lineEnd === -1 ? code.length : lineEnd + (lineEnd === code.length -1 ? 0 : 1);
-                    textToCut = code.substring(selectionStart, selectionEnd);
+                    selectionStart = internalCode.lastIndexOf('\n', start - 1) + 1;
+                    const lineEnd = internalCode.indexOf('\n', start);
+                    selectionEnd = lineEnd === -1 ? internalCode.length : lineEnd + (lineEnd === internalCode.length -1 ? 0 : 1);
+                    textToCut = internalCode.substring(selectionStart, selectionEnd);
                 }
                 
                 await navigator.clipboard.writeText(textToCut);
                 
-                const newCode = code.substring(0, selectionStart) + code.substring(selectionEnd);
+                const newCode = internalCode.substring(0, selectionStart) + internalCode.substring(selectionEnd);
                 handleCodeChange(newCode);
 
                 requestAnimationFrame(() => {
@@ -143,7 +139,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
             }
             case 'v': { // Paste
                 const textFromClipboard = await navigator.clipboard.readText();
-                const newCode = code.substring(0, start) + textFromClipboard + code.substring(end);
+                const newCode = internalCode.substring(0, start) + textFromClipboard + internalCode.substring(end);
                 const newCursorPosition = start + textFromClipboard.length;
                 
                 handleCodeChange(newCode);
@@ -163,7 +159,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
 
-        let newCode = code;
+        let newCode = internalCode;
         let newCursorPosition = start;
 
         switch (key) {
@@ -173,21 +169,21 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
             }
             break;
           case 'ArrowRight':
-            if (start < code.length) {
+            if (start < internalCode.length) {
                 newCursorPosition = start + 1;
             }
             break;
           case 'Backspace':
             if (start === end && start > 0) {
-              newCode = code.substring(0, start - 1) + code.substring(end);
+              newCode = internalCode.substring(0, start - 1) + internalCode.substring(end);
               newCursorPosition = start - 1;
             } else {
-              newCode = code.substring(0, start) + code.substring(end);
+              newCode = internalCode.substring(0, start) + internalCode.substring(end);
               newCursorPosition = start;
             }
             break;
           case 'Tab':
-            newCode = code.substring(0, start) + '  ' + code.substring(end);
+            newCode = internalCode.substring(0, start) + '  ' + internalCode.substring(end);
             newCursorPosition = start + 2;
             break;
           case 'CapsLock':
@@ -206,10 +202,10 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
             if (pairMap[key] && key.length === 1 && !/^\d$/.test(key)) {
                 const open = key;
                 const close = pairMap[key];
-                newCode = code.substring(0, start) + open + close + code.substring(end);
+                newCode = internalCode.substring(0, start) + open + close + internalCode.substring(end);
                 newCursorPosition = start + 1;
             } else {
-                newCode = code.substring(0, start) + key + code.substring(end);
+                newCode = internalCode.substring(0, start) + key + internalCode.substring(end);
                 newCursorPosition = start + key.length;
             }
         }
@@ -221,7 +217,8 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
           textarea.selectionEnd = newCursorPosition;
           textarea.focus();
         });
-    }, [code, handleEnterPress, ctrlActive, undo, redo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [internalCode, handleEnterPress, ctrlActive, undo, redo]);
     
     const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const textarea = textareaRef.current;
@@ -250,6 +247,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
             e.preventDefault();
             handleKeyPress('Tab');
         }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [undo, redo, handleKeyPress, handleEnterPress]);
 
     const updateLineNumbersAndResize = useCallback(() => {
@@ -259,7 +257,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         const wrapper = editorWrapperRef.current;
         if (!ta || !gutter || !mirror || !wrapper) return;
     
-        const lines = code.split('\n');
+        const lines = internalCode.split('\n');
         gutter.innerHTML = '';
         mirror.innerHTML = '';
     
@@ -291,7 +289,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
         const newHeight = Math.max(totalHeight + totalPadding, 21);
         wrapper.style.height = `${newHeight}px`;
     
-    }, [code]);
+    }, [internalCode]);
     
     const syncScroll = useCallback(() => {
         if (textareaRef.current && gutterRef.current) {
@@ -306,10 +304,10 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
 
     useLayoutEffect(() => {
         updateLineNumbersAndResize();
-    }, [code, updateLineNumbersAndResize]);
+    }, [internalCode, updateLineNumbersAndResize]);
     
     const highlightedCode = React.useMemo(() => {
-        const lines = code.split('\n');
+        const lines = internalCode.split('\n');
         return (
             <>
                 {lines.map((line, lineIndex) => (
@@ -323,7 +321,7 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                 ))}
             </>
         );
-    }, [code]);
+    }, [internalCode]);
 
     const editorStyles: React.CSSProperties = {
         fontFamily: 'var(--font-code)',
@@ -365,9 +363,8 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
                     </div>
                 </div>
                 <Textarea
-                    id={id}
                     ref={textareaRef}
-                    value={code}
+                    value={internalCode}
                     inputMode={isMobile ? 'none' : 'text'}
                     onChange={(e) => handleCodeChange(e.target.value)}
                     onKeyDown={handleNativeKeyDown}
@@ -419,5 +416,3 @@ export const NoteCodeEditor = React.forwardRef<NoteCodeEditorRef, NoteCodeEditor
     );
 });
 NoteCodeEditor.displayName = 'NoteCodeEditor';
-
-    

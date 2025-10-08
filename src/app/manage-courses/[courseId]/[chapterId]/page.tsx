@@ -25,7 +25,7 @@ import { useCourses } from '@/hooks/use-courses';
 import { ChevronRight } from 'lucide-react';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { LoadingPage } from '@/components/loading-page';
-import { NoteCodeEditor, type NoteCodeEditorRef } from '@/components/codeweave/note-code-editor';
+import { NoteCodeEditor } from '@/components/codeweave/note-code-editor';
 import { Header } from '@/components/codeweave/header';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -39,7 +39,7 @@ export interface RichTextEditorRef {
   getValue: () => string;
 }
 
-const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: string; onContentChange: () => void }>(({ initialValue, onContentChange }, ref) => {
+const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: string; onContentChange: (newContent: string) => void }>(({ initialValue, onContentChange }, ref) => {
     const editorRef = React.useRef<HTMLDivElement>(null);
     const [activeStyles, setActiveStyles] = React.useState<string[]>([]);
     const [currentBlockType, setCurrentBlockType] = React.useState('Paragraph');
@@ -52,13 +52,13 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     }));
 
     React.useEffect(() => {
-        if (editorRef.current) {
+        if (editorRef.current && editorRef.current.innerHTML !== initialValue) {
             editorRef.current.innerHTML = initialValue;
         }
     }, [initialValue]);
     
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-        onContentChange();
+        onContentChange(e.currentTarget.innerHTML);
         updateActiveStyles();
     };
 
@@ -66,6 +66,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         document.execCommand(command, false, value);
         editorRef.current?.focus();
         updateActiveStyles();
+        onContentChange(editorRef.current?.innerHTML || '');
     };
 
     const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
@@ -78,41 +79,39 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
             return;
         }
 
-        const range = selection.getRangeAt(0);
-        let container = range.startContainer;
+        let container = selection.getRangeAt(0).startContainer;
 
-        // Traverse up to find the list element if it exists
+        // Find if we are inside a list already
         let listNode = container;
         while (listNode.parentElement && listNode.parentElement !== editor && listNode.nodeName !== 'UL' && listNode.nodeName !== 'OL') {
             listNode = listNode.parentElement;
         }
-
+        
         const isInList = listNode.nodeName === 'UL' || listNode.nodeName === 'OL';
-        const isTargetList = (command === 'insertUnorderedList' && listNode.nodeName === 'UL') || (command === 'insertOrderedList' && listNode.nodeName === 'OL');
-    
-        if (isInList && isTargetList) {
-            // If already in the target list, jump out to a new paragraph
-            const newPara = document.createElement('p');
-            newPara.innerHTML = '&#8203;'; // Zero-width space to make it focusable
-            
-            let topList = listNode;
-            while(topList.parentElement && topList.parentElement !== editor && (topList.parentElement.nodeName === 'UL' || topList.parentElement.nodeName === 'OL' || topList.parentElement.nodeName === 'LI')) {
-                topList = topList.parentElement;
-            }
-
-            topList.after(newPara);
-    
-            const newRange = document.createRange();
-            newRange.setStart(newPara, 0);
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
+        
+        if (isInList) {
+             const newPara = document.createElement('p');
+             newPara.innerHTML = '&#8203;'; // Zero-width space
+             
+             let topList = listNode;
+             while(topList.parentElement && topList.parentElement !== editor && (topList.parentElement.nodeName === 'UL' || topList.parentElement.nodeName === 'OL' || topList.parentElement.nodeName === 'LI')) {
+                 topList = topList.parentElement;
+             }
+ 
+             topList.after(newPara);
+     
+             const newRange = document.createRange();
+             newRange.setStart(newPara, 0);
+             newRange.collapse(true);
+             selection.removeAllRanges();
+             selection.addRange(newRange);
         } else {
             execCommand(command);
         }
         
         editor.focus();
         updateActiveStyles();
+        onContentChange(editor.innerHTML);
     }
 
 
@@ -215,8 +214,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         
         if (key === 'Backspace') {
             document.execCommand('delete');
-        } else if (key === 'Enter') {
-             document.execCommand('insertLineBreak');
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
         }
@@ -308,9 +305,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   
   const syntaxCompilerRef = React.useRef<CompilerRef>(null);
   const solutionCompilerRef = React.useRef<CompilerRef>(null);
-  const practiceInitialCodeRefs = React.useRef<{[key: string]: CompilerRef | null}>({});
-  const noteSegmentRefs = React.useRef<{[key: string]: NoteCodeEditorRef | RichTextEditorRef | null}>({});
-
 
   const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
   const chapter = !loading ? course?.chapters.find((ch) => ch.id === params.chapterId) : undefined;
@@ -326,8 +320,14 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   React.useEffect(() => {
     if (!loading && course && chapter) {
         const initialTopic = chapter.topics.find(t => t.id === chapter.id) || chapter.topics[0];
+        
         if (initialTopic) {
-            setTopic(JSON.parse(JSON.stringify(initialTopic)));
+            // Ensure all segments have unique IDs
+            const topicWithIds = {
+                ...initialTopic,
+                notes: initialTopic.notes.map(note => ({...note, id: note.id || nanoid() }))
+            };
+            setTopic(JSON.parse(JSON.stringify(topicWithIds)));
         } else {
             notFound();
         }
@@ -398,7 +398,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const handleAddNoteSegment = (type: 'html' | 'code', index: number) => {
     if (!topic) return;
-    const newSegment: NoteSegment = { type, content: '' };
+    const newSegment: NoteSegment = { type, content: '', id: nanoid() };
     const newNotes = [...topic.notes];
     newNotes.splice(index + 1, 0, newSegment);
     setTopic(prevTopic => ({ ...prevTopic!, notes: newNotes }));
@@ -423,6 +423,21 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     markAsDirty();
   };
 
+  const handleNoteContentChange = (index: number, newContent: string) => {
+    if (!topic) return;
+    const newNotes = topic.notes.map((note, i) => i === index ? {...note, content: newContent} : note);
+    setTopic(prevTopic => ({ ...prevTopic!, notes: newNotes }));
+    markAsDirty();
+  }
+  
+  const handleCodeContentChange = (index: number, newContent: string) => {
+    if (!topic) return;
+    const newNotes = [...topic.notes];
+    (newNotes[index] as any).content = newContent;
+    setTopic(prevTopic => ({...prevTopic!, notes: newNotes}));
+    markAsDirty();
+  }
+
   const handlePrevQuestion = () => {
     setPracticeQuestionIndex(prev => Math.max(0, prev - 1));
   }
@@ -436,35 +451,20 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     setIsSaving(true);
     
     // Construct the final topic object by gathering data from refs
-    const finalTopic: Topic = { ...topic };
+    let finalTopic: Topic = { ...topic };
 
     // Get syntax code
     if (syntaxCompilerRef.current) {
         finalTopic.syntax = syntaxCompilerRef.current.getCode();
     }
     
-    // Get notes content
-    finalTopic.notes = topic.notes.map((segment, index) => {
-        const segmentRef = noteSegmentRefs.current[`note-${index}`];
-        if (segmentRef) {
-            return { ...segment, content: segmentRef.getValue() };
-        }
-        return segment;
-    });
-
     // Get practice question codes
     finalTopic.practice = topic.practice.map(pq => {
-        const initialCodeRef = practiceInitialCodeRefs.current[`initial-${pq.id}`];
-        const solutionCode = solutionCompilerRef.current?.getCode(); // This will only get the current one
-        
+        const solutionCode = solutionCompilerRef.current?.getCode(); 
         let updatedPq = {...pq};
-        if (initialCodeRef) {
-            updatedPq.initialCode = initialCodeRef.getCode();
-        }
         if (pq.id === currentPracticeQuestion?.id && solutionCode) {
             updatedPq.solutionCode = solutionCode;
         }
-
         return updatedPq;
     });
 
@@ -573,7 +573,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                         </CardHeader>
                         <CardContent className="space-y-4 p-0">
                             {(topic.notes || []).map((segment, index) => (
-                                <Card key={segment.type + index} className="note-editor-segment rounded-none border-x-0 group">
+                                <Card key={segment.id} className="note-editor-segment rounded-none border-x-0 group">
                                      <CardHeader className="px-4 py-2">
                                         <div className="flex justify-between items-center">
                                             <CardTitle className="text-xs text-muted-foreground font-normal">
@@ -592,21 +592,18 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                             </div>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="relative pb-8">
+                                    <CardContent className="relative pb-8 px-4">
                                     {segment.type === 'html' ? (
                                         <RichTextEditor
-                                            ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
-                                            key={`md-${topic.id}-${index}`}
+                                            key={segment.id}
                                             initialValue={segment.content}
-                                            onContentChange={markAsDirty}
+                                            onContentChange={(newContent) => handleNoteContentChange(index, newContent)}
                                         />
                                     ) : (
                                         <NoteCodeEditor
-                                            ref={ref => { if(ref) noteSegmentRefs.current[`note-${index}`] = ref; }}
-                                            key={`code-${topic.id}-${index}`}
-                                            id={`note-code-editor-${index}`}
-                                            initialCode={segment.content}
-                                            onContentChange={markAsDirty}
+                                            key={segment.id}
+                                            code={segment.content}
+                                            onCodeChange={(newCode) => handleCodeContentChange(index, newCode)}
                                         />
                                     )}
 
@@ -697,8 +694,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <CardContent className="flex-grow overflow-auto p-0">
                                         <div className="h-full min-h-[300px]">
                                             <Compiler 
-                                                ref={ref => { practiceInitialCodeRefs.current[`initial-${currentPracticeQuestion.id}`] = ref; }}
-                                                onCodeChange={markAsDirty}
+                                                onCodeChange={(code) => handlePracticeQuestionChange(practiceQuestionIndex, 'initialCode', code)}
                                                 initialCode={currentPracticeQuestion.initialCode} 
                                                 variant="minimal" hideHeader 
                                                 key={`initial-${currentPracticeQuestion.id}`}
@@ -791,10 +787,6 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 // Add onCodeChange to Compiler props
 declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
-        onCodeChange?: () => void;
+        onCodeChange?: (code: string) => void;
     }
 }
-
-    
-
-    
