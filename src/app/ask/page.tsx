@@ -72,86 +72,68 @@ export default function AskQuestionPage() {
                 <TabsTrigger value="solution">Solution</TabsTrigger>
                 <TabsTrigger value="studentAnswer">Student's Answer</TabsTrigger>
             </TabsList>
-            <TabsContent value="question" className="mt-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Compose Question</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="live-question">Question Text</Label>
-                            <Textarea 
-                                id="live-question"
-                                placeholder="What does this code do?"
-                                value={question}
-                                onChange={(e) => setQuestion(e.target.value)}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Initial Code (for student)</Label>
-                            <div className="h-full min-h-[300px] border rounded-md">
-                                <Compiler 
-                                    onCodeChange={setInitialCode}
-                                    initialCode={initialCode} 
-                                    variant="minimal" hideHeader 
-                                    key="initial-code"
-                                />
-                            </div>
-                        </div>
-                         <Button onClick={handlePublishQuestion} disabled={isPublishing}>
-                            {isPublishing ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Publishing...
-                                </>
-                            ) : (
-                                <>
-                                    <Play className="w-4 h-4 mr-2" />
-                                    Publish Question
-                                </>
-                            )}
-                        </Button>
-                    </CardContent>
-                </Card>
+            <TabsContent value="question" className="mt-4 px-4 py-6 space-y-4">
+                <h2 className="text-2xl font-bold tracking-tight">Compose Question</h2>
+                <div className="grid gap-2">
+                    <Label htmlFor="live-question">Question Text</Label>
+                    <Textarea 
+                        id="live-question"
+                        placeholder="What does this code do?"
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label>Initial Code (for student)</Label>
+                    <div className="h-full min-h-[300px] border rounded-md">
+                        <Compiler 
+                            onCodeChange={setInitialCode}
+                            initialCode={initialCode} 
+                            variant="minimal" hideHeader 
+                            key="initial-code"
+                        />
+                    </div>
+                </div>
+                    <Button onClick={handlePublishQuestion} disabled={isPublishing}>
+                    {isPublishing ? (
+                        <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Publishing...
+                        </>
+                    ) : (
+                        <>
+                            <Play className="w-4 h-4 mr-2" />
+                            Publish Question
+                        </>
+                    )}
+                </Button>
             </TabsContent>
-            <TabsContent value="solution" className="mt-4">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Your Solution</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            <Label>Solution Code</Label>
-                             <div className="h-full min-h-[300px] border rounded-md">
-                                <Compiler
-                                    onCodeChange={setSolutionCode}
-                                    initialCode={solutionCode}
-                                    variant="minimal" hideHeader
-                                    key="solution-code"
-                                />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            <TabsContent value="solution" className="mt-4 px-4 py-6 space-y-4">
+                <h2 className="text-2xl font-bold tracking-tight">Your Solution</h2>
+                <div className="grid gap-2">
+                    <Label>Solution Code</Label>
+                        <div className="h-full min-h-[300px] border rounded-md">
+                        <Compiler
+                            onCodeChange={setSolutionCode}
+                            initialCode={solutionCode}
+                            variant="minimal" hideHeader
+                            key="solution-code"
+                        />
+                    </div>
+                </div>
             </TabsContent>
-            <TabsContent value="studentAnswer" className="mt-4">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Student's Answer</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                         <div className="grid gap-2">
-                            <Label>Submitted Code</Label>
-                             <div className="h-full min-h-[300px] border rounded-md bg-muted/50">
-                                <Compiler
-                                    initialCode={studentAnswer}
-                                    variant="minimal" hideHeader
-                                    key={studentAnswer} // Re-mount compiler when answer changes
-                                />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            <TabsContent value="studentAnswer" className="mt-4 px-4 py-6 space-y-4">
+                <h2 className="text-2xl font-bold tracking-tight">Student's Answer</h2>
+                    <div className="grid gap-2">
+                    <Label>Submitted Code</Label>
+                        <div className="h-full min-h-[300px] border rounded-md bg-muted/50">
+                        <Compiler
+                            initialCode={studentAnswer}
+                            variant="minimal" hideHeader
+                            key={studentAnswer} // Re-mount compiler when answer changes
+                        />
+                    </div>
+                </div>
             </TabsContent>
         </Tabs>
       </div>

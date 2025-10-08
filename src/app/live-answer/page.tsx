@@ -68,13 +68,12 @@ export default function LiveAnswerPage() {
                 </div>
             </Header>
 
-            {liveQuestion ? (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Question from your Teacher</CardTitle>
-                        <CardDescription className="pt-2">{liveQuestion.question}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
+            <div className="px-4 py-6">
+                {liveQuestion ? (
+                    <div className="space-y-4">
+                        <h2 className="text-2xl font-bold tracking-tight">Question from your Teacher</h2>
+                        <p className="text-muted-foreground">{liveQuestion.question}</p>
+                        
                         <div className="grid gap-2">
                             <p className="text-sm font-medium">Your Answer</p>
                             <div className="h-full min-h-[400px] border rounded-md">
@@ -87,13 +86,13 @@ export default function LiveAnswerPage() {
                                 />
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md">
-                    <p>Waiting for the teacher to publish a live question...</p>
-                </div>
-            )}
+                    </div>
+                ) : (
+                    <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md">
+                        <p>Waiting for the teacher to publish a live question...</p>
+                    </div>
+                )}
+            </div>
         </>
     );
 }
