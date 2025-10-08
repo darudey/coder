@@ -217,10 +217,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
             document.execCommand('delete');
         } else if (key === 'Enter') {
              document.execCommand('insertLineBreak');
-             const selection = window.getSelection();
-             if (selection && selection.focusNode && selection.focusNode.parentNode && selection.focusNode.parentNode.nodeName !== 'LI') {
-                document.execCommand('insertHTML', false, '<br>');
-             }
         } else if (key.length === 1) {
             document.execCommand('insertText', false, key);
         }
@@ -798,5 +794,7 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: () => void;
     }
 }
+
+    
 
     
