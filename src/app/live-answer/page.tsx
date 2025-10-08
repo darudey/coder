@@ -68,34 +68,32 @@ export default function LiveAnswerPage() {
                 </div>
             </Header>
 
-            <div className="p-4">
-                {liveQuestion ? (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Question from your Teacher</CardTitle>
-                            <CardDescription className="pt-2">{liveQuestion.question}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-2">
-                                <p className="text-sm font-medium">Your Answer</p>
-                                <div className="h-full min-h-[400px] border rounded-md">
-                                    <Compiler
-                                        onCodeChange={handleCodeChange}
-                                        initialCode={liveQuestion.initialCode}
-                                        variant="minimal"
-                                        hideHeader
-                                        key={liveQuestion.initialCode}
-                                    />
-                                </div>
+            {liveQuestion ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Question from your Teacher</CardTitle>
+                        <CardDescription className="pt-2">{liveQuestion.question}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-2">
+                            <p className="text-sm font-medium">Your Answer</p>
+                            <div className="h-full min-h-[400px] border rounded-md">
+                                <Compiler
+                                    onCodeChange={handleCodeChange}
+                                    initialCode={liveQuestion.initialCode}
+                                    variant="minimal"
+                                    hideHeader
+                                    key={liveQuestion.initialCode}
+                                />
                             </div>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md">
-                        <p>Waiting for the teacher to publish a live question...</p>
-                    </div>
-                )}
-            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md">
+                    <p>Waiting for the teacher to publish a live question...</p>
+                </div>
+            )}
         </>
     );
 }

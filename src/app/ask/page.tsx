@@ -66,7 +66,7 @@ export default function AskQuestionPage() {
       </Header>
 
       <div className="space-y-4">
-        <Tabs defaultValue="question" className="p-4">
+        <Tabs defaultValue="question">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="question">Question</TabsTrigger>
                 <TabsTrigger value="solution">Solution</TabsTrigger>
