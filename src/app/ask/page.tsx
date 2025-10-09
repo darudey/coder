@@ -126,11 +126,13 @@ export default function AskQuestionPage() {
 
   const QuestionList = () => (
      <div className="p-2 flex flex-col h-full bg-muted/40">
-        <div className="flex items-center justify-between mb-2 px-2">
+        <div className="flex items-center justify-between mb-2 px-2 relative h-8">
             <h2 className="text-lg font-semibold tracking-tight">Questions</h2>
-            <Button size="icon" variant="ghost" onClick={handleAddQuestion} className="h-7 w-7">
-                <Plus className="w-4 h-4" />
-            </Button>
+            <div className="absolute left-1/2 -translate-x-1/2">
+                <Button size="icon" variant="ghost" onClick={handleAddQuestion} className="h-7 w-7">
+                    <Plus className="w-4 h-4" />
+                </Button>
+            </div>
         </div>
         <ScrollArea className="flex-grow">
             <div className="space-y-1">
