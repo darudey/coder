@@ -32,19 +32,22 @@ export default function LiveAnswerPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
+        setIsLoading(true);
         const unsub = onSnapshot(doc(db, "live-qna", "session"), (doc) => {
-            setIsLoading(true);
             if (doc.exists()) {
                 const data = doc.data() as LiveSession;
                 setSession(data);
                 
-                // If no question is selected yet, and there are questions available, select the first one.
+                // This logic runs every time the session document changes.
+                // We need to be careful about when we select a question.
+                
+                // If no question is selected, and there are questions available, select the first one.
                 if (!selectedQuestionId && data.questions.length > 0) {
                     const firstQuestionId = data.questions[0].id;
                     setSelectedQuestionId(firstQuestionId);
                     setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
                 } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
-                    // If the currently selected question was deleted, select the first available one.
+                    // If the currently selected question was deleted by the teacher, select the first available one.
                     const firstQuestionId = data.questions[0]?.id;
                     setSelectedQuestionId(firstQuestionId || null);
                     if (firstQuestionId) {
@@ -52,15 +55,20 @@ export default function LiveAnswerPage() {
                     }
                 }
             } else {
+                // If the session document doesn't exist or is deleted.
                 setSession(null);
                 setSelectedQuestionId(null);
                 setCurrentCode('');
             }
-            setIsLoading(false);
+            setIsLoading(false); // Only set loading to false after processing.
+        }, (error) => {
+            console.error("Error listening to live session:", error);
+            setIsLoading(false); // Also stop loading on error.
         });
+
         return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, []); // This effect should only run once.
 
     const handleCodeChange = (newCode: string) => {
         setCurrentCode(newCode);
