@@ -126,14 +126,14 @@ export default function LiveAnswerPage() {
                 </Sheet>
                 <h1 className="text-lg font-semibold ml-4">Live Q&A Session</h1>
             </header>
-            <main className="flex-grow h-full px-4 py-6">
+            <main className="flex-grow h-full py-6">
                 {selectedQuestion ? (
                     <div className="space-y-4 h-full flex flex-col">
-                        <h2 className="text-2xl font-bold tracking-tight">{selectedQuestion.question}</h2>
+                        <h2 className="text-2xl font-bold tracking-tight px-4">{selectedQuestion.question}</h2>
                         
                         <div className="grid gap-2 flex-grow">
-                            <p className="text-sm font-medium">Your Answer</p>
-                            <div className="h-full min-h-[400px] border rounded-md">
+                            <p className="text-sm font-medium px-4">Your Answer</p>
+                            <div className="h-full min-h-[400px]">
                                 <Compiler
                                     onCodeChange={handleCodeChange}
                                     initialCode={currentCode}
@@ -145,7 +145,7 @@ export default function LiveAnswerPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md h-full flex items-center justify-center">
+                    <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md h-full flex items-center justify-center mx-4">
                         <div className="max-w-md mx-auto">
                             <h2 className="text-xl font-semibold mb-2">Live Q&A Session</h2>
                             <p>

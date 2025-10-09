@@ -189,8 +189,8 @@ export default function AskQuestionPage() {
                     <TabsTrigger value="answer">Answer</TabsTrigger>
                 </TabsList>
                 <TabsContent value="question" className="flex-grow mt-0">
-                    <div className="flex flex-col h-full gap-4 p-4">
-                        <div className="grid gap-2">
+                    <div className="flex flex-col h-full gap-4 pt-4">
+                        <div className="grid gap-2 px-4">
                             <Label htmlFor="live-question">Question Text</Label>
                             <Textarea 
                                 id="live-question"
@@ -200,8 +200,8 @@ export default function AskQuestionPage() {
                             />
                         </div>
                         <div className="grid gap-2 flex-grow">
-                            <Label>Initial Code (for student)</Label>
-                            <div className="h-full min-h-[300px] border rounded-md">
+                            <Label className="px-4">Initial Code (for student)</Label>
+                            <div className="h-full min-h-[300px]">
                                 <Compiler 
                                     onCodeChange={(code) => updateQuestionField(selectedQuestion.id, 'initialCode', code)}
                                     initialCode={selectedQuestion.initialCode} 
@@ -213,10 +213,10 @@ export default function AskQuestionPage() {
                     </div>
                 </TabsContent>
                 <TabsContent value="solution" className="flex-grow mt-0">
-                    <div className="flex flex-col h-full gap-4 p-4">
+                    <div className="flex flex-col h-full gap-4 pt-4">
                         <div className="grid gap-2 flex-grow">
-                            <Label>Solution Code</Label>
-                                <div className="h-full min-h-[300px] border rounded-md">
+                            <Label className="px-4">Solution Code</Label>
+                                <div className="h-full min-h-[300px]">
                                 <Compiler
                                     onCodeChange={(code) => updateQuestionField(selectedQuestion.id, 'solutionCode', code)}
                                     initialCode={selectedQuestion.solutionCode}
@@ -228,10 +228,10 @@ export default function AskQuestionPage() {
                     </div>
                 </TabsContent>
                 <TabsContent value="answer" className="flex-grow mt-0">
-                    <div className="flex flex-col h-full gap-4 p-4">
+                    <div className="flex flex-col h-full gap-4 pt-4">
                         <div className="grid gap-2 flex-grow">
-                        <Label>Submitted Code</Label>
-                            <div className="h-full min-h-[300px] border rounded-md">
+                        <Label className="px-4">Submitted Code</Label>
+                            <div className="h-full min-h-[300px]">
                             <Compiler
                                 initialCode={studentAnswer}
                                 variant="minimal" hideHeader
