@@ -1,10 +1,9 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Play, Loader2, Plus, Trash2, PanelLeft } from 'lucide-react';
-import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
-import React, { useState, useEffect, useCallback } from 'react';
+import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +14,9 @@ import { nanoid } from 'nanoid';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { OutputDisplay } from '@/components/codeweave/output-display';
+import { DotLoader } from '@/components/codeweave/dot-loader';
 
 interface LiveQuestion {
     id: string;
@@ -32,11 +34,16 @@ interface LiveSession {
 export default function AskQuestionPage() {
   const { toast } = useToast();
   
-  const [session, setSession] = useState<LiveSession>({ questions: [], answers: {} });
+  const [session, setSession] = useState<LiveSession | null>(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const solutionCompilerRef = useRef<CompilerRef>(null);
+  const [solutionOutput, setSolutionOutput] = useState<RunResult | null>(null);
+  const [isSolutionRunning, setIsSolutionRunning] = useState(false);
+  const [isResultOpen, setIsResultOpen] = useState(false);
 
   // Effect to load and subscribe to the session
   useEffect(() => {
@@ -55,9 +62,9 @@ export default function AskQuestionPage() {
             const defaultSession: LiveSession = {
                 questions: [{
                     id: defaultQuestionId,
-                    question: 'Welcome! Edit this first question.',
-                    initialCode: '// Your code here',
-                    solutionCode: '// Solution code goes here'
+                    question: 'print your name',
+                    initialCode: `// Create a function to print your name\nfunction printName(name) {\n  console.log(name);\n}\n\n// Call the function with your name`,
+                    solutionCode: `function printName(name) {\n  console.log(name);\n}\n\nprintName('Alex');`
                 }],
                 answers: {}
             };
@@ -66,9 +73,10 @@ export default function AskQuestionPage() {
         }
     });
     return () => unsub();
-  }, [selectedQuestionId]);
+  }, []);
 
   const handlePublishSession = async () => {
+    if (!session) return;
     setIsPublishing(true);
     try {
         await setDoc(doc(db, 'live-qna', 'session'), session, { merge: true });
@@ -95,17 +103,17 @@ export default function AskQuestionPage() {
         initialCode: '// Your code here',
         solutionCode: '// Solution'
     };
-    setSession(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
+    setSession(prev => prev ? ({ ...prev, questions: [...prev.questions, newQuestion] }) : { questions: [newQuestion], answers: {} });
     setSelectedQuestionId(newQuestionId);
   };
 
   const handleDeleteQuestion = (idToDelete: string) => {
-    if (session.questions.length <= 1) {
+    if (!session || session.questions.length <= 1) {
         toast({ title: "Cannot delete the last question.", variant: 'destructive' });
         return;
     }
     const newQuestions = session.questions.filter(q => q.id !== idToDelete);
-    setSession(prev => ({...prev, questions: newQuestions}));
+    setSession(prev => prev ? ({...prev, questions: newQuestions}) : null);
     
     if(selectedQuestionId === idToDelete) {
         setSelectedQuestionId(newQuestions[0]?.id || null);
@@ -113,16 +121,31 @@ export default function AskQuestionPage() {
   };
 
   const updateQuestionField = (questionId: string, field: keyof Omit<LiveQuestion, 'id'>, value: string) => {
-      setSession(prev => ({
-          ...prev,
-          questions: prev.questions.map(q => 
-              q.id === questionId ? { ...q, [field]: value } : q
-          )
-      }));
+      setSession(prev => {
+          if (!prev) return null;
+          return {
+              ...prev,
+              questions: prev.questions.map(q => 
+                  q.id === questionId ? { ...q, [field]: value } : q
+              )
+          }
+      });
   };
 
-  const selectedQuestion = session.questions.find(q => q.id === selectedQuestionId);
-  const studentAnswer = selectedQuestionId ? session.answers[selectedQuestionId] || '// Waiting for student answer...' : '// Waiting for student answer...';
+  const handleRunSolution = async () => {
+    if (solutionCompilerRef.current) {
+        setIsSolutionRunning(true);
+        setIsResultOpen(true);
+        setSolutionOutput(null);
+
+        const result = await solutionCompilerRef.current.run();
+        setSolutionOutput(result);
+        setIsSolutionRunning(false);
+    }
+  }
+
+  const selectedQuestion = session?.questions.find(q => q.id === selectedQuestionId);
+  const studentAnswer = selectedQuestionId ? session?.answers[selectedQuestionId] || '// Waiting for student answer...' : '// Waiting for student answer...';
 
   const QuestionList = () => (
      <div className="p-2 flex flex-col h-full bg-muted/40">
@@ -136,7 +159,7 @@ export default function AskQuestionPage() {
         </div>
         <ScrollArea className="flex-grow">
             <div className="space-y-1">
-            {session.questions.map((q, index) => (
+            {session?.questions.map((q, index) => (
                 <div key={q.id} className={cn(
                     "flex items-center justify-between p-2 rounded-md cursor-pointer group",
                     selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
@@ -214,10 +237,17 @@ export default function AskQuestionPage() {
                 </TabsContent>
                 <TabsContent value="solution" className="flex-grow mt-0">
                     <div className="flex flex-col h-full gap-4 pt-4">
+                        <div className="flex justify-between items-center px-4">
+                            <Label>Solution Code</Label>
+                            <Button size="sm" onClick={handleRunSolution} disabled={isSolutionRunning}>
+                                {isSolutionRunning ? <DotLoader /> : <Play className="w-4 h-4 mr-2" />}
+                                Run Solution
+                            </Button>
+                        </div>
                         <div className="grid gap-2 flex-grow">
-                            <Label className="px-4">Solution Code</Label>
-                                <div className="h-full min-h-[300px]">
+                            <div className="h-full min-h-[300px]">
                                 <Compiler
+                                    ref={solutionCompilerRef}
                                     onCodeChange={(code) => updateQuestionField(selectedQuestion.id, 'solutionCode', code)}
                                     initialCode={selectedQuestion.solutionCode}
                                     variant="minimal" hideHeader
@@ -249,7 +279,7 @@ export default function AskQuestionPage() {
         )}
       </main>
        <div className="fixed bottom-4 right-4 z-50">
-            <Button onClick={handlePublishSession} disabled={isPublishing} size="lg" className="rounded-full shadow-lg">
+            <Button onClick={handlePublishSession} disabled={isPublishing || !session} size="lg" className="rounded-full shadow-lg">
                 {isPublishing ? (
                     <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -263,6 +293,22 @@ export default function AskQuestionPage() {
                 )}
             </Button>
         </div>
+        <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
+            <DialogContent className="max-w-2xl h-3/4 flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Solution Result</DialogTitle>
+                <DialogDescription>
+                    This is the output of your solution code.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex-grow overflow-hidden">
+                <OutputDisplay 
+                    output={solutionOutput} 
+                    isCompiling={isSolutionRunning}
+                />
+            </div>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
