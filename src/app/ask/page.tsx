@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Play, Loader2, Plus, Trash2, Menu } from 'lucide-react';
+import { Play, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,8 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nanoid } from 'nanoid';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Header } from '@/components/codeweave/header';
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface LiveQuestion {
     id: string;
@@ -29,47 +27,6 @@ interface LiveSession {
     answers: { [key: string]: string };
 }
 
-const SidebarContent = ({ session, selectedQuestionId, onSelectQuestion, onAddQuestion, onDeleteQuestion }: {
-    session: LiveSession;
-    selectedQuestionId: string | null;
-    onSelectQuestion: (id: string) => void;
-    onAddQuestion: () => void;
-    onDeleteQuestion: (id: string) => void;
-}) => (
-     <div className="p-2 flex flex-col h-full bg-muted/40">
-        <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold tracking-tight">Questions</h2>
-            <Button size="icon" variant="ghost" onClick={onAddQuestion} className="h-7 w-7">
-                <Plus className="w-4 h-4" />
-            </Button>
-        </div>
-        <ScrollArea className="flex-grow">
-            <div className="space-y-1">
-            {session.questions.map((q, index) => (
-                <div key={q.id} className={cn(
-                    "flex items-center justify-between p-2 rounded-md cursor-pointer group",
-                    selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
-                )} onClick={() => onSelectQuestion(q.id)}>
-                    <p className="text-sm font-medium truncate flex-grow">
-                       {index + 1}. {q.question}
-                    </p>
-                    <Button 
-                        size="icon" variant="ghost" 
-                        className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteQuestion(q.id);
-                        }}
-                    >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                </div>
-            ))}
-            </div>
-        </ScrollArea>
-    </div>
-);
-
 
 export default function AskQuestionPage() {
   const { toast } = useToast();
@@ -78,7 +35,6 @@ export default function AskQuestionPage() {
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const compilerRef = React.useRef<CompilerRef>(null);
 
   // Effect to load and subscribe to the session
@@ -92,20 +48,6 @@ export default function AskQuestionPage() {
             } else if (data.questions.length === 0) {
                 setSelectedQuestionId(null);
             }
-        } else {
-            // If no session exists, create a default one
-            const defaultQuestionId = nanoid();
-            const defaultSession: LiveSession = {
-                questions: [{
-                    id: defaultQuestionId,
-                    question: 'What does this code do?',
-                    initialCode: '// Your code here',
-                    solutionCode: '// Solution code'
-                }],
-                answers: {}
-            };
-            setSession(defaultSession);
-            setSelectedQuestionId(defaultQuestionId);
         }
     });
     return () => unsub();
@@ -155,11 +97,6 @@ export default function AskQuestionPage() {
     }
   };
 
-  const handleSelectQuestion = (id: string) => {
-    setSelectedQuestionId(id);
-    setIsSidebarOpen(false);
-  }
-
   const updateQuestionField = (questionId: string, field: keyof Omit<LiveQuestion, 'id'>, value: string) => {
       setSession(prev => ({
           ...prev,
@@ -173,30 +110,40 @@ export default function AskQuestionPage() {
   const studentAnswer = selectedQuestionId ? session.answers[selectedQuestionId] || '// Waiting for student answer...' : '// Waiting for student answer...';
 
   return (
-    <>
-    <Header variant="page">
-        <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-            <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                    <Menu className="w-4 h-4" />
-                </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-               <SidebarContent 
-                    session={session}
-                    selectedQuestionId={selectedQuestionId}
-                    onSelectQuestion={handleSelectQuestion}
-                    onAddQuestion={handleAddQuestion}
-                    onDeleteQuestion={handleDeleteQuestion}
-                />
-            </SheetContent>
-        </Sheet>
-        <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
-            <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Live Q&A Session</h1>
+    <div className="flex h-[calc(100vh-4rem)]">
+      <aside className="w-80 border-r p-2 flex flex-col bg-muted/40">
+        <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold tracking-tight">Questions</h2>
+            <Button size="icon" variant="ghost" onClick={handleAddQuestion} className="h-7 w-7">
+                <Plus className="w-4 h-4" />
+            </Button>
         </div>
-    </Header>
-    <div className="flex h-[calc(100vh-5rem)]">
-      <div className="flex-grow h-full">
+        <ScrollArea className="flex-grow">
+            <div className="space-y-1">
+            {session.questions.map((q, index) => (
+                <div key={q.id} className={cn(
+                    "flex items-center justify-between p-2 rounded-md cursor-pointer group",
+                    selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
+                )} onClick={() => setSelectedQuestionId(q.id)}>
+                    <p className="text-sm font-medium truncate flex-grow">
+                       {index + 1}. {q.question}
+                    </p>
+                    <Button 
+                        size="icon" variant="ghost" 
+                        className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteQuestion(q.id);
+                        }}
+                    >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                </div>
+            ))}
+            </div>
+        </ScrollArea>
+      </aside>
+      <main className="flex-grow h-full">
         {selectedQuestion ? (
              <Tabs defaultValue="question" className="h-full flex flex-col">
                 <TabsList className="grid w-full grid-cols-3">
@@ -263,7 +210,7 @@ export default function AskQuestionPage() {
                 <p>No question selected. Add or select a question to begin.</p>
             </div>
         )}
-      </div>
+      </main>
        <div className="fixed bottom-4 right-4 z-50">
             <Button onClick={handlePublishSession} disabled={isPublishing} size="lg" className="rounded-full shadow-lg">
                 {isPublishing ? (
@@ -280,7 +227,6 @@ export default function AskQuestionPage() {
             </Button>
         </div>
     </div>
-    </>
   );
 }
 
@@ -290,5 +236,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    
