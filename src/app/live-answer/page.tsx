@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
 import { Compiler } from '@/components/codeweave/compiler';
 import { Header } from '@/components/codeweave/header';
 import { db } from '@/lib/firebase';
@@ -11,8 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingPage } from '@/components/loading-page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { nanoid } from 'nanoid';
-
+import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet';
 
 interface LiveQuestion {
     id: string;
@@ -26,12 +26,39 @@ interface LiveSession {
     answers: { [key: string]: string };
 }
 
+
+const SidebarContent = ({ session, selectedQuestionId, onSelectQuestion }: {
+    session: LiveSession | null;
+    selectedQuestionId: string | null;
+    onSelectQuestion: (question: LiveQuestion) => void;
+}) => (
+    <div className="p-2 flex flex-col h-full bg-muted/40">
+        <h2 className="text-lg font-semibold tracking-tight mb-2">Questions</h2>
+        <ScrollArea className="flex-grow">
+            <div className="space-y-1">
+            {(session?.questions || []).map((q, index) => (
+                <div key={q.id} className={cn(
+                    "flex items-center justify-between p-2 rounded-md cursor-pointer group",
+                    selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
+                )} onClick={() => onSelectQuestion(q)}>
+                    <p className="text-sm font-medium truncate flex-grow">
+                    {index + 1}. {q.question}
+                    </p>
+                </div>
+            ))}
+            </div>
+        </ScrollArea>
+    </div>
+);
+
+
 export default function LiveAnswerPage() {
     const { toast } = useToast();
     const [session, setSession] = useState<LiveSession | null>(null);
     const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
     const [currentCode, setCurrentCode] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     useEffect(() => {
         const unsub = onSnapshot(doc(db, "live-qna", "session"), (doc) => {
@@ -67,20 +94,14 @@ export default function LiveAnswerPage() {
     
     // Debounced submission of the answer
     useEffect(() => {
-        if (!selectedQuestionId) return;
+        if (!selectedQuestionId || isLoading) return;
 
-        const selectedQuestion = session?.questions.find(q => q.id === selectedQuestionId);
-        
         const submitAnswer = async () => {
-             // Only submit if the code has changed from the initial state
-             if (currentCode !== selectedQuestion?.initialCode) {
-                const answerPath = `answers.${selectedQuestionId}`;
-                await setDoc(doc(db, 'live-qna', 'session'), { 
-                    answers: {
-                        [selectedQuestionId]: currentCode
-                    }
-                }, { merge: true });
-             }
+             await setDoc(doc(db, 'live-qna', 'session'), { 
+                answers: {
+                    [selectedQuestionId]: currentCode
+                }
+            }, { merge: true });
         };
 
         const handler = setTimeout(() => {
@@ -88,39 +109,42 @@ export default function LiveAnswerPage() {
         }, 500);
 
         return () => clearTimeout(handler);
-    }, [currentCode, selectedQuestionId, session?.questions]);
+    }, [currentCode, selectedQuestionId, isLoading]);
 
     const handleSelectQuestion = (question: LiveQuestion) => {
         setSelectedQuestionId(question.id);
         setCurrentCode(session?.answers[question.id] || question.initialCode);
+        setIsSidebarOpen(false);
     }
 
-    if (isLoading) {
+    if (isLoading && !session) {
         return <LoadingPage />;
     }
     
     const selectedQuestion = session?.questions.find(q => q.id === selectedQuestionId);
 
     return (
-        <div className="flex h-full">
-            <div className="w-64 border-r bg-muted/40 p-2 flex flex-col">
-                <h2 className="text-lg font-semibold tracking-tight mb-2">Questions</h2>
-                <ScrollArea className="flex-grow">
-                    <div className="space-y-1">
-                    {(session?.questions || []).map((q, index) => (
-                        <div key={q.id} className={cn(
-                            "flex items-center justify-between p-2 rounded-md cursor-pointer group",
-                            selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
-                        )} onClick={() => handleSelectQuestion(q)}>
-                            <p className="text-sm font-medium truncate flex-grow">
-                            {index + 1}. {q.question}
-                            </p>
-                        </div>
-                    ))}
-                    </div>
-                </ScrollArea>
+        <>
+        <Header variant="page">
+             <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
+                        <Menu className="w-4 h-4" />
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="p-0 w-72">
+                    <SidebarContent 
+                        session={session}
+                        selectedQuestionId={selectedQuestionId}
+                        onSelectQuestion={handleSelectQuestion}
+                    />
+                </SheetContent>
+            </Sheet>
+            <div className="border rounded-md px-4 py-1.5 bg-muted min-w-0">
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight truncate">Live Q&A</h1>
             </div>
-            
+        </Header>
+        <div className="flex h-[calc(100vh-5rem)]">
             <div className="flex-grow h-full px-4 py-6">
                 {selectedQuestion ? (
                     <div className="space-y-4 h-full flex flex-col">
@@ -146,6 +170,7 @@ export default function LiveAnswerPage() {
                 )}
             </div>
         </div>
+        </>
     );
 }
 
@@ -155,3 +180,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    
