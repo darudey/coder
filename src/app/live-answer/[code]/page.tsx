@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PanelLeft, AlertTriangle } from 'lucide-react';
 import { Compiler } from '@/components/codeweave/compiler';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { LoadingPage } from '@/components/loading-page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -56,7 +56,11 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
             setAccessDenied("You must be signed in to join a session.");
             return;
         }
-        if (!sessionCode) return;
+        if (!sessionCode) {
+            setIsLoading(false);
+            setAccessDenied("No session code provided.");
+            return;
+        }
 
         const sessionRef = doc(db, 'live-sessions', sessionCode);
         const unsub = onSnapshot(sessionRef, async (docSnap) => {
@@ -66,6 +70,7 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
                 if (data.isUsed && data.studentId !== user.uid) {
                     setAccessDenied("This session code has already been used by another student.");
                     setIsLoading(false);
+                    unsub(); // Stop listening if access is denied
                     return;
                 }
                 
@@ -77,20 +82,30 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
                     // The snapshot will update with the new data, so we don't set state here.
                 } else {
                     setSession(data);
+                    // Handle question selection
                     if (!selectedQuestionId && data.questions.length > 0) {
                         const firstQuestionId = data.questions[0].id;
                         setSelectedQuestionId(firstQuestionId);
                         setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
+                    } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
+                        // If the current question was deleted by the teacher, switch to the first one.
+                        const firstQuestionId = data.questions[0]?.id || null;
+                         setSelectedQuestionId(firstQuestionId);
+                         if(firstQuestionId) {
+                            setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
+                         }
                     }
                 }
                 
             } else {
                 setAccessDenied("This session code is invalid or has expired.");
+                unsub(); // Stop listening if doc doesn't exist
             }
             setIsLoading(false);
         }, (error) => {
             console.error("Error listening to live session:", error);
             setIsLoading(false);
+            setAccessDenied("An error occurred while connecting to the session.");
         });
 
         return () => unsub();
@@ -101,18 +116,18 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
         setCurrentCode(newCode);
     }
     
+    const debouncedSave = useCallback(() => {
+        if (!selectedQuestionId || !session) return;
+        const path = `answers.${selectedQuestionId}`;
+        updateDoc(doc(db, 'live-sessions', sessionCode), { 
+            [path]: currentCode
+        });
+    }, [currentCode, selectedQuestionId, session, sessionCode]);
+    
     useEffect(() => {
-        if (!selectedQuestionId || isLoading || !session) return;
-        
-        const handler = setTimeout(() => {
-            const path = `answers.${selectedQuestionId}`;
-            updateDoc(doc(db, 'live-sessions', sessionCode), { 
-                [path]: currentCode
-            });
-        }, 500); // Debounced save
-
+        const handler = setTimeout(debouncedSave, 500);
         return () => clearTimeout(handler);
-    }, [currentCode, selectedQuestionId, isLoading, session, sessionCode]);
+    }, [debouncedSave]);
 
     const handleSelectQuestion = (question: LiveQuestion) => {
         setSelectedQuestionId(question.id);

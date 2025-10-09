@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, onSnapshot, addDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nanoid } from 'nanoid';
 import { cn } from '@/lib/utils';
@@ -56,13 +56,15 @@ export default function AskQuestionPage() {
   useEffect(() => {
     if (!user) return;
     const sessionDocId = `teacher_draft_${user.uid}`;
-    const unsub = onSnapshot(doc(db, "live-qna", sessionDocId), (doc) => {
-        if (doc.exists()) {
-            const data = doc.data() as LiveSession;
+    
+    const unsub = onSnapshot(doc(db, "live-qna", sessionDocId), (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const data = docSnapshot.data() as LiveSession;
             setSession(data);
             if (!selectedQuestionId && data.questions.length > 0) {
                 setSelectedQuestionId(data.questions[0].id);
             } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
+                // If current selection is deleted, select first
                 setSelectedQuestionId(data.questions[0]?.id || null);
             } else if (data.questions.length === 0) {
                  setSelectedQuestionId(null);
@@ -79,21 +81,26 @@ export default function AskQuestionPage() {
                 answers: {}
             };
             setDoc(doc(db, "live-qna", sessionDocId), defaultSession);
-            setSession(defaultSession);
-            setSelectedQuestionId(defaultQuestionId);
+            // Firestore will trigger the snapshot listener again with the new data
         }
     });
     return () => unsub();
   }, [user, selectedQuestionId]);
   
-  useEffect(() => {
+  const handleDebouncedSave = useCallback(() => {
     if (!session || !user) return;
     const sessionDocId = `teacher_draft_${user.uid}`;
-    const handler = setTimeout(() => {
-         setDoc(doc(db, 'live-qna', sessionDocId), session, { merge: true });
-    }, 1000); // Debounce saving
-    return () => clearTimeout(handler);
+    setDoc(doc(db, 'live-qna', sessionDocId), session, { merge: true });
   }, [session, user]);
+
+  // Debounced save effect
+  useEffect(() => {
+    if (!session) return;
+    const handler = setTimeout(() => {
+        handleDebouncedSave();
+    }, 1000); 
+    return () => clearTimeout(handler);
+  }, [session, handleDebouncedSave]);
 
   const handlePublishSession = async () => {
     if (!session || !user) return;
@@ -135,12 +142,14 @@ export default function AskQuestionPage() {
         initialCode: '// Your code here',
         solutionCode: '// Solution'
     };
-    const newQuestions = [...(session?.questions || []), newQuestion];
-    const newSession = {
-        ...(session || { answers: {} }),
-        questions: newQuestions
-    };
-    setSession(newSession);
+    setSession(prev => {
+        const newQuestions = [...(prev?.questions || []), newQuestion];
+        const newSession = {
+            ...(prev || { answers: {} }),
+            questions: newQuestions
+        };
+        return newSession;
+    });
     setSelectedQuestionId(newQuestionId);
   };
 
@@ -149,12 +158,17 @@ export default function AskQuestionPage() {
         toast({ title: "Cannot delete the last question.", variant: 'destructive' });
         return;
     }
-    const newQuestions = session.questions.filter(q => q.id !== idToDelete);
-    setSession(prev => prev ? ({...prev, questions: newQuestions}) : null);
-    
-    if(selectedQuestionId === idToDelete) {
-        setSelectedQuestionId(newQuestions[0]?.id || null);
-    }
+
+    setSession(prev => {
+        if (!prev) return null;
+        const newQuestions = prev.questions.filter(q => q.id !== idToDelete);
+        
+        if(selectedQuestionId === idToDelete) {
+            setSelectedQuestionId(newQuestions[0]?.id || null);
+        }
+
+        return {...prev, questions: newQuestions};
+    });
   };
 
   const updateQuestionField = (questionId: string, field: keyof Omit<LiveQuestion, 'id'>, value: string) => {
