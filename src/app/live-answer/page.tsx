@@ -3,15 +3,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, PanelLeft } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 import { Compiler } from '@/components/codeweave/compiler';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
 import { LoadingPage } from '@/components/loading-page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface LiveQuestion {
     id: string;
@@ -41,9 +40,7 @@ export default function LiveAnswerPage() {
                 if (!selectedQuestionId && data.questions.length > 0) {
                     const firstQuestionId = data.questions[0].id;
                     setSelectedQuestionId(firstQuestionId);
-                    setCurrentCode(data.answers[firstQuestionId] || data.questions[0].initialCode);
-                } else if (selectedQuestionId) {
-                     // This could be enhanced to handle teacher-side updates more gracefully
+                    setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
                 }
 
             } else {
@@ -80,7 +77,7 @@ export default function LiveAnswerPage() {
 
     const handleSelectQuestion = (question: LiveQuestion) => {
         setSelectedQuestionId(question.id);
-        setCurrentCode(session?.answers[question.id] || question.initialCode);
+        setCurrentCode(session?.answers?.[question.id] || question.initialCode);
         setIsSidebarOpen(false);
     }
 
@@ -126,7 +123,7 @@ export default function LiveAnswerPage() {
                 </Sheet>
                 <h1 className="text-lg font-semibold ml-4">Live Q&A Session</h1>
             </header>
-            <main className="flex-grow h-full py-6">
+            <main className="flex-grow h-full pt-6">
                 {selectedQuestion ? (
                     <div className="space-y-4 h-full flex flex-col">
                         <h2 className="text-2xl font-bold tracking-tight px-4">{selectedQuestion.question}</h2>
