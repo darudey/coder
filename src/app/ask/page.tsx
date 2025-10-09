@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Play, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Play, Loader2, Plus, Trash2, PanelLeft } from 'lucide-react';
 import { Compiler, type CompilerRef } from '@/components/codeweave/compiler';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nanoid } from 'nanoid';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface LiveQuestion {
     id: string;
@@ -35,7 +36,7 @@ export default function AskQuestionPage() {
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   
   const [isPublishing, setIsPublishing] = useState(false);
-  const compilerRef = React.useRef<CompilerRef>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Effect to load and subscribe to the session
   useEffect(() => {
@@ -48,6 +49,20 @@ export default function AskQuestionPage() {
             } else if (data.questions.length === 0) {
                 setSelectedQuestionId(null);
             }
+        } else {
+            // If no session, create a default one
+            const defaultQuestionId = nanoid();
+            const defaultSession: LiveSession = {
+                questions: [{
+                    id: defaultQuestionId,
+                    question: 'Welcome! Edit this first question.',
+                    initialCode: '// Your code here',
+                    solutionCode: '// Solution code goes here'
+                }],
+                answers: {}
+            };
+            setSession(defaultSession);
+            setSelectedQuestionId(defaultQuestionId);
         }
     });
     return () => unsub();
@@ -109,10 +124,9 @@ export default function AskQuestionPage() {
   const selectedQuestion = session.questions.find(q => q.id === selectedQuestionId);
   const studentAnswer = selectedQuestionId ? session.answers[selectedQuestionId] || '// Waiting for student answer...' : '// Waiting for student answer...';
 
-  return (
-    <div className="flex h-[calc(100vh-4rem)]">
-      <aside className="w-80 border-r p-2 flex flex-col bg-muted/40">
-        <div className="flex items-center justify-between mb-2">
+  const QuestionList = () => (
+     <div className="p-2 flex flex-col h-full bg-muted/40">
+        <div className="flex items-center justify-between mb-2 px-2">
             <h2 className="text-lg font-semibold tracking-tight">Questions</h2>
             <Button size="icon" variant="ghost" onClick={handleAddQuestion} className="h-7 w-7">
                 <Plus className="w-4 h-4" />
@@ -124,7 +138,10 @@ export default function AskQuestionPage() {
                 <div key={q.id} className={cn(
                     "flex items-center justify-between p-2 rounded-md cursor-pointer group",
                     selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
-                )} onClick={() => setSelectedQuestionId(q.id)}>
+                )} onClick={() => {
+                    setSelectedQuestionId(q.id);
+                    setIsSidebarOpen(false);
+                }}>
                     <p className="text-sm font-medium truncate flex-grow">
                        {index + 1}. {q.question}
                     </p>
@@ -133,7 +150,7 @@ export default function AskQuestionPage() {
                         className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
                         onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteQuestion(q.id);
+                            handleDeleteQuestion(q.id);
                         }}
                     >
                         <Trash2 className="w-4 h-4 text-destructive" />
@@ -142,8 +159,26 @@ export default function AskQuestionPage() {
             ))}
             </div>
         </ScrollArea>
-      </aside>
-      <main className="flex-grow h-full">
+      </div>
+  )
+
+  return (
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+       <header className="flex items-center border-b p-2">
+           <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+               <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
+                        <PanelLeft className="w-4 h-4" />
+                        <span className="sr-only">Open Questions Panel</span>
+                    </Button>
+               </SheetTrigger>
+               <SheetContent side="left" className="p-0 w-80">
+                    <QuestionList />
+               </SheetContent>
+           </Sheet>
+           <h1 className="text-lg font-semibold ml-4">Live Q&A Session</h1>
+       </header>
+       <main className="flex-grow h-full">
         {selectedQuestion ? (
              <Tabs defaultValue="question" className="h-full flex flex-col">
                 <TabsList className="grid w-full grid-cols-3">

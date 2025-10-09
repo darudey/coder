@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PanelLeft } from 'lucide-react';
 import { Compiler } from '@/components/codeweave/compiler';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingPage } from '@/components/loading-page';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface LiveQuestion {
     id: string;
@@ -25,11 +26,11 @@ interface LiveSession {
 }
 
 export default function LiveAnswerPage() {
-    const { toast } = useToast();
     const [session, setSession] = useState<LiveSession | null>(null);
     const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
     const [currentCode, setCurrentCode] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
         const unsub = onSnapshot(doc(db, "live-qna", "session"), (doc) => {
@@ -42,13 +43,7 @@ export default function LiveAnswerPage() {
                     setSelectedQuestionId(firstQuestionId);
                     setCurrentCode(data.answers[firstQuestionId] || data.questions[0].initialCode);
                 } else if (selectedQuestionId) {
-                     const currentAnswer = data.answers[selectedQuestionId];
-                     if (currentCode !== currentAnswer) {
-                        // This handles cases where the teacher might clear the answer,
-                        // or if another student's answer comes through. We only update
-                        // if the remote answer is different from local state to avoid loops.
-                        // A more robust solution would use user-specific answer slots.
-                     }
+                     // This could be enhanced to handle teacher-side updates more gracefully
                 }
 
             } else {
@@ -57,7 +52,7 @@ export default function LiveAnswerPage() {
             setIsLoading(false);
         });
         return () => unsub();
-    }, [selectedQuestionId, currentCode]);
+    }, [selectedQuestionId]);
 
     const handleCodeChange = (newCode: string) => {
         setCurrentCode(newCode);
@@ -86,6 +81,7 @@ export default function LiveAnswerPage() {
     const handleSelectQuestion = (question: LiveQuestion) => {
         setSelectedQuestionId(question.id);
         setCurrentCode(session?.answers[question.id] || question.initialCode);
+        setIsSidebarOpen(false);
     }
 
     if (isLoading && !session) {
@@ -94,25 +90,42 @@ export default function LiveAnswerPage() {
     
     const selectedQuestion = session?.questions.find(q => q.id === selectedQuestionId);
 
-    return (
-        <div className="flex h-[calc(100vh-4rem)]">
-             <aside className="w-80 border-r p-2 flex flex-col bg-muted/40">
-                <h2 className="text-lg font-semibold tracking-tight mb-2">Questions</h2>
-                <ScrollArea className="flex-grow">
-                    <div className="space-y-1">
-                    {(session?.questions || []).map((q, index) => (
-                        <div key={q.id} className={cn(
-                            "flex items-center justify-between p-2 rounded-md cursor-pointer group",
-                            selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
-                        )} onClick={() => handleSelectQuestion(q)}>
-                            <p className="text-sm font-medium truncate flex-grow">
-                               {index + 1}. {q.question}
-                            </p>
-                        </div>
-                    ))}
+    const QuestionList = () => (
+        <div className="p-2 flex flex-col h-full bg-muted/40">
+            <h2 className="text-lg font-semibold tracking-tight mb-2 px-2">Questions</h2>
+            <ScrollArea className="flex-grow">
+                <div className="space-y-1">
+                {(session?.questions || []).map((q, index) => (
+                    <div key={q.id} className={cn(
+                        "flex items-center justify-between p-2 rounded-md cursor-pointer group",
+                        selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
+                    )} onClick={() => handleSelectQuestion(q)}>
+                        <p className="text-sm font-medium truncate flex-grow">
+                           {index + 1}. {q.question}
+                        </p>
                     </div>
-                </ScrollArea>
-             </aside>
+                ))}
+                </div>
+            </ScrollArea>
+        </div>
+    );
+
+    return (
+        <div className="h-[calc(100vh-4rem)] flex flex-col">
+            <header className="flex items-center border-b p-2">
+                <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                    <SheetTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-8 w-8">
+                            <PanelLeft className="w-4 h-4" />
+                            <span className="sr-only">Open Questions Panel</span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="p-0 w-80">
+                        <QuestionList />
+                    </SheetContent>
+                </Sheet>
+                <h1 className="text-lg font-semibold ml-4">Live Q&A Session</h1>
+            </header>
             <main className="flex-grow h-full px-4 py-6">
                 {selectedQuestion ? (
                     <div className="space-y-4 h-full flex flex-col">
@@ -133,7 +146,13 @@ export default function LiveAnswerPage() {
                     </div>
                 ) : (
                     <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md h-full flex items-center justify-center">
-                        <p>Waiting for the teacher to publish a live question...</p>
+                        <div className="max-w-md mx-auto">
+                            <h2 className="text-xl font-semibold mb-2">Live Q&A Session</h2>
+                            <p>
+                                Welcome! Your teacher will publish questions here in real-time.
+                                When a question appears, you can select it from the sidebar to start answering.
+                            </p>
+                        </div>
                     </div>
                 )}
             </main>
