@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -53,8 +54,11 @@ export default function AskQuestionPage() {
             setSession(data);
             if (!selectedQuestionId && data.questions.length > 0) {
                 setSelectedQuestionId(data.questions[0].id);
+            } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
+                // If the selected question was deleted by another user, select the first one.
+                setSelectedQuestionId(data.questions[0]?.id || null);
             } else if (data.questions.length === 0) {
-                setSelectedQuestionId(null);
+                 setSelectedQuestionId(null);
             }
         } else {
             // If no session, create a default one
@@ -68,12 +72,12 @@ export default function AskQuestionPage() {
                 }],
                 answers: {}
             };
-            setSession(defaultSession);
-            setSelectedQuestionId(defaultQuestionId);
+            setDoc(doc(db, "live-qna", "session"), defaultSession);
+            // The onSnapshot listener will then pick up this new session and set the state.
         }
     });
     return () => unsub();
-  }, []);
+  }, [selectedQuestionId]);
 
   const handlePublishSession = async () => {
     if (!session) return;
@@ -103,7 +107,12 @@ export default function AskQuestionPage() {
         initialCode: '// Your code here',
         solutionCode: '// Solution'
     };
-    setSession(prev => prev ? ({ ...prev, questions: [...prev.questions, newQuestion] }) : { questions: [newQuestion], answers: {} });
+    const newQuestions = [...(session?.questions || []), newQuestion];
+    const newSession = {
+        ...(session || { answers: {} }),
+        questions: newQuestions
+    };
+    setSession(newSession);
     setSelectedQuestionId(newQuestionId);
   };
 
@@ -123,11 +132,12 @@ export default function AskQuestionPage() {
   const updateQuestionField = (questionId: string, field: keyof Omit<LiveQuestion, 'id'>, value: string) => {
       setSession(prev => {
           if (!prev) return null;
+          const newQuestions = prev.questions.map(q => 
+            q.id === questionId ? { ...q, [field]: value } : q
+          );
           return {
               ...prev,
-              questions: prev.questions.map(q => 
-                  q.id === questionId ? { ...q, [field]: value } : q
-              )
+              questions: newQuestions
           }
       });
   };
@@ -203,7 +213,7 @@ export default function AskQuestionPage() {
            </Sheet>
            <h1 className="text-lg font-semibold ml-4">Live Q&A Session</h1>
        </header>
-       <main className="flex-grow h-full">
+       <main className="flex-grow h-full pt-6">
         {selectedQuestion ? (
              <Tabs defaultValue="question" className="h-full flex flex-col">
                 <TabsList className="grid w-full grid-cols-3">
@@ -319,3 +329,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    
