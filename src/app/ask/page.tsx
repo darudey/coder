@@ -65,74 +65,79 @@ export default function AskQuestionPage() {
         </div>
       </Header>
 
-      <div className="space-y-4">
-        <Tabs defaultValue="question">
+      <div className="h-full">
+        <Tabs defaultValue="question" className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="question">Question</TabsTrigger>
                 <TabsTrigger value="solution">Solution</TabsTrigger>
                 <TabsTrigger value="studentAnswer">Student's Answer</TabsTrigger>
             </TabsList>
-            <TabsContent value="question" className="mt-4 px-4 py-6 space-y-4">
-                <h2 className="text-2xl font-bold tracking-tight">Compose Question</h2>
-                <div className="grid gap-2">
-                    <Label htmlFor="live-question">Question Text</Label>
-                    <Textarea 
-                        id="live-question"
-                        placeholder="What does this code do?"
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label>Initial Code (for student)</Label>
-                    <div className="h-full min-h-[300px] border rounded-md">
-                        <Compiler 
-                            onCodeChange={setInitialCode}
-                            initialCode={initialCode} 
-                            variant="minimal" hideHeader 
-                            key="initial-code"
+            <TabsContent value="question" className="mt-4 flex-grow">
+                <div className="flex flex-col h-full gap-4">
+                    <div className="grid gap-2 px-4">
+                        <Label htmlFor="live-question">Question Text</Label>
+                        <Textarea 
+                            id="live-question"
+                            placeholder="What does this code do?"
+                            value={question}
+                            onChange={(e) => setQuestion(e.target.value)}
                         />
                     </div>
-                </div>
-                    <Button onClick={handlePublishQuestion} disabled={isPublishing}>
-                    {isPublishing ? (
-                        <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Publishing...
-                        </>
-                    ) : (
-                        <>
-                            <Play className="w-4 h-4 mr-2" />
-                            Publish Question
-                        </>
-                    )}
-                </Button>
-            </TabsContent>
-            <TabsContent value="solution" className="mt-4 px-4 py-6 space-y-4">
-                <h2 className="text-2xl font-bold tracking-tight">Your Solution</h2>
-                <div className="grid gap-2">
-                    <Label>Solution Code</Label>
-                        <div className="h-full min-h-[300px] border rounded-md">
-                        <Compiler
-                            onCodeChange={setSolutionCode}
-                            initialCode={solutionCode}
-                            variant="minimal" hideHeader
-                            key="solution-code"
-                        />
+                    <div className="grid gap-2 flex-grow">
+                        <Label className="px-4">Initial Code (for student)</Label>
+                        <div className="h-full min-h-[300px] border-t">
+                            <Compiler 
+                                onCodeChange={setInitialCode}
+                                initialCode={initialCode} 
+                                variant="minimal" hideHeader 
+                                key="initial-code"
+                            />
+                        </div>
+                    </div>
+                    <div className="px-4 pb-4">
+                        <Button onClick={handlePublishQuestion} disabled={isPublishing}>
+                        {isPublishing ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Publishing...
+                            </>
+                        ) : (
+                            <>
+                                <Play className="w-4 h-4 mr-2" />
+                                Publish Question
+                            </>
+                        )}
+                    </Button>
                     </div>
                 </div>
             </TabsContent>
-            <TabsContent value="studentAnswer" className="mt-4 px-4 py-6 space-y-4">
-                <h2 className="text-2xl font-bold tracking-tight">Student's Answer</h2>
-                    <div className="grid gap-2">
-                    <Label>Submitted Code</Label>
-                        <div className="h-full min-h-[300px] border rounded-md bg-muted/50">
+            <TabsContent value="solution" className="mt-4 flex-grow">
+                 <div className="flex flex-col h-full gap-4">
+                    <div className="grid gap-2 flex-grow">
+                        <Label className="px-4">Solution Code</Label>
+                            <div className="h-full min-h-[300px] border-t">
+                            <Compiler
+                                onCodeChange={setSolutionCode}
+                                initialCode={solutionCode}
+                                variant="minimal" hideHeader
+                                key="solution-code"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </TabsContent>
+            <TabsContent value="studentAnswer" className="mt-4 flex-grow">
+                <div className="flex flex-col h-full gap-4">
+                    <div className="grid gap-2 flex-grow">
+                    <Label className="px-4">Submitted Code</Label>
+                        <div className="h-full min-h-[300px] border-t">
                         <Compiler
                             initialCode={studentAnswer}
                             variant="minimal" hideHeader
                             key={studentAnswer} // Re-mount compiler when answer changes
                         />
                     </div>
+                </div>
                 </div>
             </TabsContent>
         </Tabs>
