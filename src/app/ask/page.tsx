@@ -1,15 +1,14 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Play, Loader2, Plus, Trash2, PanelLeft } from 'lucide-react';
+import { Play, Loader2, Plus, Trash2, PanelLeft, Share2 } from 'lucide-react';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, addDoc, collection } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nanoid } from 'nanoid';
 import { cn } from '@/lib/utils';
@@ -18,6 +17,9 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/co
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { OutputDisplay } from '@/components/codeweave/output-display';
 import { DotLoader } from '@/components/codeweave/dot-loader';
+import { useAuth } from '@/hooks/use-auth';
+import { Input } from '@/components/ui/input';
+import { Copy } from 'lucide-react';
 
 interface LiveQuestion {
     id: string;
@@ -34,6 +36,7 @@ interface LiveSession {
 
 export default function AskQuestionPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [session, setSession] = useState<LiveSession | null>(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
@@ -46,22 +49,25 @@ export default function AskQuestionPage() {
   const [isSolutionRunning, setIsSolutionRunning] = useState(false);
   const [isResultOpen, setIsResultOpen] = useState(false);
 
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [sessionCode, setSessionCode] = useState('');
+
   // Effect to load and subscribe to the session
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "live-qna", "session"), (doc) => {
+    if (!user) return;
+    const sessionDocId = `teacher_draft_${user.uid}`;
+    const unsub = onSnapshot(doc(db, "live-qna", sessionDocId), (doc) => {
         if (doc.exists()) {
             const data = doc.data() as LiveSession;
             setSession(data);
             if (!selectedQuestionId && data.questions.length > 0) {
                 setSelectedQuestionId(data.questions[0].id);
             } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
-                // If the selected question was deleted by another user, select the first one.
                 setSelectedQuestionId(data.questions[0]?.id || null);
             } else if (data.questions.length === 0) {
                  setSelectedQuestionId(null);
             }
         } else {
-            // If no session, create a default one
             const defaultQuestionId = nanoid();
             const defaultSession: LiveSession = {
                 questions: [{
@@ -72,21 +78,43 @@ export default function AskQuestionPage() {
                 }],
                 answers: {}
             };
-            setDoc(doc(db, "live-qna", "session"), defaultSession);
-            // The onSnapshot listener will then pick up this new session and set the state.
+            setDoc(doc(db, "live-qna", sessionDocId), defaultSession);
+            setSession(defaultSession);
+            setSelectedQuestionId(defaultQuestionId);
         }
     });
     return () => unsub();
-  }, [selectedQuestionId]);
+  }, [user, selectedQuestionId]);
+  
+  useEffect(() => {
+    if (!session || !user) return;
+    const sessionDocId = `teacher_draft_${user.uid}`;
+    const handler = setTimeout(() => {
+         setDoc(doc(db, 'live-qna', sessionDocId), session, { merge: true });
+    }, 1000); // Debounce saving
+    return () => clearTimeout(handler);
+  }, [session, user]);
 
   const handlePublishSession = async () => {
-    if (!session) return;
+    if (!session || !user) return;
     setIsPublishing(true);
+
+    const newSessionCode = nanoid(6);
     try {
-        await setDoc(doc(db, 'live-qna', 'session'), session, { merge: true });
+        await setDoc(doc(db, 'live-sessions', newSessionCode), {
+            teacherId: user.uid,
+            studentId: null,
+            isUsed: false,
+            questions: session.questions,
+            answers: {},
+        });
+
+        setSessionCode(newSessionCode);
+        setShareDialogOpen(true);
+
         toast({
             title: "Session Published",
-            description: "The questions are now live for students.",
+            description: "Share the code with your student to begin.",
         });
     } catch (e) {
         console.error("Failed to publish session: ", e);
@@ -152,6 +180,11 @@ export default function AskQuestionPage() {
         setSolutionOutput(result);
         setIsSolutionRunning(false);
     }
+  }
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(sessionCode);
+    toast({ title: "Copied!", description: "Session code copied to clipboard." });
   }
 
   const selectedQuestion = session?.questions.find(q => q.id === selectedQuestionId);
@@ -275,7 +308,7 @@ export default function AskQuestionPage() {
                             <Compiler
                                 initialCode={studentAnswer}
                                 variant="minimal" hideHeader
-                                key={studentAnswer} // Re-mount compiler when answer changes
+                                key={studentAnswer} 
                             />
                         </div>
                     </div>
@@ -297,7 +330,7 @@ export default function AskQuestionPage() {
                     </>
                 ) : (
                     <>
-                        <Play className="w-4 h-4 mr-2" />
+                        <Share2 className="w-4 h-4 mr-2" />
                         Publish Session
                     </>
                 )}
@@ -319,15 +352,28 @@ export default function AskQuestionPage() {
             </div>
             </DialogContent>
         </Dialog>
+         <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+            <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Session Published!</DialogTitle>
+                <DialogDescription>
+                    Share this one-time code with your student to start the session.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center space-x-2 pt-2">
+                <Input value={sessionCode} readOnly className="font-mono text-lg tracking-widest" />
+                <Button onClick={handleCopyCode} size="icon" className="shrink-0" disabled={!sessionCode}>
+                    <Copy className="h-4 w-4" />
+                </Button>
+            </div>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
 
-// Add onCodeChange to Compiler props
 declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    

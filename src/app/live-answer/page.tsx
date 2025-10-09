@@ -1,184 +1,74 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { PanelLeft } from 'lucide-react';
-import { Compiler } from '@/components/codeweave/compiler';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { LoadingPage } from '@/components/loading-page';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
-interface LiveQuestion {
-    id: string;
-    question: string;
-    initialCode: string;
-    solutionCode: string;
-}
+export default function EnterCodePage() {
+    const [code, setCode] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
+    const { toast } = useToast();
 
-interface LiveSession {
-    questions: LiveQuestion[];
-    answers: { [key: string]: string };
-}
-
-export default function LiveAnswerPage() {
-    const [session, setSession] = useState<LiveSession | null>(null);
-    const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
-    const [currentCode, setCurrentCode] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-    useEffect(() => {
+    const handleJoinSession = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!code || code.length < 6) {
+            toast({ title: "Invalid Code", description: "Please enter a valid session code.", variant: "destructive" });
+            return;
+        }
         setIsLoading(true);
-        const unsub = onSnapshot(doc(db, "live-qna", "session"), (doc) => {
-            if (doc.exists()) {
-                const data = doc.data() as LiveSession;
-                setSession(data);
-                
-                // This logic runs every time the session document changes.
-                // We need to be careful about when we select a question.
-                
-                // If no question is selected, and there are questions available, select the first one.
-                if (!selectedQuestionId && data.questions.length > 0) {
-                    const firstQuestionId = data.questions[0].id;
-                    setSelectedQuestionId(firstQuestionId);
-                    setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
-                } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
-                    // If the currently selected question was deleted by the teacher, select the first available one.
-                    const firstQuestionId = data.questions[0]?.id;
-                    setSelectedQuestionId(firstQuestionId || null);
-                    if (firstQuestionId) {
-                        setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
-                    }
-                }
+
+        const sessionRef = doc(db, 'live-sessions', code);
+        try {
+            const sessionSnap = await getDoc(sessionRef);
+            if (sessionSnap.exists()) {
+                router.push(`/live-answer/${code}`);
             } else {
-                // If the session document doesn't exist or is deleted.
-                setSession(null);
-                setSelectedQuestionId(null);
-                setCurrentCode('');
+                toast({ title: "Not Found", description: "This session code does not exist.", variant: "destructive" });
+                setIsLoading(false);
             }
-            setIsLoading(false); // Only set loading to false after processing.
-        }, (error) => {
-            console.error("Error listening to live session:", error);
-            setIsLoading(false); // Also stop loading on error.
-        });
-
-        return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // This effect should only run once.
-
-    const handleCodeChange = (newCode: string) => {
-        setCurrentCode(newCode);
-    }
-    
-    // Debounced submission of the answer
-    useEffect(() => {
-        if (!selectedQuestionId || isLoading) return;
-
-        const submitAnswer = async () => {
-             await setDoc(doc(db, 'live-qna', 'session'), { 
-                answers: {
-                    [selectedQuestionId]: currentCode
-                }
-            }, { merge: true });
-        };
-
-        const handler = setTimeout(() => {
-            submitAnswer();
-        }, 500);
-
-        return () => clearTimeout(handler);
-    }, [currentCode, selectedQuestionId, isLoading]);
-
-
-    const handleSelectQuestion = (question: LiveQuestion) => {
-        setSelectedQuestionId(question.id);
-        setCurrentCode(session?.answers?.[question.id] || question.initialCode);
-        setIsSidebarOpen(false);
-    }
-
-    if (isLoading) {
-        return <LoadingPage />;
-    }
-    
-    const selectedQuestion = session?.questions.find(q => q.id === selectedQuestionId);
-
-    const QuestionList = () => (
-        <div className="p-2 flex flex-col h-full bg-muted/40">
-            <h2 className="text-lg font-semibold tracking-tight mb-2 px-2">Questions</h2>
-            <ScrollArea className="flex-grow">
-                <div className="space-y-1">
-                {(session?.questions || []).map((q, index) => (
-                    <div key={q.id} className={cn(
-                        "flex items-center justify-between p-2 rounded-md cursor-pointer group",
-                        selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
-                    )} onClick={() => handleSelectQuestion(q)}>
-                        <p className="text-sm font-medium truncate flex-grow">
-                           {index + 1}. {q.question}
-                        </p>
-                    </div>
-                ))}
-                </div>
-            </ScrollArea>
-        </div>
-    );
+        } catch (error) {
+            console.error("Error joining session:", error);
+            toast({ title: "Error", description: "Could not join the session. Please try again.", variant: "destructive" });
+            setIsLoading(false);
+        }
+    };
 
     return (
-        <div className="h-[calc(100vh-4rem)] flex flex-col">
-            <header className="flex items-center border-b p-2">
-                <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-                    <SheetTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8">
-                            <PanelLeft className="w-4 h-4" />
-                            <span className="sr-only">Open Questions Panel</span>
+        <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-8rem)]">
+            <Card className="w-full max-w-sm">
+                <CardHeader className="text-center">
+                    <CardTitle className="text-2xl">Join Live Session</CardTitle>
+                    <CardDescription>Enter the code from your teacher to begin.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleJoinSession} className="space-y-4">
+                        <Input
+                            placeholder="e.g., aB1cDe"
+                            value={code}
+                            onChange={(e) => setCode(e.target.value)}
+                            className="text-center text-lg font-mono tracking-widest"
+                            maxLength={6}
+                        />
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Joining...
+                                </>
+                            ) : (
+                                "Join Session"
+                            )}
                         </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="p-0 w-80">
-                        <QuestionList />
-                    </SheetContent>
-                </Sheet>
-                <h1 className="text-lg font-semibold ml-4">Live Q&A Session</h1>
-            </header>
-            <main className="flex-grow pt-6">
-                {selectedQuestion ? (
-                    <div className="space-y-4 h-full flex flex-col">
-                        <h2 className="text-2xl font-bold tracking-tight px-4">{selectedQuestion.question}</h2>
-                        
-                        <div className="grid gap-2 flex-grow">
-                            <p className="text-sm font-medium px-4">Your Answer</p>
-                            <div className="h-full min-h-[400px]">
-                                <Compiler
-                                    onCodeChange={handleCodeChange}
-                                    initialCode={currentCode}
-                                    variant="minimal"
-                                    hideHeader
-                                    key={selectedQuestion.id} // Force re-mount when question changes
-                                />
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-md h-full flex items-center justify-center mx-4">
-                        <div className="max-w-md mx-auto">
-                            <h2 className="text-xl font-semibold mb-2">Live Q&A Session</h2>
-                            <p>
-                                Welcome! Your teacher will publish questions here in real-time.
-                                When a question appears, you can select it from the sidebar to start answering.
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </main>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
-}
-
-// Add onCodeChange to Compiler props
-declare module '@/components/codeweave/compiler' {
-    interface CompilerProps {
-        onCodeChange?: (code: string) => void;
-    }
 }
