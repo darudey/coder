@@ -33,23 +33,34 @@ export default function LiveAnswerPage() {
 
     useEffect(() => {
         const unsub = onSnapshot(doc(db, "live-qna", "session"), (doc) => {
+            setIsLoading(true);
             if (doc.exists()) {
                 const data = doc.data() as LiveSession;
                 setSession(data);
                 
+                // If no question is selected yet, and there are questions available, select the first one.
                 if (!selectedQuestionId && data.questions.length > 0) {
                     const firstQuestionId = data.questions[0].id;
                     setSelectedQuestionId(firstQuestionId);
                     setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
+                } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
+                    // If the currently selected question was deleted, select the first available one.
+                    const firstQuestionId = data.questions[0]?.id;
+                    setSelectedQuestionId(firstQuestionId || null);
+                    if (firstQuestionId) {
+                        setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
+                    }
                 }
-
             } else {
                 setSession(null);
+                setSelectedQuestionId(null);
+                setCurrentCode('');
             }
             setIsLoading(false);
         });
         return () => unsub();
-    }, [selectedQuestionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleCodeChange = (newCode: string) => {
         setCurrentCode(newCode);
@@ -81,7 +92,7 @@ export default function LiveAnswerPage() {
         setIsSidebarOpen(false);
     }
 
-    if (isLoading && !session) {
+    if (isLoading) {
         return <LoadingPage />;
     }
     
@@ -123,7 +134,7 @@ export default function LiveAnswerPage() {
                 </Sheet>
                 <h1 className="text-lg font-semibold ml-4">Live Q&A Session</h1>
             </header>
-            <main className="flex-grow h-full pt-6">
+            <main className="flex-grow pt-6">
                 {selectedQuestion ? (
                     <div className="space-y-4 h-full flex flex-col">
                         <h2 className="text-2xl font-bold tracking-tight px-4">{selectedQuestion.question}</h2>
