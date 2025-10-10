@@ -503,7 +503,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         <div className="h-[75vh]" />
       </div>
 
-      <div className="fixed top-20 right-8 z-50">
+      <div className="fixed top-20 right-8 z-[1000]">
         {!hasUnsavedChanges ? (
             <Button disabled size="lg" className="rounded-full shadow-lg">
                 <Check className="w-5 h-5 mr-2" />
@@ -535,3 +535,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    
