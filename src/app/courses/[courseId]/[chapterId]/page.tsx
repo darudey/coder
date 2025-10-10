@@ -361,9 +361,3 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
     </>
   );
 }
-
-    
-
-    
-
-    
