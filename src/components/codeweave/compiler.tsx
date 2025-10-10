@@ -17,6 +17,7 @@ import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
 import { Copy } from 'lucide-react';
 import { DotLoader } from './dot-loader';
+import { errorCheck } from '@/ai/flows/error-checking';
 
 const defaultCode = `// Welcome to 24HrCoding!
 // Use the settings panel to save and load your creations.
@@ -30,6 +31,7 @@ console.log(greet('World'));
 export interface RunResult {
     output: string;
     type: 'result' | 'error';
+    aiAnalysis?: string;
 }
 
 export interface Settings {
@@ -379,10 +381,18 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     
     if (settings.errorChecking) {
       setIsAiChecking(true);
-      // This will be replaced by error explanation logic
       result = await runCodeOnClient(code);
       if (result.type === 'error') {
-        // Here we'd call the new AI action
+        try {
+          const aiResult = await errorCheck({ code });
+          if(aiResult.hasErrors && aiResult.errors.length > 0) {
+            const analysis = aiResult.errors.map(e => `- **${e.summary}**\n  ${e.explanation}`).join('\n\n');
+            result.aiAnalysis = `#### AI Analysis\n${analysis}`;
+          }
+        } catch (e: any) {
+            console.error("AI error check failed:", e);
+            result.aiAnalysis = "AI analysis failed. Please check your Gemini API key and try again.";
+        }
       }
       setIsAiChecking(false);
     } else {
@@ -601,7 +611,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   return (
     <div className="bg-background">
-      <div className="sticky top-0 z-20 bg-background">
+      <div className="sticky top-0 z-[999] bg-background">
         {!hideHeader && (
           <Header 
             onRun={handleRun} 
@@ -726,3 +736,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    

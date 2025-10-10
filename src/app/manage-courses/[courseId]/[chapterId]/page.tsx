@@ -301,7 +301,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
             </div>
              {showKeyboard && (
                 <div id="coder-keyboard" className={cn(
-                    "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+                    "fixed bottom-0 left-0 right-0 transition-transform duration-300 ease-in-out z-[999]",
                     isKeyboardVisible ? "translate-y-0" : "translate-y-full"
                 )}>
                     <CoderKeyboard 
@@ -336,6 +336,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
   
   const syntaxCompilerRef = React.useRef<CompilerRef>(null);
   const solutionCompilerRef = React.useRef<CompilerRef>(null);
+  const practiceQuestionEditorRef = React.useRef<RichTextEditorRef>(null);
 
   const course = !loading ? courses.find((c) => c.id === params.courseId) : undefined;
   const chapter = !loading ? course?.chapters.find((ch) => ch.id === params.chapterId) : undefined;
@@ -356,7 +357,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
             // Ensure all segments have unique IDs
             const topicWithIds = {
                 ...initialTopic,
-                notes: initialTopic.notes.map(note => ({...note, id: note.id || nanoid() }))
+                notes: initialTopic.notes.map(note => ({...note, id: note.id || nanoid() })),
+                practice: initialTopic.practice.map(p => ({...p, id: p.id || nanoid() }))
             };
             setTopic(JSON.parse(JSON.stringify(topicWithIds)));
         } else {
@@ -485,12 +487,15 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         finalTopic.syntax = syntaxCompilerRef.current.getCode();
     }
     
-    // Get practice question codes
-    finalTopic.practice = topic.practice.map(pq => {
-        const solutionCode = solutionCompilerRef.current?.getCode(); 
+    finalTopic.practice = topic.practice.map((pq, index) => {
         let updatedPq = {...pq};
-        if (pq.id === currentPracticeQuestion?.id && solutionCode) {
-            updatedPq.solutionCode = solutionCode;
+        if (index === practiceQuestionIndex) {
+            if (solutionCompilerRef.current) {
+                updatedPq.solutionCode = solutionCompilerRef.current.getCode();
+            }
+             if (practiceQuestionEditorRef.current) {
+                updatedPq.question = practiceQuestionEditorRef.current.getValue();
+            }
         }
         return updatedPq;
     });
@@ -707,6 +712,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     <div className="grid gap-2">
                                         <Label htmlFor={`pq-question-${practiceQuestionIndex}`}>Question {practiceQuestionIndex + 1}</Label>
                                         <RichTextEditor
+                                            ref={practiceQuestionEditorRef}
                                             key={`pq-question-${currentPracticeQuestion.id}`}
                                             initialValue={currentPracticeQuestion.question}
                                             onContentChange={(newContent) => handlePracticeQuestionChange(practiceQuestionIndex, 'question', newContent)}
@@ -816,3 +822,5 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
+
+    

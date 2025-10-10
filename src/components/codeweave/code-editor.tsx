@@ -543,8 +543,9 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         </CardContent>
       </Card>
       <div id="coder-keyboard" className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
-        showKeyboard ? "translate-y-0" : "translate-y-full"
+        "fixed bottom-0 left-0 right-0 transition-transform duration-300 ease-in-out",
+        showKeyboard ? "translate-y-0" : "translate-y-full",
+        "z-[999]"
       )}>
         <CoderKeyboard 
             onKeyPress={handleKeyPress} 
@@ -577,3 +578,5 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
+
+    
