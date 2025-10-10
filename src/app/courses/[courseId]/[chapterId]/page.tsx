@@ -206,7 +206,7 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                                     <div className="flex justify-between items-center">
                                         <div>
                                             <CardTitle className="text-sm">Practice Question {practiceQuestionIndex + 1}</CardTitle>
-                                            <p className="text-xs text-muted-foreground mt-1">{currentPracticeQuestion.question}</p>
+                                            <div className="text-sm text-muted-foreground mt-1 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: currentPracticeQuestion.question }} />
                                         </div>
                                         <div className="flex gap-2">
                                             <Button variant="outline" size="icon" onClick={handlePrevQuestion} disabled={practiceQuestionIndex === 0}>
