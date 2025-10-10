@@ -383,7 +383,7 @@ export const NoteCodeEditor = React.forwardRef<HTMLTextAreaElement, NoteCodeEdit
                 />
             </div>
             {showKeyboard && <div id="coder-keyboard" className={cn(
-                "fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+                "fixed bottom-0 left-0 right-0 z-[999] transition-transform duration-300 ease-in-out",
                 isKeyboardVisible ? "translate-y-0" : "translate-y-full"
             )}>
                 <CoderKeyboard 
@@ -399,3 +399,5 @@ export const NoteCodeEditor = React.forwardRef<HTMLTextAreaElement, NoteCodeEdit
     );
 });
 NoteCodeEditor.displayName = 'NoteCodeEditor';
+
+    

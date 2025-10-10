@@ -132,7 +132,7 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
             <div className="container mx-auto px-4 md:px-8">
               <p className="text-muted-foreground text-sm mt-1">{chapter.title}</p>
             </div>
-            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-30 border-b">
+            <TabsList className="grid w-full grid-cols-4 mx-auto max-w-xl sticky top-0 bg-background z-[999] border-b">
                 <TabsTrigger value="video"><Video className="w-4 h-4 mr-2" />Video</TabsTrigger>
                 <TabsTrigger value="notes"><StickyNote className="w-4 h-4 mr-2" />Notes</TabsTrigger>
                 <TabsTrigger value="syntax"><Code className="w-4 h-4 mr-2" />Syntax</TabsTrigger>
@@ -260,3 +260,5 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
     </>
   );
 }
+
+    
