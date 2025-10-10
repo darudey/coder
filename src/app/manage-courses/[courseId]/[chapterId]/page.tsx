@@ -693,7 +693,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                             <Button variant="outline" size="icon" onClick={handlePrevQuestion} disabled={practiceQuestionIndex === 0}>
                                                 <ChevronLeft className="w-4 h-4" />
                                             </Button>
-                                            <Button variant="outline" size="icon" onClick={handleNextQuestion} disabled={practiceQuestionIndex === (topic.practice?.length || 0) - 1}>
+                                            <Button variant="outline" size="icon" onClick={handleNextQuestion} disabled={(topic.practice?.length || 0) - 1 === practiceQuestionIndex}>
                                                 <ChevronRight className="w-4 h-4" />
                                             </Button>
                                             <Button variant="outline" onClick={handleAddPracticeQuestion}>
@@ -706,11 +706,10 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor={`pq-question-${practiceQuestionIndex}`}>Question {practiceQuestionIndex + 1}</Label>
-                                        <Textarea 
-                                            id={`pq-question-${practiceQuestionIndex}`}
-                                            placeholder="What does this code do?"
-                                            value={currentPracticeQuestion.question}
-                                            onChange={(e) => handlePracticeQuestionChange(practiceQuestionIndex, 'question', e.target.value)}
+                                        <RichTextEditor
+                                            key={`pq-question-${currentPracticeQuestion.id}`}
+                                            initialValue={currentPracticeQuestion.question}
+                                            onContentChange={(newContent) => handlePracticeQuestionChange(practiceQuestionIndex, 'question', newContent)}
                                         />
                                     </div>
                                 </CardHeader>
