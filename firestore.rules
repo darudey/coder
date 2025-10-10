@@ -1,0 +1,38 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /shares/{shareId} {
+      allow read, create: if true;
+    }
+
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.role in ['teacher', 'developer'];
+    }
+
+    match /live-qna/teacher_draft_{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /live-sessions/{sessionId} {
+      // Teacher can create. Student can claim by writing their ID.
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && (resource.data.teacherId == request.auth.uid || resource.data.studentId == request.auth.uid);
+      allow update: if request.auth != null && 
+        // Student claiming the session for the first time
+        (request.resource.data.studentId == request.auth.uid && resource.data.studentId == null) ||
+        // Student submitting an answer
+        (resource.data.studentId == request.auth.uid) ||
+        // Teacher managing the session
+        (resource.data.teacherId == request.auth.uid);
+    }
+  }
+}
