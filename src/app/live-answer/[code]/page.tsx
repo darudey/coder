@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -170,9 +171,7 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
                         "flex items-center justify-between p-2 rounded-md cursor-pointer group",
                         selectedQuestionId === q.id ? 'bg-primary/20' : 'hover:bg-accent'
                     )} onClick={() => handleSelectQuestion(q)}>
-                        <p className="text-sm font-medium truncate flex-grow">
-                           {index + 1}. {q.question}
-                        </p>
+                        <div className="text-sm font-medium truncate flex-grow prose dark:prose-invert max-w-full" dangerouslySetInnerHTML={{ __html: `${index + 1}. ${q.question}`}} />
                     </div>
                 ))}
                 </div>
@@ -199,7 +198,7 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
             <main className="flex-grow pt-6">
                 {selectedQuestion ? (
                     <div className="space-y-4 h-full flex flex-col">
-                        <h2 className="text-2xl font-bold tracking-tight px-4">{selectedQuestion.question}</h2>
+                         <div className="px-4 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedQuestion.question }} />
                         
                         <div className="grid gap-2 flex-grow">
                             <p className="text-sm font-medium px-4">Your Answer</p>

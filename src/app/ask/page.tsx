@@ -1,10 +1,10 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Play, Loader2, Plus, Trash2, PanelLeft, Share2 } from 'lucide-react';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -20,6 +20,7 @@ import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from '@/components/ui/input';
 import { Copy } from 'lucide-react';
+import RichTextEditor, { type RichTextEditorRef } from '@/components/codeweave/rich-text-editor';
 
 interface LiveQuestion {
     id: string;
@@ -45,6 +46,7 @@ export default function AskQuestionPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const solutionCompilerRef = useRef<CompilerRef>(null);
+  const questionEditorRef = useRef<RichTextEditorRef>(null);
   const [solutionOutput, setSolutionOutput] = useState<RunResult | null>(null);
   const [isSolutionRunning, setIsSolutionRunning] = useState(false);
   const [isResultOpen, setIsResultOpen] = useState(false);
@@ -74,7 +76,7 @@ export default function AskQuestionPage() {
             const defaultSession: LiveSession = {
                 questions: [{
                     id: defaultQuestionId,
-                    question: 'print your name',
+                    question: '<h4>Example Question</h4><p>Print your name to the console.</p>',
                     initialCode: `// Create a function to print your name\nfunction printName(name) {\n  console.log(name);\n}\n\n// Call the function with your name`,
                     solutionCode: `function printName(name) {\n  console.log(name);\n}\n\nprintName('Alex');`
                 }],
@@ -89,9 +91,18 @@ export default function AskQuestionPage() {
   
   const handleDebouncedSave = useCallback(() => {
     if (!session || !user) return;
+
+    let sessionToSave = {...session};
+    const currentQuestionEditorValue = questionEditorRef.current?.getValue();
+    if(selectedQuestionId && currentQuestionEditorValue !== undefined) {
+      sessionToSave.questions = sessionToSave.questions.map(q => 
+          q.id === selectedQuestionId ? { ...q, question: currentQuestionEditorValue } : q
+        );
+    }
+    
     const sessionDocId = `teacher_draft_${user.uid}`;
-    setDoc(doc(db, 'live-qna', sessionDocId), session, { merge: true });
-  }, [session, user]);
+    setDoc(doc(db, 'live-qna', sessionDocId), sessionToSave, { merge: true });
+  }, [session, user, selectedQuestionId]);
 
   // Debounced save effect
   useEffect(() => {
@@ -106,6 +117,8 @@ export default function AskQuestionPage() {
     if (!session || !user) return;
     setIsPublishing(true);
 
+    handleDebouncedSave(); // ensure latest changes are saved before publishing
+    
     const newSessionCode = nanoid(6);
     try {
         await setDoc(doc(db, 'live-sessions', newSessionCode), {
@@ -138,7 +151,7 @@ export default function AskQuestionPage() {
     const newQuestionId = nanoid();
     const newQuestion: LiveQuestion = {
         id: newQuestionId,
-        question: 'New Question',
+        question: '<h4>New Question</h4><p>Describe what to do here.</p>',
         initialCode: '// Your code here',
         solutionCode: '// Solution'
     };
@@ -224,9 +237,7 @@ export default function AskQuestionPage() {
                     setSelectedQuestionId(q.id);
                     setIsSidebarOpen(false);
                 }}>
-                    <p className="text-sm font-medium truncate flex-grow">
-                       {index + 1}. {q.question}
-                    </p>
+                    <div className="text-sm font-medium truncate flex-grow prose dark:prose-invert max-w-full" dangerouslySetInnerHTML={{ __html: `${index + 1}. ${q.question}`}} />
                     <Button 
                         size="icon" variant="ghost" 
                         className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
@@ -272,11 +283,11 @@ export default function AskQuestionPage() {
                     <div className="flex flex-col h-full gap-4 pt-4">
                         <div className="grid gap-2 px-4">
                             <Label htmlFor="live-question">Question Text</Label>
-                            <Textarea 
-                                id="live-question"
-                                placeholder="What does this code do?"
-                                value={selectedQuestion.question}
-                                onChange={(e) => updateQuestionField(selectedQuestion.id, 'question', e.target.value)}
+                            <RichTextEditor
+                                ref={questionEditorRef}
+                                key={`live-question-editor-${selectedQuestion.id}`}
+                                initialValue={selectedQuestion.question}
+                                onContentChange={(newContent) => updateQuestionField(selectedQuestion.id, 'question', newContent)}
                             />
                         </div>
                         <div className="grid gap-2 flex-grow">
