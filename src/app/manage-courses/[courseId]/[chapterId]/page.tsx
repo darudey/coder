@@ -6,7 +6,7 @@ import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/cours
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, Underline, ChevronDown, ListOrdered } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, Underline, ChevronDown, ListOrdered, Grab } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React from 'react';
@@ -61,6 +61,61 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+
+  const [position, setPosition] = React.useState({ top: 80, left: window.innerWidth - 250 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragStartPos = React.useRef({ x: 0, y: 0 });
+  const elementStartPos = React.useRef({ top: 0, left: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    setIsDragging(true);
+    dragStartPos.current = { x: clientX, y: clientY };
+    elementStartPos.current = { top: position.top, left: position.left };
+  };
+
+  const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = clientX - dragStartPos.current.x;
+    const deltaY = clientY - dragStartPos.current.y;
+
+    setPosition({
+      top: elementStartPos.current.top + deltaY,
+      left: elementStartPos.current.left + deltaX,
+    });
+  }, [isDragging]);
+
+  const handleMouseUp = React.useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleMouseMove);
+      document.addEventListener('touchend', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
 
   React.useEffect(() => {
     if (!loading && course && chapter) {
@@ -503,14 +558,29 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
         <div className="h-[75vh]" />
       </div>
 
-      <div className="fixed top-20 right-8 z-[1000]">
+       <div 
+        className="fixed"
+        style={{ top: position.top, left: position.left, zIndex: 1000 }}
+       >
         {!hasUnsavedChanges ? (
-            <Button disabled size="lg" className="rounded-full shadow-lg">
+            <Button 
+                disabled 
+                size="lg" 
+                className="rounded-full shadow-lg"
+            >
                 <Check className="w-5 h-5 mr-2" />
                 Saved
             </Button>
         ) : (
-            <Button onClick={handleSaveChanges} disabled={isSaving} size="lg" className="rounded-full shadow-lg">
+            <Button 
+                onClick={handleSaveChanges} 
+                disabled={isSaving} 
+                size="lg" 
+                className="rounded-full shadow-lg"
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleMouseDown}
+                style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            >
                 {isSaving ? (
                     <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -518,7 +588,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                     </>
                 ) : (
                     <>
-                        <Save className="w-5 h-5 mr-2" />
+                        <Grab className="w-5 h-5 mr-2 cursor-grab" />
                         Save Changes
                     </>
                 )}
