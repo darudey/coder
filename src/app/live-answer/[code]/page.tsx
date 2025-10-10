@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface LiveQuestion {
     id: string;
@@ -103,7 +105,12 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
                 unsub(); // Stop listening if doc doesn't exist
             }
             setIsLoading(false);
-        }, (error) => {
+        }, async (error) => {
+            const permissionError = new FirestorePermissionError({
+                path: sessionRef.path,
+                operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
             console.error("Error listening to live session:", error);
             setIsLoading(false);
             setAccessDenied("An error occurred while connecting to the session.");

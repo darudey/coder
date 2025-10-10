@@ -30,6 +30,8 @@ export async function getSharedCode(id: string): Promise<string | null> {
         }
     } catch (e: any) {
         console.error(e);
+        // In a real app, you'd want to handle this more gracefully
+        // For this scenario, we'll return null and let the page 404
         return null;
     }
 }

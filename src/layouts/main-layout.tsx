@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -10,6 +11,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           <main>
               {children}
           </main>
+          <FirebaseErrorListener />
         </div>
     )
 }

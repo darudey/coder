@@ -21,6 +21,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { Input } from '@/components/ui/input';
 import { Copy } from 'lucide-react';
 import RichTextEditor, { type RichTextEditorRef } from '@/components/codeweave/rich-text-editor';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface LiveQuestion {
     id: string;
@@ -58,8 +60,9 @@ export default function AskQuestionPage() {
   useEffect(() => {
     if (!user) return;
     const sessionDocId = `teacher_draft_${user.uid}`;
+    const sessionRef = doc(db, "live-qna", sessionDocId);
     
-    const unsub = onSnapshot(doc(db, "live-qna", sessionDocId), (docSnapshot) => {
+    const unsub = onSnapshot(sessionRef, (docSnapshot) => {
         if (docSnapshot.exists()) {
             const data = docSnapshot.data() as LiveSession;
             setSession(data);
@@ -85,6 +88,13 @@ export default function AskQuestionPage() {
             setDoc(doc(db, "live-qna", sessionDocId), defaultSession);
             // Firestore will trigger the snapshot listener again with the new data
         }
+    },
+    async (error) => {
+        const permissionError = new FirestorePermissionError({
+            path: sessionRef.path,
+            operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsub();
   }, [user, selectedQuestionId]);
