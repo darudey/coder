@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play, ChevronRight, Grab } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React, { useRef, useState } from 'react';
@@ -46,6 +46,60 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
 
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
+
+  const [position, setPosition] = React.useState({ top: 16, left: window.innerWidth - 100 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragStartPos = React.useRef({ x: 0, y: 0 });
+  const elementStartPos = React.useRef({ top: 0, left: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    setIsDragging(true);
+    dragStartPos.current = { x: clientX, y: clientY };
+    elementStartPos.current = { top: position.top, left: position.left };
+  };
+
+  const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = clientX - dragStartPos.current.x;
+    const deltaY = clientY - dragStartPos.current.y;
+
+    setPosition({
+      top: elementStartPos.current.top + deltaY,
+      left: elementStartPos.current.left + deltaX,
+    });
+  }, [isDragging]);
+
+  const handleMouseUp = React.useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleMouseMove);
+      document.addEventListener('touchend', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   if (loading) {
     return <LoadingPage />;
@@ -111,11 +165,19 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   return (
     <>
       {(activeTab === 'syntax' || activeTab === 'practice') && (
-        <Button onClick={handleRunCode} disabled={isCompiling} className="fixed top-4 right-4 z-50 h-9 px-4">
+        <Button 
+            onClick={handleRunCode} 
+            disabled={isCompiling} 
+            className="fixed z-50 h-9 px-4 rounded-full shadow-lg"
+            style={{ top: position.top, left: position.left, cursor: isDragging ? 'grabbing' : 'grab' }}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleMouseDown}
+        >
             {isCompiling ? (
                 <DotLoader />
             ) : (
                 <>
+                    <Grab className="w-4 h-4 mr-2 cursor-grab" />
                     <Play className="w-4 h-4" />
                     <span className="ml-1.5 hidden sm:inline">Run</span>
                 </>
@@ -260,5 +322,7 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
     </>
   );
 }
+
+    
 
     
