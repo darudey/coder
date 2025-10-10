@@ -38,6 +38,9 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
   
   const practiceCompilerRef = useRef<CompilerRef>(null);
+  const swipeContainerRef = useRef<HTMLDivElement>(null);
+  const swipeStart = useRef(0);
+  const swipeEnd = useRef(0);
   
   const [isCompiling, setIsCompiling] = useState(false);
   const [activeTab, setActiveTab] = useState('video');
@@ -129,10 +132,6 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   }
 
   // Swipe logic for practice questions
-  const swipeContainerRef = useRef<HTMLDivElement>(null);
-  const swipeStart = useRef(0);
-  const swipeEnd = useRef(0);
-
   const handleTouchStart = (e: React.TouchEvent) => {
     swipeStart.current = e.touches[0].clientX;
   };
