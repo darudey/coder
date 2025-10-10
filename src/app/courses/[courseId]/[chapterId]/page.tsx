@@ -4,10 +4,10 @@
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play, ChevronRight, Grab } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Play, Grab } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
     Tabs,
     TabsContent,
@@ -21,7 +21,7 @@ import { OutputDisplay } from '@/components/codeweave/output-display';
 import { useCourses } from '@/hooks/use-courses';
 import { LoadingPage } from '@/components/loading-page';
 import { Header } from '@/components/codeweave/header';
-import { getYouTubeVideoId } from '@/lib/utils';
+import { getYouTubeVideoId, cn } from '@/lib/utils';
 
 
 interface ChapterPageProps {
@@ -37,7 +37,6 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   const course = courses.find((c) => c.id === params.courseId);
   const chapter = course?.chapters.find((ch) => ch.id === params.chapterId);
   
-  const syntaxCompilerRef = useRef<CompilerRef>(null);
   const practiceCompilerRef = useRef<CompilerRef>(null);
   
   const [isCompiling, setIsCompiling] = useState(false);
@@ -116,7 +115,6 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
 
   const handleRunCode = async () => {
     let ref: React.RefObject<CompilerRef> | null = null;
-    if (activeTab === 'syntax') ref = syntaxCompilerRef;
     if (activeTab === 'practice') ref = practiceCompilerRef;
 
     if (ref?.current) {
@@ -129,14 +127,33 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
         setIsCompiling(false);
     }
   }
-  
-  const handlePrevQuestion = () => {
-    setPracticeQuestionIndex(prev => Math.max(0, prev - 1));
-  }
 
-  const handleNextQuestion = () => {
-    setPracticeQuestionIndex(prev => Math.min(practiceQuestions.length - 1, prev + 1));
-  }
+  // Swipe logic for practice questions
+  const swipeContainerRef = useRef<HTMLDivElement>(null);
+  const swipeStart = useRef(0);
+  const swipeEnd = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    swipeStart.current = e.touches[0].clientX;
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    swipeEnd.current = e.touches[0].clientX;
+  };
+  
+  const handleTouchEnd = () => {
+    if (swipeStart.current - swipeEnd.current > 75) { // Swiped left
+      setPracticeQuestionIndex(prev => Math.min(practiceQuestions.length - 1, prev + 1));
+    } else if (swipeStart.current - swipeEnd.current < -75) { // Swiped right
+      setPracticeQuestionIndex(prev => Math.max(0, prev - 1));
+    }
+    swipeStart.current = 0;
+    swipeEnd.current = 0;
+  };
+
+  useEffect(() => {
+    const syntaxCompilerRef = practiceCompilerRef; // For syntax tab
+  }, []);
 
 
   if (!topic) {
@@ -255,40 +272,63 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                      <Card className="h-full flex flex-col rounded-none border-x-0">
                         <CardContent className="flex-grow overflow-auto p-0">
                             <div className="h-full min-h-[400px]">
-                                <Compiler ref={syntaxCompilerRef} initialCode={topic.syntax} variant="minimal" hideHeader />
+                                <Compiler ref={practiceCompilerRef} initialCode={topic.syntax} variant="minimal" hideHeader />
                             </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
                 <TabsContent value="practice" className="mt-4 h-full">
-                    {currentPracticeQuestion ? (
-                        <>
-                            <Card className="rounded-none border-x-0 border-t-0">
-                                <CardHeader>
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <CardTitle className="text-sm">Practice Question {practiceQuestionIndex + 1}</CardTitle>
-                                            <div className="text-sm text-muted-foreground mt-1 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: currentPracticeQuestion.question }} />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button variant="outline" size="icon" onClick={handlePrevQuestion} disabled={practiceQuestionIndex === 0}>
-                                                <ChevronLeft className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="outline" size="icon" onClick={handleNextQuestion} disabled={practiceQuestionIndex === practiceQuestions.length - 1}>
-                                                <ChevronRight className="w-4 h-4" />
-                                            </Button>
-                                        </div>
+                    {practiceQuestions.length > 0 ? (
+                        <div 
+                            ref={swipeContainerRef}
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            className="overflow-hidden"
+                        >
+                            <div 
+                                className="flex transition-transform duration-300 ease-in-out"
+                                style={{ transform: `translateX(-${practiceQuestionIndex * 100}%)` }}
+                            >
+                                {practiceQuestions.map((question, index) => (
+                                    <div key={question.id || index} className="w-full flex-shrink-0">
+                                        <Card className="rounded-none border-x-0 border-t-0 shadow-none">
+                                            <CardHeader>
+                                                <CardTitle className="text-sm">Practice Question {index + 1} of {practiceQuestions.length}</CardTitle>
+                                                <div className="text-sm text-muted-foreground mt-1 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: question.question }} />
+                                            </CardHeader>
+                                        </Card>
+                                        <Card className="h-full flex flex-col rounded-none border-x-0 shadow-none">
+                                            <CardContent className="flex-grow overflow-auto p-0">
+                                                <div className="h-full min-h-[400px]">
+                                                    <Compiler 
+                                                        ref={practiceQuestionIndex === index ? practiceCompilerRef : null} 
+                                                        initialCode={question.initialCode} 
+                                                        variant="minimal" 
+                                                        hideHeader 
+                                                        key={question.id || index}
+                                                    />
+                                                </div>
+                                            </CardContent>
+                                        </Card>
                                     </div>
-                                </CardHeader>
-                            </Card>
-                            <Card className="h-full flex flex-col rounded-none border-x-0">
-                                <CardContent className="flex-grow overflow-auto p-0">
-                                    <div className="h-full min-h-[400px]">
-                                    <Compiler ref={practiceCompilerRef} initialCode={currentPracticeQuestion.initialCode} variant="minimal" hideHeader />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </>
+                                ))}
+                            </div>
+                             {practiceQuestions.length > 1 && (
+                                <div className="flex justify-center mt-4 space-x-2">
+                                    {practiceQuestions.map((_, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => setPracticeQuestionIndex(index)}
+                                            className={cn(
+                                                "h-2 w-2 rounded-full transition-colors",
+                                                practiceQuestionIndex === index ? 'bg-primary' : 'bg-muted-foreground/50 hover:bg-muted-foreground'
+                                            )}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <div className="text-center text-muted-foreground p-8">No practice questions available for this topic yet.</div>
                     )}
@@ -322,6 +362,8 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
     </>
   );
 }
+
+    
 
     
 
