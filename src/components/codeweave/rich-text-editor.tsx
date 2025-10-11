@@ -8,6 +8,9 @@ import { Bold, Italic, List, Underline, ChevronDown, ListOrdered, Table } from '
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
 export interface RichTextEditorRef {
   getValue: () => string;
@@ -21,6 +24,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
     const [ctrlActive, setCtrlActive] = React.useState(false);
     
+    const [isTableDialogOpen, setIsTableDialogOpen] = React.useState(false);
+    const [tableDimensions, setTableDimensions] = React.useState({ rows: 2, cols: 2 });
+
     React.useImperativeHandle(ref, () => ({
         getValue: () => editorRef.current?.innerHTML || '',
     }));
@@ -44,21 +50,21 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     };
 
     const insertTable = () => {
-        const tableHtml = `
-            <table style="border-collapse: collapse; width: 100%;">
-                <tbody>
-                    <tr>
-                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
-                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
-                    </tr>
-                    <tr>
-                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
-                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
-                    </tr>
-                </tbody>
-            </table><p><br></p>
-        `;
+        const { rows, cols } = tableDimensions;
+        if (rows <= 0 || cols <= 0) return;
+
+        let tableHtml = '<table style="border-collapse: collapse; width: 100%;"><tbody>';
+        for (let i = 0; i < rows; i++) {
+            tableHtml += '<tr>';
+            for (let j = 0; j < cols; j++) {
+                tableHtml += '<td style="border: 1px solid #ccc; padding: 8px;">&#8203;</td>'; // Use zero-width space
+            }
+            tableHtml += '</tr>';
+        }
+        tableHtml += '</tbody></table><p><br></p>';
+        
         execCommand('insertHTML', tableHtml);
+        setIsTableDialogOpen(false);
     };
 
     const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
@@ -159,6 +165,42 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
     }, [handleSelectionChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        // Smart Enter for Tables
+        if (e.key === 'Enter' && !e.shiftKey) {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const container = range.startContainer;
+                const td = (container.nodeName === 'TD' ? container : container.parentElement?.closest('td')) as HTMLTableCellElement | null;
+
+                if (td) {
+                    e.preventDefault();
+                    const currentRow = td.parentElement as HTMLTableRowElement;
+                    const tableBody = currentRow.parentElement;
+                    if (!tableBody) return;
+                    
+                    const newRow = tableBody.insertRow(currentRow.rowIndex + 1);
+                    for (let i = 0; i < currentRow.cells.length; i++) {
+                        const newCell = newRow.insertCell(i);
+                        newCell.style.border = '1px solid #ccc';
+                        newCell.style.padding = '8px';
+                        newCell.innerHTML = '&#8203;'; // Zero-width space
+                    }
+
+                    // Move cursor to the first cell of the new row
+                    const newRange = document.createRange();
+                    newRange.setStart(newRow.cells[0], 0);
+                    newRange.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+
+                    onContentChange(editorRef.current?.innerHTML || '');
+                    return;
+                }
+            }
+        }
+
+
         if (e.key === 'Backspace') {
             const selection = window.getSelection();
             if (selection && selection.isCollapsed && selection.anchorOffset === 0) {
@@ -279,7 +321,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => toggleList('insertOrderedList')} data-state={activeStyles.includes('ol') ? 'on' : 'off'}>
                         <ListOrdered className="w-4 h-4" />
                     </Button>
-                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={insertTable}>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => setIsTableDialogOpen(true)}>
                         <Table className="w-4 h-4" />
                     </Button>
                 </div>
@@ -310,6 +352,41 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     />
                 </div>
              )}
+             <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Insert Table</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="table-rows">Rows</Label>
+                            <Input
+                                id="table-rows"
+                                type="number"
+                                value={tableDimensions.rows}
+                                onChange={(e) => setTableDimensions({ ...tableDimensions, rows: parseInt(e.target.value) || 1 })}
+                                min="1"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="table-cols">Columns</Label>
+                            <Input
+                                id="table-cols"
+                                type="number"
+                                value={tableDimensions.cols}
+                                onChange={(e) => setTableDimensions({ ...tableDimensions, cols: parseInt(e.target.value) || 1 })}
+                                min="1"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={insertTable}>Insert</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 });
