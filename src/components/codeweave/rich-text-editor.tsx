@@ -4,7 +4,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Bold, Italic, List, Underline, ChevronDown, ListOrdered } from 'lucide-react';
+import { Bold, Italic, List, Underline, ChevronDown, ListOrdered, Table } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,24 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         editorRef.current?.focus();
         updateActiveStyles();
         onContentChange(editorRef.current?.innerHTML || '');
+    };
+
+    const insertTable = () => {
+        const tableHtml = `
+            <table style="border-collapse: collapse; width: 100%;">
+                <tbody>
+                    <tr>
+                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
+                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
+                        <td style="border: 1px solid #ccc; padding: 8px;"></td>
+                    </tr>
+                </tbody>
+            </table><p><br></p>
+        `;
+        execCommand('insertHTML', tableHtml);
     };
 
     const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
@@ -260,6 +278,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     </Button>
                     <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => toggleList('insertOrderedList')} data-state={activeStyles.includes('ol') ? 'on' : 'off'}>
                         <ListOrdered className="w-4 h-4" />
+                    </Button>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={insertTable}>
+                        <Table className="w-4 h-4" />
                     </Button>
                 </div>
                 <div
