@@ -1,9 +1,14 @@
 
 
+export interface TableData {
+    headers: string[];
+    rows: string[][];
+}
+
 export interface NoteSegment {
     id: string;
-    type: 'html' | 'code';
-    content: string;
+    type: 'html' | 'code' | 'table';
+    content: string | TableData;
 }
 
 export interface PracticeQuestion {

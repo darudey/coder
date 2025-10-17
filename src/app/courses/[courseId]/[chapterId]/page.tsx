@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -22,6 +23,8 @@ import { useCourses } from '@/hooks/use-courses';
 import { LoadingPage } from '@/components/loading-page';
 import { Header } from '@/components/codeweave/header';
 import { getYouTubeVideoId, cn } from '@/lib/utils';
+import { type TableData } from '@/lib/courses-data';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 interface ChapterPageProps {
@@ -30,6 +33,31 @@ interface ChapterPageProps {
     chapterId: string;
   };
 }
+
+const RenderTable: React.FC<{ data: TableData }> = ({ data }) => {
+    return (
+        <div className="my-4 overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        {data.headers.map((header, index) => (
+                            <TableHead key={index}>{header}</TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {data.rows.map((row, rowIndex) => (
+                        <TableRow key={rowIndex}>
+                            {row.map((cell, cellIndex) => (
+                                <TableCell key={cellIndex}>{cell}</TableCell>
+                            ))}
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    );
+};
 
 export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
   const params = useParams() as { courseId: string; chapterId: string };
@@ -255,11 +283,14 @@ export default function ChapterPage({ params: propsParams }: ChapterPageProps) {
                         <CardContent className="overflow-auto p-6">
                             <div className="prose dark:prose-invert max-w-none">
                                 {topic.notes.map((segment, index) => {
-                                    if (segment.type === 'html') {
+                                    if (segment.type === 'html' && typeof segment.content === 'string') {
                                         return <div key={index} dangerouslySetInnerHTML={{ __html: segment.content }} />;
                                     }
-                                    if (segment.type === 'code') {
+                                    if (segment.type === 'code' && typeof segment.content === 'string') {
                                         return <EmbeddedCompiler key={index} initialCode={segment.content} />;
+                                    }
+                                    if (segment.type === 'table' && typeof segment.content === 'object') {
+                                        return <RenderTable key={index} data={segment.content} />;
                                     }
                                     return null;
                                 })}

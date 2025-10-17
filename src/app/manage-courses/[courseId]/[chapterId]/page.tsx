@@ -1,12 +1,13 @@
 
 
+
 'use client';
 
-import { type Topic, type NoteSegment, type PracticeQuestion } from '@/lib/courses-data';
+import { type Topic, type NoteSegment, type PracticeQuestion, type TableData } from '@/lib/courses-data';
 import Link from 'next/link';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, Underline, ChevronDown, ListOrdered, Grab } from 'lucide-react';
+import { ChevronLeft, Video, StickyNote, Code, BrainCircuit, Save, Plus, Trash2, ArrowUp, ArrowDown, Play, Check, Loader2, Bold, Italic, List, Underline, ChevronDown, ListOrdered, Grab, TableIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import React from 'react';
@@ -31,6 +32,7 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import RichTextEditor, { RichTextEditorRef } from '@/components/codeweave/rich-text-editor';
 import { cn, getYouTubeVideoId } from '@/lib/utils';
+import { TableEditor } from '@/components/codeweave/table-editor';
 
 
 interface ManageTopicPageProps {
@@ -197,9 +199,14 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     markAsDirty();
   }
 
-  const handleAddNoteSegment = (type: 'html' | 'code', index: number) => {
+  const handleAddNoteSegment = (type: 'html' | 'code' | 'table', index: number) => {
     if (!topic) return;
-    const newSegment: NoteSegment = { type, content: '', id: nanoid() };
+    let newSegment: NoteSegment;
+    if (type === 'table') {
+        newSegment = { type, content: { headers: ['Header 1', 'Header 2'], rows: [['Cell 1', 'Cell 2']] }, id: nanoid() };
+    } else {
+        newSegment = { type, content: '', id: nanoid() };
+    }
     const newNotes = [...topic.notes];
     newNotes.splice(index + 1, 0, newSegment);
     setTopic(prevTopic => ({ ...prevTopic!, notes: newNotes }));
@@ -224,12 +231,12 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
     markAsDirty();
   };
 
-  const handleNoteContentChange = (index: number, newContent: string) => {
+  const handleNoteContentChange = (index: number, newContent: string | TableData) => {
     if (!topic) return;
     setTopic(prevTopic => {
         if (!prevTopic) return prevTopic;
         const newNotes = [...prevTopic.notes];
-        newNotes[index] = { ...newNotes[index], content: newContent };
+        newNotes[index] = { ...newNotes[index], content: newContent as any };
         return { ...prevTopic, notes: newNotes };
     });
     markAsDirty();
@@ -377,7 +384,7 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                      <CardHeader className="px-4 py-2">
                                         <div className="flex justify-between items-center">
                                             <CardTitle className="text-xs text-muted-foreground font-normal">
-                                                {segment.type === 'html' ? 'Text Block' : 'Code Block'}
+                                                {segment.type === 'html' ? 'Text Block' : segment.type === 'code' ? 'Code Block' : 'Table Block'}
                                             </CardTitle>
                                             <div className="flex items-center gap-1">
                                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMoveNoteSegment(index, 'up')} disabled={index === 0}>
@@ -393,20 +400,27 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         </div>
                                     </CardHeader>
                                     <CardContent className="relative pb-8 px-4">
-                                    {segment.type === 'html' ? (
+                                    {segment.type === 'html' && typeof segment.content === 'string' && (
                                         <RichTextEditor
                                             key={segment.id}
                                             initialValue={segment.content}
                                             onContentChange={(newContent) => handleNoteContentChange(index, newContent)}
                                         />
-                                    ) : (
+                                    )}
+                                    {segment.type === 'code' && typeof segment.content === 'string' && (
                                         <NoteCodeEditor
                                             key={segment.id}
                                             code={segment.content}
                                             onCodeChange={(newCode) => handleNoteContentChange(index, newCode)}
                                         />
                                     )}
-
+                                    {segment.type === 'table' && typeof segment.content === 'object' && (
+                                        <TableEditor
+                                            key={segment.id}
+                                            data={segment.content as TableData}
+                                            onDataChange={(newData) => handleNoteContentChange(index, newData)}
+                                        />
+                                    )}
                                     <div className="absolute bottom-2 left-1/2 w-full -translate-x-1/2 flex justify-center opacity-0 group-hover:opacity-100 z-10">
                                         <div className="flex items-center bg-background p-1 rounded-full border shadow-md">
                                             <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => handleAddNoteSegment('html', index)}>
@@ -414,6 +428,9 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                             </Button>
                                             <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => handleAddNoteSegment('code', index)}>
                                                 <Plus className="w-3 h-3 mr-1" /> Code
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => handleAddNoteSegment('table', index)}>
+                                                <TableIcon className="w-3 h-3 mr-1" /> Table
                                             </Button>
                                         </div>
                                     </div>
@@ -429,6 +446,9 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
                                         </Button>
                                         <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('code', -1)}>
                                             <Plus className="w-3 h-3 mr-1" /> Add Code
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => handleAddNoteSegment('table', -1)}>
+                                            <TableIcon className="w-3 h-3 mr-1" /> Add Table
                                         </Button>
                                     </div>
                                 </div>
@@ -605,5 +625,3 @@ declare module '@/components/codeweave/compiler' {
         onCodeChange?: (code: string) => void;
     }
 }
-
-    
