@@ -6,7 +6,7 @@ import { type TableData } from '@/lib/courses-data';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import RichTextEditor from './rich-text-editor';
 
 interface TableEditorProps {
     data: TableData;
@@ -57,7 +57,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ data, onDataChange }) 
                 {/* Header Row */}
                 <div className="flex gap-2 items-center">
                     {data.headers.map((header, index) => (
-                        <div key={index} className="flex-1 relative group">
+                        <div key={`header-${index}`} className="flex-1 relative group">
                             <Input
                                 value={header}
                                 onChange={(e) => handleHeaderChange(index, e.target.value)}
@@ -81,23 +81,22 @@ export const TableEditor: React.FC<TableEditorProps> = ({ data, onDataChange }) 
                     </Button>
                 </div>
                 {/* Data Rows */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-4">
                     {data.rows.map((row, rowIndex) => (
-                        <div key={rowIndex} className="flex gap-2 items-center group">
+                        <div key={`row-${rowIndex}`} className="flex gap-2 items-start group">
                             {row.map((cell, colIndex) => (
-                                <div key={colIndex} className="flex-1">
-                                    <Input
-                                        value={cell}
-                                        onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                                        className="border-input focus-visible:ring-1 focus-visible:ring-offset-0 text-sm h-9"
-                                        placeholder={colIndex === 0 ? 'Feature Name' : 'Value'}
+                                <div key={`cell-${rowIndex}-${colIndex}`} className="flex-1">
+                                    <RichTextEditor
+                                      key={`cell-editor-${rowIndex}-${colIndex}`}
+                                      initialValue={cell}
+                                      onContentChange={(newContent) => handleCellChange(rowIndex, colIndex, newContent)}
                                     />
                                 </div>
                             ))}
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 rounded-full"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 rounded-full mt-2"
                                 onClick={() => removeRow(rowIndex)}
                             >
                                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
