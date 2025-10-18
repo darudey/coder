@@ -149,6 +149,34 @@ body {
         list-style-type: decimal;
         padding-left: 1.5rem;
     }
-}
+    /* Add styles for tables inside prose */
+    .prose table {
+        @apply w-full my-4 border-collapse;
+    }
+    .prose th, .prose td {
+        @apply border p-2 text-left;
+    }
+    .dark .prose th, .dark .prose td {
+        @apply border-muted;
+    }
+    .prose th {
+        @apply bg-muted/50;
+    }
 
-    
+    /* Comparison Table Styles */
+    .comparison-table {
+        @apply w-full border-collapse text-sm;
+    }
+    .comparison-table th, .comparison-table td {
+        @apply p-3 border-b text-left;
+    }
+    .comparison-table thead th {
+        @apply text-base font-semibold pb-4;
+    }
+    .comparison-table tbody tr:nth-child(even) {
+        @apply bg-muted/50;
+    }
+    .comparison-table tbody th {
+        @apply font-semibold pr-6;
+    }
+}

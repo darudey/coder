@@ -28,13 +28,13 @@ export const TableEditor: React.FC<TableEditorProps> = ({ data, onDataChange }) 
     };
 
     const addColumn = () => {
-        const newHeaders = [...data.headers, `Header ${data.headers.length + 1}`];
+        const newHeaders = [...data.headers, `Item ${data.headers.length}`];
         const newRows = data.rows.map(row => [...row, '']);
         onDataChange({ headers: newHeaders, rows: newRows });
     };
 
     const removeColumn = (index: number) => {
-        if (data.headers.length <= 1) return;
+        if (data.headers.length <= 2) return; // Keep at least Feature and one Item column
         const newHeaders = data.headers.filter((_, i) => i !== index);
         const newRows = data.rows.map(row => row.filter((_, i) => i !== index));
         onDataChange({ headers: newHeaders, rows: newRows });
@@ -52,64 +52,62 @@ export const TableEditor: React.FC<TableEditorProps> = ({ data, onDataChange }) 
     };
 
     return (
-        <div className="my-4 border rounded-lg p-4 overflow-x-auto">
-            <div className="min-w-[600px]">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {data.headers.map((header, index) => (
-                                <TableHead key={index} className="relative group px-1.5">
-                                    <Input
-                                        value={header}
-                                        onChange={(e) => handleHeaderChange(index, e.target.value)}
-                                        className="font-bold border-0 bg-transparent focus-visible:ring-1 focus-visible:ring-offset-0"
-                                    />
-                                    <Button
-                                        variant="destructive"
-                                        size="icon"
-                                        className="absolute top-1/2 -right-3 -translate-y-1/2 h-5 w-5 opacity-0 group-hover:opacity-100 rounded-full"
-                                        onClick={() => removeColumn(index)}
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                </TableHead>
-                            ))}
-                            <TableHead className="w-[40px] px-0">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={addColumn}>
-                                    <Plus className="w-4 h-4" />
+        <div className="my-4 border rounded-lg p-4 overflow-x-auto bg-background not-prose">
+            <div className="min-w-[700px] flex flex-col gap-4">
+                {/* Header Row */}
+                <div className="flex gap-2 items-center">
+                    {data.headers.map((header, index) => (
+                        <div key={index} className="flex-1 relative group">
+                            <Input
+                                value={header}
+                                onChange={(e) => handleHeaderChange(index, e.target.value)}
+                                className="font-semibold border-0 bg-muted/50 focus-visible:ring-1 focus-visible:ring-offset-0 text-sm h-9"
+                                placeholder={index === 0 ? 'Feature' : `Item ${index}`}
+                            />
+                            {index > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute top-1/2 -right-1 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 rounded-full"
+                                    onClick={() => removeColumn(index)}
+                                >
+                                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
                                 </Button>
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {data.rows.map((row, rowIndex) => (
-                            <TableRow key={rowIndex} className="group">
-                                {row.map((cell, colIndex) => (
-                                    <TableCell key={colIndex} className="px-1.5">
-                                        <Input
-                                            value={cell}
-                                            onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                                            className="border-0 bg-transparent focus-visible:ring-1 focus-visible:ring-offset-0"
-                                        />
-                                    </TableCell>
-                                ))}
-                                <TableCell className="px-0">
-                                    <Button
-                                        variant="destructive"
-                                        size="icon"
-                                        className="h-5 w-5 opacity-0 group-hover:opacity-100 rounded-full"
-                                        onClick={() => removeRow(rowIndex)}
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-                <Button variant="ghost" size="sm" className="mt-2" onClick={addRow}>
+                            )}
+                        </div>
+                    ))}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={addColumn}>
+                        <Plus className="w-4 h-4" />
+                    </Button>
+                </div>
+                {/* Data Rows */}
+                <div className="flex flex-col gap-2">
+                    {data.rows.map((row, rowIndex) => (
+                        <div key={rowIndex} className="flex gap-2 items-center group">
+                            {row.map((cell, colIndex) => (
+                                <div key={colIndex} className="flex-1">
+                                    <Input
+                                        value={cell}
+                                        onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
+                                        className="border-input focus-visible:ring-1 focus-visible:ring-offset-0 text-sm h-9"
+                                        placeholder={colIndex === 0 ? 'Feature Name' : 'Value'}
+                                    />
+                                </div>
+                            ))}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 rounded-full"
+                                onClick={() => removeRow(rowIndex)}
+                            >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+                <Button variant="outline" size="sm" className="mt-2 self-start" onClick={addRow}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Row
+                    Add Feature
                 </Button>
             </div>
         </div>

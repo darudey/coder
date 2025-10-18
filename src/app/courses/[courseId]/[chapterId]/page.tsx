@@ -35,26 +35,37 @@ interface ChapterPageProps {
 }
 
 const RenderTable: React.FC<{ data: TableData }> = ({ data }) => {
+    if (data.headers.length === 0 || data.rows.length === 0) return null;
+
+    // Transpose the data for vertical comparison
+    const features = data.rows.map(row => row[0]);
+    const items = data.headers.slice(1);
+    const itemData = items.map((_, colIndex) => 
+        data.rows.map(row => row[colIndex + 1])
+    );
+
     return (
-        <div className="my-4 overflow-x-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        {data.headers.map((header, index) => (
-                            <TableHead key={index}>{header}</TableHead>
+        <div className="my-6 overflow-x-auto">
+            <table className="comparison-table min-w-[600px]">
+                <thead>
+                    <tr>
+                        <th>{data.headers[0]}</th>
+                        {items.map((header, index) => (
+                            <th key={index}>{header}</th>
                         ))}
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {data.rows.map((row, rowIndex) => (
-                        <TableRow key={rowIndex}>
-                            {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex}>{cell}</TableCell>
+                    </tr>
+                </thead>
+                <tbody>
+                    {features.map((feature, rowIndex) => (
+                        <tr key={rowIndex}>
+                            <th>{feature}</th>
+                            {itemData.map((col, colIndex) => (
+                                <td key={colIndex}>{col[rowIndex]}</td>
                             ))}
-                        </TableRow>
+                        </tr>
                     ))}
-                </TableBody>
-            </Table>
+                </tbody>
+            </table>
         </div>
     );
 };
