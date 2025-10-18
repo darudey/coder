@@ -4,7 +4,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Bold, Italic, List, Underline, ChevronDown, ListOrdered, Table } from 'lucide-react';
+import { Bold, Italic, List, Underline, ChevronDown, ListOrdered } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { cn } from '@/lib/utils';
@@ -320,9 +320,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     </Button>
                     <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => toggleList('insertOrderedList')} data-state={activeStyles.includes('ol') ? 'on' : 'off'}>
                         <ListOrdered className="w-4 h-4" />
-                    </Button>
-                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => setIsTableDialogOpen(true)}>
-                        <Table className="w-4 h-4" />
                     </Button>
                 </div>
                 <div
