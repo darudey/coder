@@ -49,24 +49,6 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         onContentChange(editorRef.current?.innerHTML || '');
     };
 
-    const insertTable = () => {
-        const { rows, cols } = tableDimensions;
-        if (rows <= 0 || cols <= 0) return;
-
-        let tableHtml = '<table style="border-collapse: collapse; width: 100%;"><tbody>';
-        for (let i = 0; i < rows; i++) {
-            tableHtml += '<tr>';
-            for (let j = 0; j < cols; j++) {
-                tableHtml += '<td style="border: 1px solid #ccc; padding: 8px;">&#8203;</td>'; // Use zero-width space
-            }
-            tableHtml += '</tr>';
-        }
-        tableHtml += '</tbody></table><p><br></p>';
-        
-        execCommand('insertHTML', tableHtml);
-        setIsTableDialogOpen(false);
-    };
-
     const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
         const editor = editorRef.current;
         if (!editor) return;
@@ -166,7 +148,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         // Smart Enter for Tables
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter') {
             const selection = window.getSelection();
             if (selection && selection.rangeCount > 0) {
                 const range = selection.getRangeAt(0);
@@ -174,26 +156,30 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 const td = (container.nodeName === 'TD' ? container : container.parentElement?.closest('td')) as HTMLTableCellElement | null;
 
                 if (td) {
-                    e.preventDefault();
-                    const currentRow = td.parentElement as HTMLTableRowElement;
-                    const tableBody = currentRow.parentElement;
-                    if (!tableBody) return;
-                    
-                    const newRow = tableBody.insertRow(currentRow.rowIndex + 1);
-                    for (let i = 0; i < currentRow.cells.length; i++) {
-                        const newCell = newRow.insertCell(i);
-                        newCell.style.border = '1px solid #ccc';
-                        newCell.style.padding = '8px';
-                        newCell.innerHTML = '&#8203;'; // Zero-width space
+                    if (e.shiftKey) {
+                        // Allow shift+enter to create a new line inside the cell
+                        document.execCommand('insertLineBreak');
+                    } else {
+                        e.preventDefault();
+                        const currentRow = td.parentElement as HTMLTableRowElement;
+                        const tableBody = currentRow.parentElement;
+                        if (!tableBody) return;
+                        
+                        const newRow = tableBody.insertRow(currentRow.rowIndex + 1);
+                        for (let i = 0; i < currentRow.cells.length; i++) {
+                            const newCell = newRow.insertCell(i);
+                            newCell.style.border = '1px solid #ccc';
+                            newCell.style.padding = '8px';
+                            newCell.innerHTML = '&#8203;'; // Zero-width space
+                        }
+
+                        // Move cursor to the first cell of the new row
+                        const newRange = document.createRange();
+                        newRange.setStart(newRow.cells[0], 0);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
                     }
-
-                    // Move cursor to the first cell of the new row
-                    const newRange = document.createRange();
-                    newRange.setStart(newRow.cells[0], 0);
-                    newRange.collapse(true);
-                    selection.removeAllRanges();
-                    selection.addRange(newRange);
-
                     onContentChange(editorRef.current?.innerHTML || '');
                     return;
                 }
@@ -380,7 +366,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                         <DialogClose asChild>
                             <Button variant="outline">Cancel</Button>
                         </DialogClose>
-                        <Button onClick={insertTable}>Insert</Button>
+                        <Button>Insert</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

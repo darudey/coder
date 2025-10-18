@@ -422,27 +422,10 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [activeFile]);
 
   const handleShare = useCallback(async () => {
-    if (variant === 'minimal') {
-        if(code) {
-             const result = await shareCode(code);
-             if ('id' in result) {
-                const url = `${window.location.origin}/s/${result.id}`;
-                navigator.clipboard.writeText(url);
-                toast({ title: 'Copied!', description: 'Share link copied to clipboard.' });
-            } else {
-                toast({ title: 'Error', description: result.error, variant: 'destructive' });
-            }
-        }
-        return;
-    }
-    
-    if (!activeFile) {
+    const codeToShare = variant === 'minimal' ? code : fileSystem[activeFile!.folderName]?.[activeFile!.fileName];
+
+    if (!codeToShare) {
         toast({ title: 'Error', description: 'No active file to share.', variant: 'destructive' });
-        return;
-    }
-    const codeToShare = fileSystem[activeFile.folderName]?.[activeFile.fileName];
-    if (codeToShare === undefined) {
-        toast({ title: 'Error', description: 'Could not find code for the active file.', variant: 'destructive' });
         return;
     }
     
