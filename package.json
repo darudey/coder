@@ -42,6 +42,7 @@
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "firebase": "^10.12.2",
+    "gapi-script": "^1.2.0",
     "genkit": "^1.14.1",
     "highlight.js": "^11.9.0",
     "lucide-react": "^0.475.0",
@@ -58,6 +59,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/gapi": "^0.0.47",
+    "@types/google.picker": "^0.0.41",
     "@types/highlight.js": "^10.1.0",
     "@types/marked": "^6.0.0",
     "@types/node": "^20",

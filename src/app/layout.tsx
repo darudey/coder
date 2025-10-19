@@ -6,6 +6,7 @@ import { SettingsProvider } from '@/hooks/use-settings';
 import { AuthProvider } from '@/hooks/use-auth';
 import { MainLayout } from '@/layouts/main-layout';
 import { CoursesProvider } from '@/hooks/use-courses';
+import { GoogleDriveProvider } from '@/hooks/use-google-drive';
 
 export const metadata: Metadata = {
   title: '24HrCoding',
@@ -27,12 +28,14 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <SettingsProvider>
           <AuthProvider>
-            <CoursesProvider>
-              <MainLayout>
-                {children}
-              </MainLayout>
-              <Toaster />
-            </CoursesProvider>
+            <GoogleDriveProvider>
+              <CoursesProvider>
+                <MainLayout>
+                  {children}
+                </MainLayout>
+                <Toaster />
+              </CoursesProvider>
+            </GoogleDriveProvider>
           </AuthProvider>
         </SettingsProvider>
       </body>

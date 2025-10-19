@@ -18,6 +18,7 @@ import { Switch } from '../ui/switch';
 import { Copy } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
+import { useGoogleDrive } from '@/hooks/use-google-drive';
 
 const defaultCode = `// Welcome to 24HrCoding!
 // Use the settings panel to save and load your creations.
@@ -124,6 +125,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast();
+  const { saveFileToDrive } = useGoogleDrive();
   
   const createNewFile = useCallback((activate = true) => {
     let nextFileNumber = 0;
@@ -420,6 +422,16 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     });
     setIsSaveOpen(true);
   }, [activeFile]);
+  
+  const handleSaveToDrive = () => {
+      if (!activeFile) {
+          toast({ title: "No file open", description: "Please open a file to save to Google Drive.", variant: "destructive" });
+          return;
+      }
+      const fileContent = code;
+      const fileName = activeFile.fileName;
+      saveFileToDrive(fileName, fileContent);
+  }
 
   const handleShare = useCallback(async () => {
     const codeToShare = variant === 'minimal' ? code : fileSystem[activeFile!.folderName]?.[activeFile!.fileName];
@@ -642,6 +654,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         onLoadFile={loadFile}
         onNewFile={() => createNewFile(false)}
         onDeleteFile={deleteFile}
+        onSaveToDrive={handleSaveToDrive}
       />
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
         <DialogContent className="max-w-2xl h-3/4 flex flex-col">

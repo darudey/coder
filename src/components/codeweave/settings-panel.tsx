@@ -25,11 +25,14 @@ import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { File, Folder, Plus, Trash2, Moon, Sun, Info, Palette, KeyRound } from 'lucide-react';
+import { File, Folder, Plus, Trash2, Moon, Sun, Info, Palette, KeyRound, LogIn, LogOut, Save } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { AboutContent } from './about-content';
 import { useSettings } from '@/hooks/use-settings';
 import { Slider } from '../ui/slider';
+import { useGoogleDrive } from '@/hooks/use-google-drive';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Skeleton } from '../ui/skeleton';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -38,6 +41,7 @@ interface SettingsPanelProps {
   onLoadFile: (folderName: string, fileName: string) => void;
   onNewFile: () => void;
   onDeleteFile: (folderName: string, fileName: string) => void;
+  onSaveToDrive: () => void;
 }
 
 export const SettingsPanel: FC<SettingsPanelProps> = ({
@@ -47,10 +51,18 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   onLoadFile,
   onNewFile,
   onDeleteFile,
+  onSaveToDrive,
 }) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const { settings, setSettings, toggleTheme } = useSettings();
+  const { 
+    isSignedIn, 
+    isApiLoaded, 
+    userProfile, 
+    signIn, 
+    signOut,
+  } = useGoogleDrive();
 
   useEffect(() => {
     if (open) {
@@ -118,6 +130,51 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                         onValueChange={(value) => setSettings({ ...settings, editorFontSize: value[0] })}
                     />
                 </div>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="google-drive">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4" viewBox="0 0 448 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M330.3 36.69l-117.2 203.1L256 368.5l117.2-203.1-42.91-78.72zM448 336l-117.2 78.72L256 208l117.2 78.72L448 336zM151.2 460.3l117.2-203.1L151.2 54.09 34.03 257.2l117.2 203.1z"/>
+                    </svg>
+                    <span className="font-semibold text-base">Google Drive</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                 <div className="grid gap-3 pt-4">
+                    {!isApiLoaded ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : isSignedIn ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                           <Avatar>
+                              <AvatarImage src={userProfile?.imageUrl} alt={userProfile?.name} />
+                              <AvatarFallback>{userProfile?.givenName?.[0]}</AvatarFallback>
+                           </Avatar>
+                           <div className='text-sm'>
+                              <p className="font-semibold">{userProfile?.name}</p>
+                              <p className="text-muted-foreground">{userProfile?.email}</p>
+                           </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button className="w-full" onClick={onSaveToDrive}>
+                            <Save className="w-4 h-4 mr-2"/>
+                            Save to Drive
+                          </Button>
+                          <Button variant="outline" className="w-full" onClick={signOut}>
+                            <LogOut className="w-4 h-4 mr-2"/>
+                            Sign Out
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button onClick={signIn}>
+                        <LogIn className="w-4 h-4 mr-2"/>
+                        Connect to Google Drive
+                      </Button>
+                    )}
+                  </div>
               </AccordionContent>
             </AccordionItem>
              <AccordionItem value="api-key">
