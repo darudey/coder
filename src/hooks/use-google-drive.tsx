@@ -24,8 +24,9 @@ interface GoogleDriveContextValue {
 const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(undefined);
 
 const API_KEY = firebaseConfig.apiKey;
-const CLIENT_ID = firebaseConfig.appId.split(':')[2]; // Extract client ID from appId
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+// The Client ID from a GCP project's OAuth 2.0 Client ID credentials
+const CLIENT_ID = '905325384029-2u831sd2v2o1h9pagfq5t5g862bchc06.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
@@ -35,13 +36,34 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [tokenClient, setTokenClient] = useState<any>(null);
 
+  const updateUserProfile = useCallback(async () => {
+    try {
+      const response = await gapi.client.oauth2.userinfo.get();
+      const profile = response.result;
+      setUserProfile({
+        email: profile.email,
+        name: profile.name,
+        givenName: profile.given_name,
+        imageUrl: profile.picture,
+      });
+      setIsSignedIn(true);
+    } catch(e) {
+      console.error("Could not fetch user profile", e);
+      // Could be a sign-in issue, so sign out state
+      setIsSignedIn(false);
+      setUserProfile(null);
+    }
+  }, []);
+
   useEffect(() => {
     const loadGapi = async () => {
-      await new Promise((resolve) => gapi.load('client:auth2', resolve));
-
+      await new Promise((resolve) => gapi.load('client', resolve));
       await gapi.client.init({
         apiKey: API_KEY,
-        discoveryDocs: [DISCOVERY_DOC],
+        discoveryDocs: [
+            DISCOVERY_DOC,
+            'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
+        ],
       });
       
       const client = google.accounts.oauth2.initTokenClient({
@@ -50,7 +72,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         callback: (tokenResponse) => {
           if (tokenResponse && tokenResponse.access_token) {
             gapi.client.setToken(tokenResponse);
-            setIsSignedIn(true);
             updateUserProfile();
           }
         },
@@ -60,36 +81,26 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     };
 
     loadGapi();
-  }, []);
+  }, [updateUserProfile]);
 
-  const updateUserProfile = () => {
-    const authInstance = gapi.auth2.getAuthInstance();
-    if (authInstance && authInstance.isSignedIn.get()) {
-      const profile = authInstance.currentUser.get().getBasicProfile();
-      setUserProfile({
-        email: profile.getEmail(),
-        name: profile.getName(),
-        givenName: profile.getGivenName(),
-        imageUrl: profile.getImageUrl(),
-      });
-    }
-  };
 
   const signIn = useCallback(() => {
     if (tokenClient) {
-      tokenClient.requestAccessToken();
+      tokenClient.requestAccessToken({ prompt: 'consent' });
     } else {
         toast({ title: "Google API not ready", description: "Please wait a moment and try again.", variant: 'destructive' });
     }
   }, [tokenClient, toast]);
 
   const signOut = useCallback(() => {
-    const authInstance = gapi.auth2.getAuthInstance();
-    if (authInstance) {
-        authInstance.signOut();
+    const token = gapi.client.getToken();
+    if (token) {
+      google.accounts.oauth2.revoke(token.access_token, () => {
+        gapi.client.setToken(null);
+        setIsSignedIn(false);
+        setUserProfile(null);
+      });
     }
-    setIsSignedIn(false);
-    setUserProfile(null);
   }, []);
 
   const saveFileToDrive = useCallback((fileName: string, content: string) => {
@@ -105,7 +116,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
             .addView(view)
             .setOAuthToken(gapi.client.getToken().access_token)
             .setDeveloperKey(API_KEY)
-            .setCallback((data) => {
+            .setCallback((data: any) => {
                 if (data.action === google.picker.Action.PICKED) {
                     const folderId = data.docs[0].id;
                     createFileInFolder(folderId, fileName, content);
