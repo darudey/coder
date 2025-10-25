@@ -41,6 +41,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const updateUserProfile = useCallback(async () => {
     try {
+      await gapi.client.load('oauth2', 'v2');
       const response = await gapi.client.oauth2.userinfo.get();
       const profile = response.result;
       setUserProfile({
@@ -59,13 +60,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const initializeGapiClient = useCallback(async () => {
     try {
-      await gapi.client.init({
-          apiKey: API_KEY,
-          discoveryDocs: [
-              DISCOVERY_DOC,
-              'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
-          ],
-      });
+      await gapi.client.load(DISCOVERY_DOC);
       setIsApiLoaded(true);
     } catch (e) {
       console.error("Error initializing gapi client", e);
@@ -197,7 +192,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     isSignedIn,
     userProfile,
     signIn,
-signOut,
+    signOut,
     saveFileToDrive,
   };
 
