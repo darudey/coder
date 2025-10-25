@@ -27,8 +27,15 @@ interface GoogleDriveContextValue {
 
 const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(undefined);
 
+// TODO: Replace with your own Google Cloud Project credentials.
+// 1. Go to https://console.cloud.google.com/apis/credentials
+// 2. Create an "OAuth 2.0 Client ID".
+// 3. Select "Web application" as the application type.
+// 4. Add your website's address (e.g., https://your-app-url.com) to the "Authorized JavaScript origins".
+// 5. Copy the Client ID and paste it here.
+const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // <--- REPLACE THIS
+
 const API_KEY = firebaseConfig.apiKey;
-const CLIENT_ID = '905325384029-2u831sd2v2o1h9pagfq5t5g862bchc06.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
@@ -105,9 +112,11 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
 
   const signIn = useCallback(() => {
+    if (CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+        toast({ title: "Google Drive Not Configured", description: "Please add your Google Client ID in src/hooks/use-google-drive.tsx.", variant: 'destructive' });
+        return;
+    }
     if (tokenClient) {
-      // Prompt the user to select a Google Account and ask for consent to share their data
-      // when establishing a new session.
       tokenClient.requestAccessToken({ prompt: '' });
     } else {
         toast({ title: "Google API not ready", description: "Please wait a moment and try again.", variant: 'destructive' });
