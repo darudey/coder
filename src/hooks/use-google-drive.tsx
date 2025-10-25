@@ -108,7 +108,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     if (tokenClient) {
       // Prompt the user to select a Google Account and ask for consent to share their data
       // when establishing a new session.
-      tokenClient.requestAccessToken({ prompt: 'consent' });
+      tokenClient.requestAccessToken({ prompt: '' });
     } else {
         toast({ title: "Google API not ready", description: "Please wait a moment and try again.", variant: 'destructive' });
     }
