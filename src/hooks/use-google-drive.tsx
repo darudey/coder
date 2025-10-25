@@ -58,20 +58,28 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const initializeGapiClient = useCallback(async () => {
-    await gapi.client.init({
-        apiKey: API_KEY,
-        discoveryDocs: [
-            DISCOVERY_DOC,
-            'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
-        ],
-    });
-    setIsApiLoaded(true);
+    try {
+      await gapi.client.init({
+          apiKey: API_KEY,
+          discoveryDocs: [
+              DISCOVERY_DOC,
+              'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
+          ],
+      });
+      setIsApiLoaded(true);
+    } catch (e) {
+      console.error("Error initializing gapi client", e);
+    }
   }, []);
 
   useEffect(() => {
+    const gapiLoaded = () => {
+        gapi.load('client', initializeGapiClient);
+    }
+
     const checkGapiReady = () => {
-      if (window.gapi && window.gapi.client) {
-        initializeGapiClient();
+      if (window.gapi) {
+        gapiLoaded();
       } else {
         setTimeout(checkGapiReady, 100); // Check again shortly
       }
@@ -116,9 +124,10 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         gapi.client.setToken(null);
         setIsSignedIn(false);
         setUserProfile(null);
+        toast({ title: "Signed Out", description: "You have been signed out from Google Drive." });
       });
     }
-  }, []);
+  }, [toast]);
 
   const saveFileToDrive = useCallback((fileName: string, content: string) => {
     if (!isSignedIn) {
@@ -142,8 +151,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
             .build();
         picker.setVisible(true);
     };
-
-    gapi.load('picker', showPicker);
+    
+    if (window.google && google.picker) {
+      showPicker();
+    } else {
+      gapi.load('picker', showPicker);
+    }
 
   }, [isSignedIn, toast]);
 
@@ -184,7 +197,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     isSignedIn,
     userProfile,
     signIn,
-    signOut,
+signOut,
     saveFileToDrive,
   };
 
