@@ -106,6 +106,8 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(() => {
     if (tokenClient) {
+      // Prompt the user to select a Google Account and ask for consent to share their data
+      // when establishing a new session.
       tokenClient.requestAccessToken({ prompt: 'consent' });
     } else {
         toast({ title: "Google API not ready", description: "Please wait a moment and try again.", variant: 'destructive' });
@@ -114,12 +116,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     const token = gapi.client.getToken();
-    if (token) {
+    if (token !== null) {
       google.accounts.oauth2.revoke(token.access_token, () => {
-        gapi.client.setToken(null);
+        gapi.client.setToken('');
         setIsSignedIn(false);
         setUserProfile(null);
-        toast({ title: "Signed Out", description: "You have been signed out from Google Drive." });
+        toast({ title: 'Signed Out', description: 'You have successfully signed out from Google Drive.' });
       });
     }
   }, [toast]);
