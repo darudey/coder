@@ -1,9 +1,13 @@
 
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { gapi } from 'gapi-script';
 import { useToast } from './use-toast';
 import { firebaseConfig } from '@/lib/firebase';
+
+declare global {
+    var gapi: any;
+    var google: any;
+}
 
 interface UserProfile {
   email: string;
@@ -24,7 +28,6 @@ interface GoogleDriveContextValue {
 const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(undefined);
 
 const API_KEY = firebaseConfig.apiKey;
-// The Client ID from a GCP project's OAuth 2.0 Client ID credentials
 const CLIENT_ID = '905325384029-2u831sd2v2o1h9pagfq5t5g862bchc06.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
@@ -49,38 +52,52 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       setIsSignedIn(true);
     } catch(e) {
       console.error("Could not fetch user profile", e);
-      // Could be a sign-in issue, so sign out state
       setIsSignedIn(false);
       setUserProfile(null);
     }
   }, []);
 
-  useEffect(() => {
-    const loadGapi = async () => {
-      await new Promise((resolve) => gapi.load('client', resolve));
-      await gapi.client.init({
+  const initializeGapiClient = useCallback(async () => {
+    await gapi.client.init({
         apiKey: API_KEY,
         discoveryDocs: [
             DISCOVERY_DOC,
             'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest'
         ],
-      });
-      
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (tokenResponse) => {
-          if (tokenResponse && tokenResponse.access_token) {
-            gapi.client.setToken(tokenResponse);
-            updateUserProfile();
-          }
-        },
-      });
-      setTokenClient(client);
-      setIsApiLoaded(true);
-    };
+    });
+    setIsApiLoaded(true);
+  }, []);
 
-    loadGapi();
+  useEffect(() => {
+    const checkGapiReady = () => {
+      if (window.gapi && window.gapi.client) {
+        initializeGapiClient();
+      } else {
+        setTimeout(checkGapiReady, 100); // Check again shortly
+      }
+    };
+    checkGapiReady();
+  }, [initializeGapiClient]);
+
+  useEffect(() => {
+    const checkGsiReady = () => {
+        if(window.google && window.google.accounts) {
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (tokenResponse: any) => {
+                  if (tokenResponse && tokenResponse.access_token) {
+                    gapi.client.setToken(tokenResponse);
+                    updateUserProfile();
+                  }
+                },
+            });
+            setTokenClient(client);
+        } else {
+            setTimeout(checkGsiReady, 100);
+        }
+    }
+    checkGsiReady();
   }, [updateUserProfile]);
 
 
