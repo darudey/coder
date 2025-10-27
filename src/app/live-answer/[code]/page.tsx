@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PanelLeft, AlertTriangle } from 'lucide-react';
 import { Compiler } from '@/components/codeweave/compiler';
-import { db } from '@/lib/firebase';
+import { getClientDb } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { LoadingPage } from '@/components/loading-page';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -65,58 +65,69 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
             return;
         }
 
-        const sessionRef = doc(db, 'live-sessions', sessionCode);
-        const unsub = onSnapshot(sessionRef, async (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data() as LiveSession;
-                
-                if (data.isUsed && data.studentId !== user.uid) {
-                    setAccessDenied("This session code has already been used by another student.");
-                    setIsLoading(false);
-                    unsub(); // Stop listening if access is denied
-                    return;
-                }
-                
-                if (!data.isUsed) {
-                    await updateDoc(sessionRef, {
-                        isUsed: true,
-                        studentId: user.uid
-                    });
-                    // The snapshot will update with the new data, so we don't set state here.
-                } else {
-                    setSession(data);
-                    // Handle question selection
-                    if (!selectedQuestionId && data.questions.length > 0) {
-                        const firstQuestionId = data.questions[0].id;
-                        setSelectedQuestionId(firstQuestionId);
-                        setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
-                    } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
-                        // If the current question was deleted by the teacher, switch to the first one.
-                        const firstQuestionId = data.questions[0]?.id || null;
-                         setSelectedQuestionId(firstQuestionId);
-                         if(firstQuestionId) {
-                            setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
-                         }
-                    }
-                }
-                
-            } else {
-                setAccessDenied("This session code is invalid or has expired.");
-                unsub(); // Stop listening if doc doesn't exist
-            }
-            setIsLoading(false);
-        }, async (error) => {
-            const permissionError = new FirestorePermissionError({
-                path: sessionRef.path,
-                operation: 'get',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            console.error("Error listening to live session:", error);
-            setIsLoading(false);
-            setAccessDenied("An error occurred while connecting to the session.");
-        });
+        const setupSnapshot = async () => {
+            const db = await getClientDb();
+            if (!db) {
+                setAccessDenied("Could not connect to the database.");
+                setIsLoading(false);
+                return;
+            };
 
-        return () => unsub();
+            const sessionRef = doc(db, 'live-sessions', sessionCode);
+            const unsub = onSnapshot(sessionRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data() as LiveSession;
+                    
+                    if (data.isUsed && data.studentId !== user.uid) {
+                        setAccessDenied("This session code has already been used by another student.");
+                        setIsLoading(false);
+                        unsub(); // Stop listening if access is denied
+                        return;
+                    }
+                    
+                    if (!data.isUsed) {
+                        await updateDoc(sessionRef, {
+                            isUsed: true,
+                            studentId: user.uid
+                        });
+                        // The snapshot will update with the new data, so we don't set state here.
+                    } else {
+                        setSession(data);
+                        // Handle question selection
+                        if (!selectedQuestionId && data.questions.length > 0) {
+                            const firstQuestionId = data.questions[0].id;
+                            setSelectedQuestionId(firstQuestionId);
+                            setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
+                        } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
+                            // If the current question was deleted by the teacher, switch to the first one.
+                            const firstQuestionId = data.questions[0]?.id || null;
+                             setSelectedQuestionId(firstQuestionId);
+                             if(firstQuestionId) {
+                                setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
+                             }
+                        }
+                    }
+                    
+                } else {
+                    setAccessDenied("This session code is invalid or has expired.");
+                    unsub(); // Stop listening if doc doesn't exist
+                }
+                setIsLoading(false);
+            }, async (error) => {
+                const permissionError = new FirestorePermissionError({
+                    path: sessionRef.path,
+                    operation: 'get',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                console.error("Error listening to live session:", error);
+                setIsLoading(false);
+                setAccessDenied("An error occurred while connecting to the session.");
+            });
+
+            return () => unsub();
+        }
+
+        setupSnapshot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionCode, user, authLoading]);
 
@@ -124,8 +135,10 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
         setCurrentCode(newCode);
     }
     
-    const debouncedSave = useCallback(() => {
+    const debouncedSave = useCallback(async () => {
         if (!selectedQuestionId || !session) return;
+        const db = await getClientDb();
+        if (!db) return;
         const path = `answers.${selectedQuestionId}`;
         updateDoc(doc(db, 'live-sessions', sessionCode), { 
             [path]: currentCode

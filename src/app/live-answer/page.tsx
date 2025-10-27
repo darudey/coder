@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -8,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getClientDb } from '@/lib/firebase';
 
 export default function EnterCodePage() {
     const [code, setCode] = useState('');
@@ -23,6 +24,13 @@ export default function EnterCodePage() {
             return;
         }
         setIsLoading(true);
+
+        const db = await getClientDb();
+        if (!db) {
+            toast({ title: "Error", description: "Could not connect to the database.", variant: "destructive" });
+            setIsLoading(false);
+            return;
+        }
 
         const sessionRef = doc(db, 'live-sessions', code);
         try {

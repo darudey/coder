@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import { type Topic, type NoteSegment, type PracticeQuestion, type TableData } from '@/lib/courses-data';
@@ -28,7 +29,7 @@ import { DotLoader } from '@/components/codeweave/dot-loader';
 import { LoadingPage } from '@/components/loading-page';
 import { NoteCodeEditor } from '@/components/codeweave/note-code-editor';
 import { Header } from '@/components/codeweave/header';
-import { db } from '@/lib/firebase';
+import { getClientDb } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import RichTextEditor, { RichTextEditorRef } from '@/components/codeweave/rich-text-editor';
 import { cn, getYouTubeVideoId } from '@/lib/utils';
@@ -252,6 +253,8 @@ export default function ManageTopicPage({ params: propsParams }: ManageTopicPage
 
   const handleSaveChanges = async () => {
     if (!topic || !course || !chapter) return;
+    const db = await getClientDb();
+    if (!db) return;
     setIsSaving(true);
     
     // Construct the final topic object by gathering data from refs

@@ -4,7 +4,7 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { courses as initialCoursesData, type Course, type Chapter, type Topic } from '@/lib/courses-data';
 import { nanoid } from 'nanoid';
-import { db } from '@/lib/firebase';
+import { getClientDb } from '@/lib/firebase';
 import { collection, doc, getDocs, writeBatch, setDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 
 const isServer = typeof window === 'undefined';
@@ -29,24 +29,25 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const writeCoursesToDb = async (coursesToSave: Course[]) => {
-    const batch = writeBatch(db);
-    coursesToSave.forEach((course, index) => {
-      const courseRef = doc(db, 'courses', course.id);
-      batch.set(courseRef, { ...course, order: index });
-    });
-    await batch.commit();
-  };
-
   useEffect(() => {
     const fetchCourses = async () => {
       if (!isServer) {
         setLoading(true);
         try {
+          const db = await getClientDb();
+          if (!db) {
+              setLoading(false);
+              return;
+          };
           const querySnapshot = await getDocs(collection(db, "courses"));
           if (querySnapshot.empty) {
             // No courses in DB, let's upload the initial data
-            await writeCoursesToDb(initialCoursesData);
+            const batch = writeBatch(db);
+            initialCoursesData.forEach((course, index) => {
+              const courseRef = doc(db, 'courses', course.id);
+              batch.set(courseRef, { ...course, order: index });
+            });
+            await batch.commit();
             setCourses(initialCoursesData.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
           } else {
             const coursesFromDb = querySnapshot.docs.map(doc => doc.data() as Course).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -62,6 +63,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addCourse = useCallback(async (title: string, description: string) => {
+    const db = await getClientDb();
+    if (!db) return;
     const newCourse: Course = {
       id: nanoid(),
       title,
@@ -80,6 +83,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const updateCourse = useCallback(async (courseId: string, updatedCourseData: Partial<Course>) => {
+    const db = await getClientDb();
+    if (!db) return;
     const originalCourses = courses;
     const updatedCourses = courses.map(course =>
       course.id === courseId ? { ...course, ...updatedCourseData } : course
@@ -98,6 +103,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const deleteCourse = useCallback(async (courseId: string) => {
+    const db = await getClientDb();
+    if (!db) return;
     const originalCourses = courses;
     const coursesToUpdate = originalCourses.filter(course => course.id !== courseId);
     
@@ -123,6 +130,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const reorderCourse = useCallback(async (courseId: string, direction: 'up' | 'down') => {
+      const db = await getClientDb();
+      if (!db) return;
       const reordered = Array.from(courses);
       const fromIndex = reordered.findIndex(c => c.id === courseId);
       if (fromIndex === -1) return;
@@ -154,6 +163,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const addChapter = useCallback(async (courseId: string, title: string, description: string) => {
+    const db = await getClientDb();
+    if (!db) return;
     const originalCourses = courses;
     const course = originalCourses.find(c => c.id === courseId);
     if (!course) return;
@@ -164,8 +175,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
         title: 'New Topic',
         videoUrl: '',
         notes: [
-            { type: 'html', content: `<h4>Welcome to Your New Topic!</h4><p>This is where you can write notes for your students. You can use the toolbar to format your text.</p>`},
-            { type: 'code', content: `console.log("Hello, Teacher!");`}
+            { type: 'html', id: nanoid(), content: `<h4>Welcome to Your New Topic!</h4><p>This is where you can write notes for your students. You can use the toolbar to format your text.</p>`},
+            { type: 'code', id: nanoid(), content: `console.log("Hello, Teacher!");`}
         ],
         syntax: `// Provide a clean syntax example here.`,
         practice: [{ id: nanoid(), question: 'What will this code output?', initialCode: `console.log("Hello, Student!");`, solutionCode: `console.log("Hello, Student!");`, expectedOutput: 'Hello, Student!'}]
@@ -193,6 +204,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const updateChapter = useCallback(async (courseId: string, chapterId: string, updatedChapterData: Partial<Chapter>) => {
+    const db = await getClientDb();
+    if (!db) return;
     const originalCourses = courses;
     const course = originalCourses.find(c => c.id === courseId);
     if (!course) return;
@@ -215,6 +228,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const deleteChapter = useCallback(async (courseId: string, chapterId: string) => {
+    const db = await getClientDb();
+    if (!db) return;
     const originalCourses = courses;
     const course = originalCourses.find(c => c.id === courseId);
     if (!course) return;
@@ -239,6 +254,8 @@ export function CoursesProvider({ children }: { children: React.ReactNode }) {
   }, [courses]);
 
   const reorderChapter = useCallback(async (courseId: string, chapterId: string, direction: 'up' | 'down') => {
+      const db = await getClientDb();
+      if (!db) return;
       const originalCourses = courses;
       const course = originalCourses.find(c => c.id === courseId);
       if (!course) return;

@@ -14,7 +14,7 @@ import {
     signInAnonymously as firebaseSignInAnonymously
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { app, db } from '@/lib/firebase';
+import { app, getClientDb } from '@/lib/firebase';
 import { useToast } from './use-toast';
 
 type Role = 'student' | 'teacher' | 'developer';
@@ -41,6 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const auth = getAuth(app);
 
   const manageUserDocument = useCallback(async (user: User) => {
+    const db = await getClientDb();
+    if (!db) return null;
     const userDocRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
     if (!userDoc.exists()) {

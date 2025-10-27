@@ -1,13 +1,13 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import { addDoc, collection, doc, getDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { collection, doc, getDoc, addDoc } from 'firebase/firestore';
 
 
 export async function shareCode(code: string): Promise<{id: string} | {error: string}> {
     try {
-        const docRef = await addDoc(collection(db, "shares"), {
+        const docRef = await adminDb.collection("shares").add({
             code: code,
         });
 
@@ -20,11 +20,11 @@ export async function shareCode(code: string): Promise<{id: string} | {error: st
 
 export async function getSharedCode(id: string): Promise<string | null> {
     try {
-        const docRef = doc(db, "shares", id);
-        const docSnap = await getDoc(docRef);
+        const docRef = adminDb.collection("shares").doc(id);
+        const docSnap = await docRef.get();
 
-        if (docSnap.exists()) {
-            return docSnap.data().code;
+        if (docSnap.exists) {
+            return docSnap.data()?.code;
         } else {
             return null;
         }

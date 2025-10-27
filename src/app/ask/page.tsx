@@ -7,7 +7,7 @@ import { Compiler, type CompilerRef, type RunResult } from '@/components/codewea
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
+import { getClientDb } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nanoid } from 'nanoid';
@@ -59,48 +59,59 @@ export default function AskQuestionPage() {
   // Effect to load and subscribe to the session
   useEffect(() => {
     if (!user) return;
-    const sessionDocId = `teacher_draft_${user.uid}`;
-    const sessionRef = doc(db, "live-qna", sessionDocId);
     
-    const unsub = onSnapshot(sessionRef, (docSnapshot) => {
-        if (docSnapshot.exists()) {
-            const data = docSnapshot.data() as LiveSession;
-            setSession(data);
-            if (!selectedQuestionId && data.questions.length > 0) {
-                setSelectedQuestionId(data.questions[0].id);
-            } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
-                // If current selection is deleted, select first
-                setSelectedQuestionId(data.questions[0]?.id || null);
-            } else if (data.questions.length === 0) {
-                 setSelectedQuestionId(null);
+    const setupSnapshot = async () => {
+        const db = await getClientDb();
+        if (!db) return;
+
+        const sessionDocId = `teacher_draft_${user.uid}`;
+        const sessionRef = doc(db, "live-qna", sessionDocId);
+        
+        const unsub = onSnapshot(sessionRef, (docSnapshot) => {
+            if (docSnapshot.exists()) {
+                const data = docSnapshot.data() as LiveSession;
+                setSession(data);
+                if (!selectedQuestionId && data.questions.length > 0) {
+                    setSelectedQuestionId(data.questions[0].id);
+                } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
+                    // If current selection is deleted, select first
+                    setSelectedQuestionId(data.questions[0]?.id || null);
+                } else if (data.questions.length === 0) {
+                     setSelectedQuestionId(null);
+                }
+            } else {
+                const defaultQuestionId = nanoid();
+                const defaultSession: LiveSession = {
+                    questions: [{
+                        id: defaultQuestionId,
+                        question: '<h4>Example Question</h4><p>Print your name to the console.</p>',
+                        initialCode: `// Create a function to print your name\nfunction printName(name) {\n  console.log(name);\n}\n\n// Call the function with your name`,
+                        solutionCode: `function printName(name) {\n  console.log(name);\n}\n\nprintName('Alex');`
+                    }],
+                    answers: {}
+                };
+                setDoc(doc(db, "live-qna", sessionDocId), defaultSession);
+                // Firestore will trigger the snapshot listener again with the new data
             }
-        } else {
-            const defaultQuestionId = nanoid();
-            const defaultSession: LiveSession = {
-                questions: [{
-                    id: defaultQuestionId,
-                    question: '<h4>Example Question</h4><p>Print your name to the console.</p>',
-                    initialCode: `// Create a function to print your name\nfunction printName(name) {\n  console.log(name);\n}\n\n// Call the function with your name`,
-                    solutionCode: `function printName(name) {\n  console.log(name);\n}\n\nprintName('Alex');`
-                }],
-                answers: {}
-            };
-            setDoc(doc(db, "live-qna", sessionDocId), defaultSession);
-            // Firestore will trigger the snapshot listener again with the new data
-        }
-    },
-    async (error) => {
-        const permissionError = new FirestorePermissionError({
-            path: sessionRef.path,
-            operation: 'get',
+        },
+        async (error) => {
+            const permissionError = new FirestorePermissionError({
+                path: sessionRef.path,
+                operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
         });
-        errorEmitter.emit('permission-error', permissionError);
-    });
-    return () => unsub();
+        return () => unsub();
+    }
+
+    setupSnapshot();
   }, [user, selectedQuestionId]);
   
-  const handleDebouncedSave = useCallback(() => {
+  const handleDebouncedSave = useCallback(async () => {
     if (!session || !user) return;
+    
+    const db = await getClientDb();
+    if (!db) return;
 
     let sessionToSave = {...session};
     const currentQuestionEditorValue = questionEditorRef.current?.getValue();
@@ -125,6 +136,8 @@ export default function AskQuestionPage() {
 
   const handlePublishSession = async () => {
     if (!session || !user) return;
+    const db = await getClientDb();
+    if (!db) return;
     setIsPublishing(true);
 
     handleDebouncedSave(); // ensure latest changes are saved before publishing

@@ -1,6 +1,6 @@
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   "projectId": "studio-8417032287-659a9",
@@ -12,7 +12,19 @@ const firebaseConfig = {
   "messagingSenderId": "905325384029"
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-export { app, db, firebaseConfig };
+let db: Firestore | null = null;
+
+async function getClientDb() {
+    if (typeof window !== 'undefined') {
+        if (!db) {
+            const { getFirestore } = await import('firebase/firestore');
+            db = getFirestore(app);
+        }
+        return db;
+    }
+    return null;
+}
+
+export { app, getClientDb, firebaseConfig };
