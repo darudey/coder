@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -29,6 +30,9 @@ const nextConfig: NextConfig = {
       'https://6000-firebase-studio-1756285592299.cluster-yylgzpipxrar4v4a72liastuqy.cloudworkstations.dev',
     ],
   },
+  env: {
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  }
 };
 
 export default nextConfig;

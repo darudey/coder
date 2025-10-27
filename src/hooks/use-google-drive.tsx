@@ -33,7 +33,8 @@ const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(un
 // 3. Select "Web application" as the application type.
 // 4. Add your website's address (e.g., https://your-app-url.com) to the "Authorized JavaScript origins".
 // 5. Copy the Client ID and paste it here.
-const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // <--- REPLACE THIS
+const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+
 
 const API_KEY = firebaseConfig.apiKey;
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
