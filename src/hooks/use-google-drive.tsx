@@ -21,8 +21,8 @@ interface UserProfile {
 interface GoogleDriveContextValue {
   isSignedIn: boolean;
   userProfile: UserProfile | null;
-  signIn: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signIn: () => void;
+  signOut: () => void;
   saveFileToDrive: (fileName: string, content: string) => Promise<void>;
   loading: boolean;
 }
@@ -31,70 +31,20 @@ const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(un
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const { scriptsLoaded, scriptLoadError } = useGoogleScripts();
   const [tokenClient, setTokenClient] = useState<any>(null);
-  const [isGapiLoaded, setIsGapiLoaded] = useState(false);
+  const [isApiLoaded, setIsApiLoaded] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // 1. Initialize GAPI client and GIS token client
-  useEffect(() => {
-    if (!scriptsLoaded || scriptLoadError) {
-      if(scriptLoadError) {
-        toast({ title: "Script Error", description: "Failed to load Google API scripts.", variant: "destructive" });
-        setLoading(false);
-      }
-      return;
-    }
-
-    // Load GAPI client
-    window.gapi.load('client', async () => {
-      try {
-        await window.gapi.client.init({
-          apiKey: API_KEY,
-          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-        });
-        setIsGapiLoaded(true);
-      } catch (error: any) {
-        console.error('Error initializing gapi client', error);
-        toast({ title: 'Initialization Error', description: `Failed to initialize Google API. ${error?.details || ''}`, variant: 'destructive' });
-      }
-    });
-
-    // Initialize GIS client
-    try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (tokenResponse) => {
-          if (tokenResponse && tokenResponse.access_token) {
-            window.gapi.client.setToken(tokenResponse);
-            setIsSignedIn(true);
-            fetchUserProfile();
-          }
-        },
-      });
-      setTokenClient(client);
-    } catch (error) {
-      console.error('Error initializing google accounts client', error);
-       toast({ title: 'Initialization Error', description: "Failed to initialize Google sign-in.", variant: 'destructive' });
-    }
-
-  }, [scriptsLoaded, scriptLoadError, toast]);
-  
-  useEffect(() => {
-    if (isGapiLoaded && tokenClient) {
-      setLoading(false);
-    }
-  }, [isGapiLoaded, tokenClient])
-
   const fetchUserProfile = useCallback(async () => {
     try {
+      // Use the gapi client to get user info.
       const response = await window.gapi.client.oauth2.userinfo.get();
       const profile = response.result;
       setUserProfile({
@@ -103,25 +53,83 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         email: profile.email || null,
         imageUrl: profile.picture || null,
       });
+      setIsSignedIn(true);
     } catch (error) {
       console.error('Error fetching user profile', error);
+      toast({ title: "Profile Error", description: "Could not fetch your Google profile.", variant: "destructive"});
     }
-  }, []);
+  }, [toast]);
+  
+  useEffect(() => {
+    if (!scriptsLoaded) {
+      if (scriptLoadError) {
+        toast({ title: "Script Error", description: "Failed to load Google API scripts.", variant: "destructive" });
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 1. GAPI has loaded, now initialize the GAPI client.
+    const initializeGapiClient = async () => {
+      try {
+        await window.gapi.client.init({ apiKey: API_KEY });
+        
+        // 2. Client is initialized, now load the required APIs sequentially.
+        await window.gapi.client.load('drive', 'v3');
+        await window.gapi.client.load('oauth2', 'v2');
+        
+        // 3. All APIs are loaded, the API is ready.
+        setIsApiLoaded(true);
+
+      } catch (error: any) {
+        const errorDetails = error?.result?.error?.message || error?.details || JSON.stringify(error);
+        console.error('Error initializing GAPI client or loading APIs:', error);
+        toast({ title: "Initialization Error", description: `Could not initialize Google API client. Details: ${errorDetails}`, variant: "destructive"});
+      }
+    };
+    
+    window.gapi.load('client', initializeGapiClient);
+
+  }, [scriptsLoaded, scriptLoadError, toast]);
+  
+   // Initialize the Google Identity Services (GIS) token client once the GAPI is ready.
+   useEffect(() => {
+    if (!isApiLoaded) return;
+
+    try {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            window.gapi.client.setToken(tokenResponse);
+            fetchUserProfile(); // Fetch profile and set signed-in state
+          }
+        },
+      });
+      setTokenClient(client);
+    } catch (error) {
+      console.error('Error initializing google accounts client', error);
+      toast({ title: 'Sign-In Init Error', description: "Failed to initialize Google sign-in.", variant: 'destructive' });
+    }
+   }, [isApiLoaded, toast, fetchUserProfile]);
+
+
+  // Update the main loading state.
+  useEffect(() => {
+    if (isApiLoaded && tokenClient) {
+      setLoading(false);
+    }
+  }, [isApiLoaded, tokenClient]);
 
   const signIn = useCallback(() => {
-    if (!tokenClient) {
+    if (loading || !tokenClient) {
       toast({ title: 'Not Ready', description: 'Google Sign-In is not ready yet.', variant: 'destructive' });
-      return Promise.resolve();
+      return;
     }
-    return new Promise<void>((resolve, reject) => {
-      try {
-        tokenClient.requestAccessToken();
-        resolve();
-      } catch(e) {
-        reject(e);
-      }
-    });
-  }, [tokenClient, toast]);
+    // Prompt the user to select a Google Account and ask for consent to share their data.
+    tokenClient.requestAccessToken();
+  }, [tokenClient, loading, toast]);
 
   const signOut = useCallback(() => {
     const token = window.gapi.client.getToken();
@@ -133,12 +141,15 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         toast({ title: 'Signed Out', description: 'You have been signed out from Google Drive.' });
       });
     }
-    return Promise.resolve();
   }, [toast]);
-  
+
   const saveFileToDrive = useCallback(async (fileName: string, content: string) => {
     if (!isSignedIn) {
       toast({ title: 'Not Signed In', description: 'Please sign in with Google to save to Drive.', variant: 'destructive' });
+      return;
+    }
+    if (!isApiLoaded) {
+      toast({ title: 'API Not Ready', description: 'The Google Drive API is not yet available.', variant: 'destructive' });
       return;
     }
     
@@ -172,10 +183,11 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         toast({ title: 'File Saved', description: `${fileName} was saved to your Google Drive.` });
 
     } catch (error: any) {
+        const errorDetails = error?.result?.error?.message || 'Could not save file to Google Drive.';
         console.error("Error saving to Drive:", error);
-        toast({ title: 'Error', description: error?.result?.error?.message || 'Could not save file to Google Drive.', variant: 'destructive' });
+        toast({ title: 'Error', description: errorDetails, variant: 'destructive' });
     }
-  }, [isSignedIn, toast]);
+  }, [isSignedIn, isApiLoaded, toast]);
 
   const value = {
     isSignedIn,
