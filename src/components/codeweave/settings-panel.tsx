@@ -57,7 +57,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const { settings, setSettings, toggleTheme } = useSettings();
-  const { user, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const { 
     isSignedIn, 
     userProfile, 
@@ -89,8 +89,6 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         description: 'Your Gemini API key has been saved in your browser.',
     });
   };
-
-  const isGoogleSignIn = user?.providerData.some(p => p.providerId === 'google.com');
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

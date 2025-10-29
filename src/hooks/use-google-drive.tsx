@@ -50,7 +50,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await firebaseSignOut();
-    toast({ title: 'Signed Out', description: 'You have been signed out.' });
+    toast({ title: 'Signed Out', description: 'You have been signed out from Google Drive connection.' });
   };
   
   const saveFileToDrive = async (fileName: string, content: string) => {
