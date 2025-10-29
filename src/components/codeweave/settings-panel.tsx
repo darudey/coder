@@ -33,7 +33,6 @@ import { Slider } from '../ui/slider';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
-import { useAuth } from '@/hooks/use-auth';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -57,12 +56,12 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const { settings, setSettings, toggleTheme } = useSettings();
-  const { loading: authLoading } = useAuth();
   const { 
     isSignedIn, 
     userProfile, 
     signIn, 
     signOut,
+    loading: driveLoading,
   } = useGoogleDrive();
 
   useEffect(() => {
@@ -143,7 +142,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
               </AccordionTrigger>
               <AccordionContent>
                  <div className="grid gap-3 pt-4">
-                    {authLoading ? (
+                    {driveLoading ? (
                       <Skeleton className="h-10 w-full" />
                     ) : isSignedIn ? (
                       <div className="space-y-4">
