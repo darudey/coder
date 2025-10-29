@@ -33,6 +33,7 @@ import { Slider } from '../ui/slider';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
+import { useAuth } from '@/hooks/use-auth';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -56,9 +57,9 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const { settings, setSettings, toggleTheme } = useSettings();
+  const { user, loading: authLoading } = useAuth();
   const { 
     isSignedIn, 
-    isApiLoaded, 
     userProfile, 
     signIn, 
     signOut,
@@ -89,6 +90,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     });
   };
 
+  const isGoogleSignIn = user?.providerData.some(p => p.providerId === 'google.com');
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -143,13 +145,13 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
               </AccordionTrigger>
               <AccordionContent>
                  <div className="grid gap-3 pt-4">
-                    {!isApiLoaded ? (
+                    {authLoading ? (
                       <Skeleton className="h-10 w-full" />
                     ) : isSignedIn ? (
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
                            <Avatar>
-                              <AvatarImage src={userProfile?.imageUrl} alt={userProfile?.name} />
+                              <AvatarImage src={userProfile?.imageUrl ?? undefined} alt={userProfile?.name ?? ''} />
                               <AvatarFallback>{userProfile?.givenName?.[0]}</AvatarFallback>
                            </Avatar>
                            <div className='text-sm'>

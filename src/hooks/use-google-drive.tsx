@@ -2,205 +2,96 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useToast } from './use-toast';
-import { firebaseConfig } from '@/lib/firebase';
-
-declare global {
-    var gapi: any;
-    var google: any;
-}
+import { useAuth } from './use-auth';
+import { getAuth, getIdToken } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 
 interface UserProfile {
-  email: string;
-  name: string;
-  givenName: string;
-  imageUrl: string;
+  email: string | null;
+  name: string | null;
+  givenName: string | null;
+  imageUrl: string | null;
 }
 
 interface GoogleDriveContextValue {
-  isApiLoaded: boolean;
   isSignedIn: boolean;
   userProfile: UserProfile | null;
-  signIn: () => void;
-  signOut: () => void;
-  saveFileToDrive: (fileName: string, content: string) => void;
+  signIn: () => Promise<void>;
+  signOut: () => Promise<void>;
+  saveFileToDrive: (fileName: string, content: string) => Promise<void>;
 }
 
 const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(undefined);
 
-// TODO: Replace with your own Google Cloud Project credentials.
-// 1. Go to https://console.cloud.google.com/apis/credentials
-// 2. Create an "OAuth 2.0 Client ID".
-// 3. Select "Web application" as the application type.
-// 4. Add your website's address (e.g., https://your-app-url.com) to the "Authorized JavaScript origins".
-// 5. Copy the Client ID and paste it here.
-const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
-
-
-const API_KEY = firebaseConfig.apiKey;
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
-  const [isApiLoaded, setIsApiLoaded] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(false);
+  const { user, signInWithGoogle, signOut: firebaseSignOut } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const { toast } = useToast();
-  const [tokenClient, setTokenClient] = useState<any>(null);
+  
+  const isGoogleSignIn = user?.providerData.some(p => p.providerId === 'google.com');
+  const isSignedIn = !!user && isGoogleSignIn;
 
-  const updateUserProfile = useCallback(async () => {
-    try {
-      await gapi.client.load('oauth2', 'v2');
-      const response = await gapi.client.oauth2.userinfo.get();
-      const profile = response.result;
+  useEffect(() => {
+    if (isSignedIn) {
       setUserProfile({
-        email: profile.email,
-        name: profile.name,
-        givenName: profile.given_name,
-        imageUrl: profile.picture,
+        email: user.email,
+        name: user.displayName,
+        givenName: user.displayName?.split(' ')[0] || null,
+        imageUrl: user.photoURL,
       });
-      setIsSignedIn(true);
-    } catch(e) {
-      console.error("Could not fetch user profile", e);
-      setIsSignedIn(false);
+    } else {
       setUserProfile(null);
     }
-  }, []);
+  }, [user, isSignedIn]);
 
-  const initializeGapiClient = useCallback(async () => {
-    try {
-      await gapi.client.load(DISCOVERY_DOC);
-      setIsApiLoaded(true);
-    } catch (e) {
-      console.error("Error initializing gapi client", e);
-    }
-  }, []);
+  const signIn = async () => {
+    await signInWithGoogle();
+  };
 
-  useEffect(() => {
-    const gapiLoaded = () => {
-        gapi.load('client', initializeGapiClient);
-    }
-
-    const checkGapiReady = () => {
-      if (window.gapi) {
-        gapiLoaded();
-      } else {
-        setTimeout(checkGapiReady, 100); // Check again shortly
-      }
-    };
-    checkGapiReady();
-  }, [initializeGapiClient]);
-
-  useEffect(() => {
-    const checkGsiReady = () => {
-        if(window.google && window.google.accounts) {
-            const client = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: (tokenResponse: any) => {
-                  if (tokenResponse && tokenResponse.access_token) {
-                    gapi.client.setToken(tokenResponse);
-                    updateUserProfile();
-                  }
-                },
-            });
-            setTokenClient(client);
-        } else {
-            setTimeout(checkGsiReady, 100);
-        }
-    }
-    checkGsiReady();
-  }, [updateUserProfile]);
-
-
-  const signIn = useCallback(() => {
-    if (CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
-        toast({ title: "Google Drive Not Configured", description: "Please add your Google Client ID in src/hooks/use-google-drive.tsx.", variant: 'destructive' });
-        return;
-    }
-    if (tokenClient) {
-      tokenClient.requestAccessToken({ prompt: '' });
-    } else {
-        toast({ title: "Google API not ready", description: "Please wait a moment and try again.", variant: 'destructive' });
-    }
-  }, [tokenClient, toast]);
-
-  const signOut = useCallback(() => {
-    const token = gapi.client.getToken();
-    if (token !== null) {
-      google.accounts.oauth2.revoke(token.access_token, () => {
-        gapi.client.setToken('');
-        setIsSignedIn(false);
-        setUserProfile(null);
-        toast({ title: 'Signed Out', description: 'You have successfully signed out from Google Drive.' });
-      });
-    }
-  }, [toast]);
-
-  const saveFileToDrive = useCallback((fileName: string, content: string) => {
+  const signOut = async () => {
+    await firebaseSignOut();
+    toast({ title: 'Signed Out', description: 'You have been signed out.' });
+  };
+  
+  const saveFileToDrive = async (fileName: string, content: string) => {
     if (!isSignedIn) {
-      toast({ title: 'Not signed in', description: 'Please connect to Google Drive first.', variant: 'destructive' });
+      toast({ title: 'Not Signed In', description: 'Please sign in with Google to save to Drive.', variant: 'destructive' });
       return;
     }
-
-    const showPicker = () => {
-        const view = new google.picker.View(google.picker.ViewId.DOCS);
-        view.setMimeTypes("application/vnd.google-apps.folder");
-        const picker = new google.picker.PickerBuilder()
-            .addView(view)
-            .setOAuthToken(gapi.client.getToken().access_token)
-            .setDeveloperKey(API_KEY)
-            .setCallback((data: any) => {
-                if (data.action === google.picker.Action.PICKED) {
-                    const folderId = data.docs[0].id;
-                    createFileInFolder(folderId, fileName, content);
-                }
-            })
-            .build();
-        picker.setVisible(true);
-    };
     
-    if (window.google && google.picker) {
-      showPicker();
-    } else {
-      gapi.load('picker', showPicker);
+    const auth = getAuth(app);
+    if (!auth.currentUser) {
+        toast({ title: 'Authentication Error', description: 'User not found. Please sign in again.', variant: 'destructive' });
+        return;
     }
 
-  }, [isSignedIn, toast]);
-
-  const createFileInFolder = async (folderId: string, fileName: string, content: string) => {
     try {
-        const fileMetadata = {
-            name: fileName,
-            parents: [folderId],
-            mimeType: 'application/javascript',
-        };
-        const file = new Blob([content], { type: 'application/javascript' });
-
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(fileMetadata)], { type: 'application/json' }));
-        form.append('file', file);
+        const idToken = await getIdToken(auth.currentUser);
         
-        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        const response = await fetch('/api/drive/save', {
             method: 'POST',
-            headers: new Headers({ 'Authorization': 'Bearer ' + gapi.client.getToken().access_token }),
-            body: form,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ fileName, content }),
         });
+
+        const result = await response.json();
 
         if (response.ok) {
             toast({ title: 'File Saved', description: `${fileName} was saved to your Google Drive.` });
         } else {
-            const error = await response.json();
-            toast({ title: 'Save Failed', description: error.error.message, variant: 'destructive' });
+             toast({ title: 'Save Failed', description: result.error || 'An unknown error occurred.', variant: 'destructive' });
         }
+
     } catch (error) {
         console.error("Error saving to Drive:", error);
-        toast({ title: 'Error', description: "Could not save file to Google Drive.", variant: 'destructive' });
+        toast({ title: 'Error', description: 'Could not save file to Google Drive.', variant: 'destructive' });
     }
   };
 
-
   const value = {
-    isApiLoaded,
     isSignedIn,
     userProfile,
     signIn,
