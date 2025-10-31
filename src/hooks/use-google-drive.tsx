@@ -75,19 +75,26 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     const gapi = window.gapi;
     const google = window.google;
 
-    const initializeGapiClient = async () => {
-        try {
-            await gapi.client.init({ apiKey: API_KEY });
-            await Promise.all([
-                gapi.client.load('drive', 'v3'),
-                gapi.client.load('oauth2', 'v2'),
-            ]);
-            setIsGapiLoaded(true);
-        } catch(error: any) {
-           const errorDetails = error?.result?.error?.message || 'Could not initialize Google API client.';
-           console.error('Error initializing GAPI client:', error);
-           toast({ title: "Initialization Error", description: errorDetails, variant: "destructive"});
-        }
+    if (!gapi || !google) {
+        console.error("GAPI or Google script not loaded yet");
+        return;
+    }
+
+    const initializeGapiClient = () => {
+        gapi.load('client', async () => {
+            try {
+                await gapi.client.init({ apiKey: API_KEY });
+                await Promise.all([
+                    gapi.client.load('drive', 'v3'),
+                    gapi.client.load('oauth2', 'v2'),
+                ]);
+                setIsGapiLoaded(true);
+            } catch(error: any) {
+               const errorDetails = error?.result?.error?.message || 'Could not initialize Google API client.';
+               console.error('Error initializing GAPI client:', error);
+               toast({ title: "Initialization Error", description: errorDetails, variant: "destructive"});
+            }
+        });
     }
     
     initializeGapiClient();
