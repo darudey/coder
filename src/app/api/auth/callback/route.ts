@@ -5,25 +5,21 @@ import { cookies } from 'next/headers';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`;
+
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
     throw new Error("Google OAuth credentials are not set in the environment variables.");
 }
 
-function getRedirectUri(req: NextRequest) {
-    const protocol = req.headers.get('x-forwarded-proto') || 'http';
-    const host = req.headers.get('host');
-    return `${protocol}://${host}/api/auth/callback`;
-}
 
 export async function GET(req: NextRequest) {
     const code = req.nextUrl.searchParams.get('code');
-    const redirectUri = getRedirectUri(req);
 
     const oauth2Client = new google.auth.OAuth2(
       CLIENT_ID,
       CLIENT_SECRET,
-      redirectUri
+      REDIRECT_URI
     );
 
     if (typeof code !== 'string') {
