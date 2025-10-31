@@ -5,21 +5,21 @@ import { cookies } from 'next/headers';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 
 
-if (!CLIENT_ID || !CLIENT_SECRET) {
+if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
     throw new Error("Google OAuth credentials are not set in the environment variables.");
 }
 
 
 export async function GET(req: NextRequest) {
     const code = req.nextUrl.searchParams.get('code');
-    const redirectUri = `${req.nextUrl.origin}/api/auth/callback`;
 
     const oauth2Client = new google.auth.OAuth2(
       CLIENT_ID,
       CLIENT_SECRET,
-      redirectUri
+      REDIRECT_URI
     );
 
     if (typeof code !== 'string') {
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Redirect back to the main page or settings page
-        return NextResponse.redirect(new URL('/', req.url));
+        return NextResponse.redirect(new URL('/', req.nextUrl.origin));
 
     } catch (error) {
         console.error("Error exchanging code for tokens:", error);
