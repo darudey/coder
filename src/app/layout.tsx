@@ -25,8 +25,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet" />
-        <Script src="https://apis.google.com/js/api.js" async defer />
-        <Script src="https://accounts.google.com/gsi/client" async defer />
       </head>
       <body className="font-body antialiased">
         <SettingsProvider>

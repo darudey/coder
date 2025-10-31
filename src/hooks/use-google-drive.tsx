@@ -2,6 +2,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useToast } from './use-toast';
+import Script from 'next/script';
 
 declare global {
   interface Window {
@@ -34,10 +35,16 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapi
 
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const [tokenClient, setTokenClient] = useState<any>(null);
+  const [isGapiLoaded, setIsGapiLoaded] = useState(false);
+  const [isGisLoaded, setIsGisLoaded] = useState(false);
+  const [isApiInitialized, setIsApiInitialized] = useState(false);
+
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  const gapiScriptsLoaded = isGapiLoaded && isGisLoaded;
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -55,67 +62,50 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       toast({ title: "Profile Error", description: "Could not fetch your Google profile.", variant: "destructive"});
     }
   }, [toast]);
-
+  
   useEffect(() => {
-    const initializeGapi = () => {
-      if (window.gapi && window.google) {
-        // gapi client
-        window.gapi.load('client', async () => {
-          try {
-            await window.gapi.client.init({ apiKey: API_KEY });
-            await window.gapi.client.load('drive', 'v3');
-            await window.gapi.client.load('oauth2', 'v2');
-          } catch(e: any) {
-            console.error('GAPI client init error', e);
-            const errorDetails = e?.result?.error?.message || e.details || JSON.stringify(e);
-            toast({ title: 'Initialization Error', description: `Could not initialize Google API client. Details: ${errorDetails}`, variant: 'destructive'});
-            setLoading(false);
-            return;
-          }
+    if (!gapiScriptsLoaded || isApiInitialized) return;
 
-          // gis client
-          try {
-            const client = window.google.accounts.oauth2.initTokenClient({
-              client_id: CLIENT_ID,
-              scope: SCOPES,
-              callback: (tokenResponse: any) => {
-                if (tokenResponse && tokenResponse.access_token) {
-                  window.gapi.client.setToken(tokenResponse);
-                  fetchUserProfile();
-                }
-              },
-            });
-            setTokenClient(client);
-          } catch (e) {
-             console.error('GIS client init error', e);
-             toast({ title: 'Sign-In Init Error', description: "Failed to initialize Google sign-in.", variant: 'destructive' });
-          } finally {
-            setLoading(false);
-          }
+    const initializeGapiClient = async () => {
+      try {
+        await window.gapi.client.init({ apiKey: API_KEY });
+        await window.gapi.client.load('drive', 'v3');
+        await window.gapi.client.load('oauth2', 'v2');
+        
+        const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            callback: (tokenResponse: any) => {
+              if (tokenResponse && tokenResponse.access_token) {
+                window.gapi.client.setToken(tokenResponse);
+                fetchUserProfile();
+              }
+            },
         });
+        setTokenClient(client);
+        setIsApiInitialized(true);
+      } catch (error: any) {
+        const errorDetails = error?.result?.error?.message || error.details || JSON.stringify(error);
+        console.error('Error initializing GAPI client or loading APIs:', errorDetails);
+        toast({ title: "Initialization Error", description: `Could not initialize Google API client. Details: ${errorDetails}`, variant: "destructive"});
+      } finally {
+        setLoading(false);
       }
     };
     
-    // Poll for the scripts to be loaded
-    const interval = setInterval(() => {
-        if(window.gapi && window.google) {
-            clearInterval(interval);
-            initializeGapi();
-        }
-    }, 100);
-
-    return () => clearInterval(interval);
-
-  }, [toast, fetchUserProfile]);
+    if (window.gapi && window.gapi.client) {
+      initializeGapiClient();
+    }
+  }, [gapiScriptsLoaded, isApiInitialized, fetchUserProfile, toast]);
 
 
   const signIn = useCallback(() => {
-    if (loading || !tokenClient) {
-      toast({ title: 'Not Ready', description: 'Google Sign-In is not ready yet.', variant: 'destructive' });
+    if (!isApiInitialized || !tokenClient) {
+      toast({ title: 'Not Ready', description: 'Google Sign-In is not ready yet. Please wait a moment.', variant: 'destructive' });
       return;
     }
     tokenClient.requestAccessToken({ prompt: 'consent' });
-  }, [tokenClient, loading, toast]);
+  }, [tokenClient, isApiInitialized, toast]);
 
   const signOut = useCallback(() => {
     const token = window.gapi?.client?.getToken();
@@ -182,7 +172,13 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     loading,
   };
 
-  return <GoogleDriveContext.Provider value={value}>{children}</GoogleDriveContext.Provider>;
+  return (
+    <GoogleDriveContext.Provider value={value}>
+        <Script src="https://apis.google.com/js/api.js" async defer onLoad={() => setIsGapiLoaded(true)} />
+        <Script src="https://accounts.google.com/gsi/client" async defer onLoad={() => setIsGisLoaded(true)} />
+        {children}
+    </GoogleDriveContext.Provider>
+  );
 }
 
 export function useGoogleDrive() {
