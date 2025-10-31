@@ -7,7 +7,6 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { MainLayout } from '@/layouts/main-layout';
 import { CoursesProvider } from '@/hooks/use-courses';
 import { GoogleDriveProvider } from '@/hooks/use-google-drive';
-import { ScriptProvider } from '@/components/ScriptProvider';
 
 export const metadata: Metadata = {
   title: '24HrCoding',
@@ -30,7 +29,6 @@ export default function RootLayout({
         <SettingsProvider>
           <AuthProvider>
             <GoogleDriveProvider>
-              <ScriptProvider />
               <CoursesProvider>
                 <MainLayout>
                   {children}

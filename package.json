@@ -44,6 +44,7 @@
     "firebase": "^10.12.2",
     "firebase-admin": "^12.1.1",
     "genkit": "^1.14.1",
+    "googleapis": "^140.0.1",
     "highlight.js": "^11.9.0",
     "lucide-react": "^0.475.0",
     "marked": "^13.0.2",

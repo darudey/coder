@@ -33,6 +33,7 @@ import { Slider } from '../ui/slider';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
+import Link from 'next/link';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -57,13 +58,11 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const { toast } = useToast();
   const { settings, setSettings, toggleTheme } = useSettings();
   const { 
-    isGapiLoaded,
-    isGisLoaded,
-    tokenClient,
     isSignedIn,
     userProfile,
-    signIn,
-    signOut
+    driveFiles,
+    signOut,
+    loading,
   } = useGoogleDrive();
 
   useEffect(() => {
@@ -91,8 +90,6 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     });
   };
   
-  const driveReady = isGapiLoaded && isGisLoaded && tokenClient;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col">
@@ -146,22 +143,37 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
               </AccordionTrigger>
               <AccordionContent>
                  <div className="grid gap-3 pt-4">
-                    {!driveReady ? (
+                    {loading ? (
                       <Skeleton className="h-10 w-full" />
                     ) : isSignedIn ? (
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
                            <Avatar>
-                              <AvatarImage src={userProfile?.imageUrl ?? undefined} alt={userProfile?.name ?? ''} />
-                              <AvatarFallback>{userProfile?.givenName?.[0]}</AvatarFallback>
+                              <AvatarImage src={userProfile?.picture ?? undefined} alt={userProfile?.name ?? ''} />
+                              <AvatarFallback>{userProfile?.given_name?.[0]}</AvatarFallback>
                            </Avatar>
                            <div className='text-sm'>
                               <p className="font-semibold">{userProfile?.name}</p>
                               <p className="text-muted-foreground">{userProfile?.email}</p>
                            </div>
                         </div>
+                        <div className='space-y-2'>
+                          <h4 className="font-medium text-sm">Your Drive Files</h4>
+                          {driveFiles.length > 0 ? (
+                            <ScrollArea className="h-32">
+                              <div className="space-y-1">
+                                {driveFiles.map(file => (
+                                  <a key={file.id} href={file.webViewLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-1 rounded-md hover:bg-muted text-xs">
+                                    <img src={file.iconLink} alt="file icon" className="w-4 h-4" />
+                                    <span>{file.name}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          ): <p className='text-xs text-muted-foreground'>No files found.</p>}
+                        </div>
                         <div className="flex gap-2">
-                          <Button className="w-full" onClick={onSaveToDrive}>
+                          <Button className="w-full" onClick={onSaveToDrive} disabled>
                             <Save className="w-4 h-4 mr-2"/>
                             Save to Drive
                           </Button>
@@ -172,9 +184,11 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <Button onClick={signIn}>
-                        <LogIn className="w-4 h-4 mr-2"/>
-                        Connect to Google Drive
+                      <Button asChild>
+                        <Link href="/api/auth/google">
+                          <LogIn className="w-4 h-4 mr-2"/>
+                          Connect to Google Drive
+                        </Link>
                       </Button>
                     )}
                   </div>

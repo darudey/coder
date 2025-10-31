@@ -1,17 +1,11 @@
 
 'use client';
 
-import { useGoogleDrive } from '@/hooks/use-google-drive';
-import Script from 'next/script';
 import React from 'react';
 
 export function ScriptProvider() {
-    const { scriptLoadCallback } = useGoogleDrive();
-
-    return (
-        <>
-            <Script src="https://apis.google.com/js/api.js" async defer onLoad={scriptLoadCallback} />
-            <Script src="https://accounts.google.com/gsi/client" async defer onLoad={scriptLoadCallback} />
-        </>
-    )
+    // This component is no longer responsible for loading scripts
+    // as they are handled in the server-side layout.
+    // However, we keep it to avoid having to remove it from every layout.
+    return null;
 }
