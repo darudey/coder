@@ -5,7 +5,6 @@ import { cookies } from 'next/headers';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`;
 
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -17,11 +16,12 @@ export async function GET(req: NextRequest) {
     const cookieStore = cookies();
     const accessToken = cookieStore.get('google_access_token')?.value;
     const refreshToken = cookieStore.get('google_refresh_token')?.value;
+    const redirectUri = `${req.nextUrl.origin}/api/auth/callback`;
 
     const oauth2Client = new google.auth.OAuth2(
         CLIENT_ID,
         CLIENT_SECRET,
-        REDIRECT_URI
+        redirectUri
     );
 
     if (!accessToken) {

@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`;
 
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -12,10 +11,12 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 }
 
 export async function GET(req: NextRequest) {
+  const redirectUri = `${req.nextUrl.origin}/api/auth/callback`;
+
   const oauth2Client = new google.auth.OAuth2(
     CLIENT_ID,
     CLIENT_SECRET,
-    REDIRECT_URI
+    redirectUri
   );
   
   const url = oauth2Client.generateAuthUrl({
