@@ -57,11 +57,13 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const { toast } = useToast();
   const { settings, setSettings, toggleTheme } = useSettings();
   const { 
-    isSignedIn, 
-    userProfile, 
-    signIn, 
-    signOut,
-    loading: driveLoading,
+    isGapiLoaded,
+    isGisLoaded,
+    tokenClient,
+    isSignedIn,
+    userProfile,
+    signIn,
+    signOut
   } = useGoogleDrive();
 
   useEffect(() => {
@@ -88,6 +90,8 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         description: 'Your Gemini API key has been saved in your browser.',
     });
   };
+  
+  const driveReady = isGapiLoaded && isGisLoaded && tokenClient;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -142,7 +146,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
               </AccordionTrigger>
               <AccordionContent>
                  <div className="grid gap-3 pt-4">
-                    {driveLoading ? (
+                    {!driveReady ? (
                       <Skeleton className="h-10 w-full" />
                     ) : isSignedIn ? (
                       <div className="space-y-4">
