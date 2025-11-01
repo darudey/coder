@@ -3,17 +3,16 @@ import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
-
-
-if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-    throw new Error("Google OAuth credentials are not set in the environment variables.");
-}
-
-
 export async function GET(req: NextRequest) {
+    const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+    const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+
+    if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
+        console.error("Google OAuth credentials are not set in the environment variables.");
+        return NextResponse.json({ error: "Configuration error on server." }, { status: 500 });
+    }
+
     const cookieStore = cookies();
     const accessToken = cookieStore.get('google_access_token')?.value;
     const refreshToken = cookieStore.get('google_refresh_token')?.value;
@@ -42,7 +41,6 @@ export async function GET(req: NextRequest) {
         
         return NextResponse.json(response.data.files || []);
     } catch (error: any) {
-        // If the access token is expired, try to refresh it.
         if (error.response?.status === 401 && refreshToken) {
             try {
                 const { tokens } = await oauth2Client.refreshAccessToken();
@@ -68,7 +66,6 @@ export async function GET(req: NextRequest) {
 
             } catch (refreshError) {
                 console.error('Error refreshing access token:', refreshError);
-                // Clear the potentially invalid refresh token
                 cookieStore.set('google_refresh_token', '', { expires: new Date(0), path: '/' });
                 return NextResponse.json({ error: 'Session expired, please sign in again.' }, { status: 401 });
             }
