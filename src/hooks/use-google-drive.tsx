@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -41,7 +42,7 @@ const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '';
 
 const SCOPES =
-  'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+  'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
@@ -51,7 +52,144 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [tokenClient, setTokenClient] = useState<any>(null);
 
-  /** 🧩 Create file inside selected folder */
+  /** 🧩 Load GAPI, GIS, Picker scripts properly */
+  useEffect(() => {
+    const loadScript = (src: string) => {
+      return new Promise<void>((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.body.appendChild(script);
+      });
+    };
+
+    const initialize = async () => {
+      try {
+        await loadScript('https://accounts.google.com/gsi/client');
+        await loadScript('https://apis.google.com/js/api.js');
+        
+        await new Promise<void>((resolve) => {
+            const checkGapi = () => {
+                if (window.gapi && window.gapi.load) {
+                    resolve();
+                } else {
+                    setTimeout(checkGapi, 50);
+                }
+            };
+            checkGapi();
+        });
+
+        await new Promise<void>((resolve) => {
+            window.gapi.load('client:picker', async () => {
+                await window.gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                resolve();
+            });
+        });
+
+        // Setup token client
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: () => {}, // will set dynamically
+        });
+        setTokenClient(client);
+        setIsApiLoaded(true);
+      } catch (err) {
+        console.error('Google API load failed', err);
+        toast({
+          title: 'Error',
+          description: 'Failed to initialize Google Drive API.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    initialize();
+  }, [toast]);
+
+  /** 👤 Fetch user profile info */
+  const updateUserProfile = useCallback(async () => {
+    try {
+      await window.gapi.client.load('oauth2', 'v2');
+      const response = await window.gapi.client.oauth2.userinfo.get();
+      const profile = response.result;
+      if (profile) {
+        setUserProfile({
+          email: profile.email,
+          name: profile.name,
+          givenName: profile.given_name,
+          imageUrl: profile.picture,
+        });
+        setIsSignedIn(true);
+      } else {
+        throw new Error('No profile found');
+      }
+    } catch (error) {
+      console.error('Profile fetch failed', error);
+      setIsSignedIn(false);
+      setUserProfile(null);
+      toast({
+        title: 'Error',
+        description: 'Could not retrieve your Google profile.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
+
+  /** 🔐 Sign-in with Google */
+  const signIn = useCallback(() => {
+    if (!CLIENT_ID) {
+      toast({
+        title: 'Configuration Error',
+        description: 'Google Client ID missing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!tokenClient) {
+      toast({
+        title: 'API Not Ready',
+        description: 'Please wait a moment and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    tokenClient.callback = async (tokenResponse: any) => {
+      if (tokenResponse && tokenResponse.access_token) {
+        window.gapi.client.setToken({ access_token: tokenResponse.access_token });
+        await updateUserProfile();
+      }
+    };
+
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }, [tokenClient, updateUserProfile, toast]);
+
+  /** 🚪 Sign-out */
+  const signOut = useCallback(() => {
+    const token = window.gapi.client.getToken();
+    if (token) {
+      window.google.accounts.oauth2.revoke(token.access_token, () => {
+        window.gapi.client.setToken('');
+        setIsSignedIn(false);
+        setUserProfile(null);
+        toast({
+          title: 'Signed Out',
+          description: 'You have successfully signed out.',
+        });
+      });
+    }
+  }, [toast]);
+
+  /** 📄 Create file inside selected folder */
   const createFileInFolder = useCallback(async (
     folderId: string,
     fileName: string,
@@ -163,141 +301,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     [isSignedIn, toast, tokenClient, createFileInFolder]
   );
   
-  /** 🧩 Load GAPI, GIS, Picker scripts properly */
-  useEffect(() => {
-    const loadScript = (src: string) => {
-      return new Promise<void>((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) return resolve();
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load ${src}`));
-        document.body.appendChild(script);
-      });
-    };
-
-    const initialize = async () => {
-      try {
-        await loadScript('https://accounts.google.com/gsi/client');
-        await loadScript('https://apis.google.com/js/api.js');
-
-        // Wait until window.gapi actually exists
-        await new Promise<void>((resolve, reject) => {
-          const checkGapi = () => {
-            if (window.gapi && window.gapi.load) resolve();
-            else setTimeout(checkGapi, 50);
-          };
-          checkGapi();
-        });
-
-        // Now safely load the client and picker
-        await new Promise<void>((resolve) => {
-          window.gapi.load('client:picker', async () => {
-             await window.gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: [DISCOVERY_DOC],
-             });
-             resolve();
-          });
-        });
-
-        // Setup token client
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
-          callback: () => {}, // will set dynamically
-        });
-        setTokenClient(client);
-        setIsApiLoaded(true);
-      } catch (err) {
-        console.error('Google API load failed', err);
-        toast({
-          title: 'Error',
-          description: 'Failed to initialize Google Drive API.',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    initialize();
-  }, [toast]);
-
-  /** 👤 Fetch user profile info */
-  const updateUserProfile = useCallback(async () => {
-    try {
-      await window.gapi.client.load('oauth2', 'v2');
-      const response = await window.gapi.client.oauth2.userinfo.get();
-      const profile = response.result;
-      if (profile) {
-        setUserProfile({
-          email: profile.email,
-          name: profile.name,
-          givenName: profile.given_name,
-          imageUrl: profile.picture,
-        });
-        setIsSignedIn(true);
-      } else {
-        throw new Error('No profile found');
-      }
-    } catch (error) {
-      console.error('Profile fetch failed', error);
-      setIsSignedIn(false);
-      setUserProfile(null);
-      toast({
-        title: 'Error',
-        description: 'Could not retrieve your Google profile.',
-        variant: 'destructive',
-      });
-    }
-  }, [toast]);
-
-  /** 🔐 Sign-in with Google */
-  const signIn = useCallback(() => {
-    if (!CLIENT_ID) {
-      toast({
-        title: 'Configuration Error',
-        description: 'Google Client ID missing.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!tokenClient) {
-      toast({
-        title: 'API Not Ready',
-        description: 'Please wait a moment and try again.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    tokenClient.callback = async (tokenResponse: any) => {
-      if (tokenResponse && tokenResponse.access_token) {
-        window.gapi.client.setToken({ access_token: tokenResponse.access_token });
-        await updateUserProfile();
-      }
-    };
-
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  }, [tokenClient, updateUserProfile, toast]);
-
-  /** 🚪 Sign-out */
-  const signOut = useCallback(() => {
-    const token = window.gapi.client.getToken();
-    if (token) {
-      window.google.accounts.oauth2.revoke(token.access_token, () => {
-        window.gapi.client.setToken('');
-        setIsSignedIn(false);
-        setUserProfile(null);
-        toast({
-          title: 'Signed Out',
-          description: 'You have successfully signed out.',
-        });
-      });
-    }
-  }, [toast]);
 
   const value: GoogleDriveContextValue = {
     isApiLoaded,
@@ -322,3 +325,5 @@ export function useGoogleDrive() {
   }
   return context;
 }
+
+    
