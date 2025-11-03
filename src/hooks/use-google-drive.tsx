@@ -27,6 +27,8 @@ interface GoogleDriveContextValue {
 const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(undefined);
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '';
+
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
@@ -125,6 +127,10 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       toast({ title: 'Not signed in', description: 'Please connect to Google Drive first.', variant: 'destructive' });
       return;
     }
+     if (!API_KEY) {
+      toast({ title: 'Configuration Error', description: 'Google API Key is missing.', variant: 'destructive' });
+      return;
+    }
 
     const showPicker = () => {
         const view = new google.picker.View(google.picker.ViewId.DOCS);
@@ -132,7 +138,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         const picker = new google.picker.PickerBuilder()
             .addView(view)
             .setOAuthToken(gapi.client.getToken().access_token)
-            .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '')
+            .setDeveloperKey(API_KEY)
             .setCallback((data: any) => {
                 if (data.action === google.picker.Action.PICKED) {
                     const folderId = data.docs[0].id;
