@@ -42,7 +42,7 @@ const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '';
 
 const SCOPES =
-  'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+  'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
@@ -81,9 +81,9 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           checkGapi();
         });
 
-        // Now safely load and init the gapi client
+        // Now safely load and init the gapi client and picker
         await new Promise<void>((resolve) => {
-          window.gapi.load('client', async () => {
+          window.gapi.load('client:picker', async () => {
             await window.gapi.client.init({
               apiKey: API_KEY,
               discoveryDocs: [DISCOVERY_DOC],
@@ -164,7 +164,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
     tokenClient.callback = async (tokenResponse: any) => {
       if (tokenResponse && tokenResponse.access_token) {
-        window.gapi.client.setToken(tokenResponse);
+        window.gapi.client.setToken({ access_token: tokenResponse.access_token });
         await updateUserProfile();
       }
     };
@@ -199,38 +199,39 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-
-      const loadPicker = () => {
-        const view = new window.google.picker.View(
-          window.google.picker.ViewId.DOCS
-        );
-        view.setMimeTypes('application/vnd.google-apps.folder');
-
-        const picker = new window.google.picker.PickerBuilder()
-          .addView(view)
-          .setOAuthToken(window.gapi.client.getToken().access_token)
-          .setDeveloperKey(API_KEY)
-          .setCallback(async (data: any) => {
-            if (data.action === window.google.picker.Action.PICKED) {
-              const folderId = data.docs[0].id;
-              await createFileInFolder(folderId, fileName, content);
-            }
-          })
-          .build();
-
-        picker.setVisible(true);
-      };
-
-      if (window.google && window.google.picker) {
-        loadPicker();
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://apis.google.com/js/api.js';
-        script.onload = () => window.gapi.load('picker', loadPicker);
-        document.body.appendChild(script);
+      
+      const token = window.gapi.client.getToken();
+      if (!token?.access_token) {
+        // If token is missing or expired, re-authenticate silently
+        tokenClient.requestAccessToken({ prompt: '' });
+        toast({ title: 'Re-authenticating...', description: 'Please try saving again in a moment.' });
+        return;
       }
+
+      const view = new window.google.picker.View(
+        window.google.picker.ViewId.DOCS
+      );
+      view.setMimeTypes('application/vnd.google-apps.folder');
+
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(token.access_token)
+        .setDeveloperKey(API_KEY)
+        .setCallback(async (data: any) => {
+          if (data.action === window.google.picker.Action.PICKED) {
+            const folderId = data.docs[0].id;
+            if (!folderId) {
+                toast({ title: 'No Folder Selected', description: 'Please select a folder to save the file.', variant: 'destructive' });
+                return;
+            }
+            await createFileInFolder(folderId, fileName, content);
+          }
+        })
+        .build();
+
+      picker.setVisible(true);
     },
-    [isSignedIn, toast]
+    [isSignedIn, toast, tokenClient]
   );
 
   /** 📄 Create file inside selected folder */
