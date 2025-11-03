@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -52,6 +51,118 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [tokenClient, setTokenClient] = useState<any>(null);
 
+  /** 🧩 Create file inside selected folder */
+  const createFileInFolder = useCallback(async (
+    folderId: string,
+    fileName: string,
+    content: string
+  ) => {
+    try {
+      const metadata = {
+        name: fileName,
+        parents: [folderId],
+        mimeType: 'text/plain',
+      };
+
+      const file = new Blob([content], { type: 'text/plain' });
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', file);
+
+      const res = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        {
+          method: 'POST',
+          headers: new Headers({
+            Authorization: 'Bearer ' + window.gapi.client.getToken().access_token,
+          }),
+          body: form,
+        }
+      );
+
+      if (res.ok) {
+        toast({
+          title: 'File Saved',
+          description: `${fileName} uploaded to Google Drive.`,
+        });
+      } else {
+        const err = await res.json();
+        toast({
+          title: 'Error Saving File',
+          description: err.error.message,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Drive upload error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save file to Google Drive.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
+
+
+  /** 💾 Save file to Drive (with Picker for folder selection) */
+  const saveFileToDrive = useCallback(
+    async (fileName: string, content: string) => {
+      if (!isSignedIn) {
+        toast({
+          title: 'Not Signed In',
+          description: 'Please connect to Google Drive first.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!window.google?.picker) {
+        toast({
+          title: 'Picker Error',
+          description: 'Google Picker failed to load. Please refresh the page.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      const token = window.gapi.client.getToken();
+      if (!token?.access_token) {
+        // If token is missing or expired, re-authenticate silently and retry
+        tokenClient.callback = async (newTokenResponse: any) => {
+          if (newTokenResponse?.access_token) {
+            window.gapi.client.setToken({ access_token: newTokenResponse.access_token });
+            await saveFileToDrive(fileName, content); // Retry automatically
+          }
+        };
+        tokenClient.requestAccessToken({ prompt: '' });
+        return;
+      }
+
+      const view = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
+        .setSelectFolderEnabled(true)
+        .setMimeTypes('application/vnd.google-apps.folder');
+
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(token.access_token)
+        .setDeveloperKey(API_KEY)
+        .setCallback(async (data: any) => {
+          if (data.action === window.google.picker.Action.PICKED) {
+            const folderId = data.docs[0].id;
+            if (!folderId) {
+                toast({ title: 'No Folder Selected', description: 'Please select a folder to save the file.', variant: 'destructive' });
+                return;
+            }
+            await createFileInFolder(folderId, fileName, content);
+          }
+        })
+        .build();
+
+      picker.setVisible(true);
+    },
+    [isSignedIn, toast, tokenClient, createFileInFolder]
+  );
+  
   /** 🧩 Load GAPI, GIS, Picker scripts properly */
   useEffect(() => {
     const loadScript = (src: string) => {
@@ -71,7 +182,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       try {
         await loadScript('https://accounts.google.com/gsi/client');
         await loadScript('https://apis.google.com/js/api.js');
-        
+
         // Wait until window.gapi actually exists
         await new Promise<void>((resolve, reject) => {
           const checkGapi = () => {
@@ -81,14 +192,14 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           checkGapi();
         });
 
-        // Now safely load and init the gapi client and picker
+        // Now safely load the client and picker
         await new Promise<void>((resolve) => {
           window.gapi.load('client:picker', async () => {
-            await window.gapi.client.init({
-              apiKey: API_KEY,
-              discoveryDocs: [DISCOVERY_DOC],
-            });
-            resolve();
+             await window.gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+             });
+             resolve();
           });
         });
 
@@ -187,109 +298,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [toast]);
-
-  /** 📄 Create file inside selected folder */
-  const createFileInFolder = useCallback(async (
-    folderId: string,
-    fileName: string,
-    content: string
-  ) => {
-    try {
-      const metadata = {
-        name: fileName,
-        parents: [folderId],
-        mimeType: 'text/plain',
-      };
-
-      const file = new Blob([content], { type: 'text/plain' });
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', file);
-
-      const res = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-        {
-          method: 'POST',
-          headers: new Headers({
-            Authorization: 'Bearer ' + window.gapi.client.getToken().access_token,
-          }),
-          body: form,
-        }
-      );
-
-      if (res.ok) {
-        toast({
-          title: 'File Saved',
-          description: `${fileName} uploaded to Google Drive.`,
-        });
-      } else {
-        const err = await res.json();
-        toast({
-          title: 'Error Saving File',
-          description: err.error.message,
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Drive upload error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save file to Google Drive.',
-        variant: 'destructive',
-      });
-    }
-  }, [toast]);
-
-  /** 💾 Save file to Drive (with Picker for folder selection) */
-  const saveFileToDrive = useCallback(
-    async (fileName: string, content: string) => {
-      if (!isSignedIn) {
-        toast({
-          title: 'Not Signed In',
-          description: 'Please connect to Google Drive first.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      const token = window.gapi.client.getToken();
-      if (!token?.access_token) {
-        // If token is missing or expired, re-authenticate silently and retry
-        tokenClient.callback = async (newTokenResponse: any) => {
-          if (newTokenResponse?.access_token) {
-            window.gapi.client.setToken({ access_token: newTokenResponse.access_token });
-            await saveFileToDrive(fileName, content); // Retry automatically
-          }
-        };
-        tokenClient.requestAccessToken({ prompt: '' });
-        return;
-      }
-
-      const view = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
-        .setSelectFolderEnabled(true)
-        .setMimeTypes('application/vnd.google-apps.folder');
-
-      const picker = new window.google.picker.PickerBuilder()
-        .addView(view)
-        .setOAuthToken(token.access_token)
-        .setDeveloperKey(API_KEY)
-        .setCallback(async (data: any) => {
-          if (data.action === window.google.picker.Action.PICKED) {
-            const folderId = data.docs[0].id;
-            if (!folderId) {
-                toast({ title: 'No Folder Selected', description: 'Please select a folder to save the file.', variant: 'destructive' });
-                return;
-            }
-            await createFileInFolder(folderId, fileName, content);
-          }
-        })
-        .build();
-
-      picker.setVisible(true);
-    },
-    [isSignedIn, toast, tokenClient, createFileInFolder]
-  );
-
 
   const value: GoogleDriveContextValue = {
     isApiLoaded,
