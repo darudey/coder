@@ -45,7 +45,6 @@ const SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/peopleapi.readonly',
 ].join(' ');
 
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
@@ -119,19 +118,15 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   /** 👤 Fetch user profile info */
   const updateUserProfile = useCallback(async () => {
     try {
-      await window.gapi.client.load('people', 'v1');
-      const response = await window.gapi.client.people.people.get({
-        resourceName: 'people/me',
-        personFields: 'names,emailAddresses,photos',
-      });
-
+      await window.gapi.client.load('oauth2', 'v2');
+      const response = await window.gapi.client.oauth2.userinfo.get();
       const profile = response.result;
       if (profile) {
         setUserProfile({
-          email: profile.emailAddresses?.[0]?.value || '',
-          name: profile.names?.[0]?.displayName || '',
-          givenName: profile.names?.[0]?.givenName || '',
-          imageUrl: profile.photos?.[0]?.url || '',
+          email: profile.email,
+          name: profile.name,
+          givenName: profile.given_name,
+          imageUrl: profile.picture,
         });
         setIsSignedIn(true);
       } else {
