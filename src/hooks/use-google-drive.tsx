@@ -72,7 +72,16 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         await loadScript('https://accounts.google.com/gsi/client');
         await loadScript('https://apis.google.com/js/api.js');
 
-        // Initialize gapi client
+        // Wait until window.gapi actually exists
+        await new Promise<void>((resolve, reject) => {
+          const checkGapi = () => {
+            if (window.gapi && window.gapi.load) resolve();
+            else setTimeout(checkGapi, 50);
+          };
+          checkGapi();
+        });
+
+        // Now safely load and init the gapi client
         await new Promise<void>((resolve) => {
           window.gapi.load('client', async () => {
             await window.gapi.client.init({
