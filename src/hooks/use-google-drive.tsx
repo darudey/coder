@@ -76,11 +76,20 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
         // Wait until gapi is ready
         await new Promise<void>((resolve) => {
-          const check = () => {
+          const checkGapi = () => {
             if (window.gapi && window.gapi.load) resolve();
-            else setTimeout(check, 50);
+            else setTimeout(checkGapi, 50);
           };
-          check();
+          checkGapi();
+        });
+
+        // Wait until picker object is ready
+        await new Promise<void>((resolve) => {
+          const checkPicker = () => {
+            if (window.google && window.google.picker) resolve();
+            else setTimeout(checkPicker, 50);
+          };
+          checkPicker();
         });
 
         // Initialize gapi client
@@ -98,7 +107,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
-          callback: () => {},
+          callback: () => {}, // will set dynamically
         });
         setTokenClient(client);
         setIsApiLoaded(true);
