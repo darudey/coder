@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -72,7 +71,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         // Load all required Google APIs
         await loadScript('https://accounts.google.com/gsi/client');
         await loadScript('https://apis.google.com/js/api.js');
-        await loadScript('https://apis.google.com/js/api_picker.js'); // ✅ required for Picker
+        await loadScript('https://apis.google.com/js/api_picker.js');
 
         // Wait until gapi is ready
         await new Promise<void>((resolve) => {
@@ -82,14 +81,21 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           };
           checkGapi();
         });
-
+        
         // Wait until picker object is ready
-        await new Promise<void>((resolve) => {
-          const checkPicker = () => {
-            if (window.google && window.google.picker) resolve();
-            else setTimeout(checkPicker, 50);
+        await new Promise<void>((resolve, reject) => {
+          let attempts = 0;
+          const checkPickerReady = () => {
+            if (window.google?.picker && window.google.picker.PickerBuilder) {
+              resolve();
+            } else if (attempts < 40) {
+              attempts++;
+              setTimeout(checkPickerReady, 100);
+            } else {
+              reject(new Error('Google Picker failed to initialize.'));
+            }
           };
-          checkPicker();
+          checkPickerReady();
         });
 
         // Initialize gapi client
@@ -198,7 +204,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [toast]);
-  
+
   /** 📄 Create file inside selected folder */
   const createFileInFolder = async (
     folderId: string,
