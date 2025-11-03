@@ -69,35 +69,36 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
     const initialize = async () => {
       try {
+        // Load all required Google APIs
         await loadScript('https://accounts.google.com/gsi/client');
         await loadScript('https://apis.google.com/js/api.js');
-        
+        await loadScript('https://apis.google.com/js/api_picker.js'); // ✅ required for Picker
+
+        // Wait until gapi is ready
         await new Promise<void>((resolve) => {
-            const checkGapi = () => {
-                if (window.gapi && window.gapi.load) {
-                    resolve();
-                } else {
-                    setTimeout(checkGapi, 50);
-                }
-            };
-            checkGapi();
+          const check = () => {
+            if (window.gapi && window.gapi.load) resolve();
+            else setTimeout(check, 50);
+          };
+          check();
         });
 
+        // Initialize gapi client
         await new Promise<void>((resolve) => {
-            window.gapi.load('client:picker', async () => {
-                await window.gapi.client.init({
-                    apiKey: API_KEY,
-                    discoveryDocs: [DISCOVERY_DOC],
-                });
-                resolve();
+          window.gapi.load('client', async () => {
+            await window.gapi.client.init({
+              apiKey: API_KEY,
+              discoveryDocs: [DISCOVERY_DOC],
             });
+            resolve();
+          });
         });
 
-        // Setup token client
+        // Setup OAuth token client
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
           scope: SCOPES,
-          callback: () => {}, // will set dynamically
+          callback: () => {},
         });
         setTokenClient(client);
         setIsApiLoaded(true);
@@ -188,9 +189,9 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [toast]);
-
+  
   /** 📄 Create file inside selected folder */
-  const createFileInFolder = useCallback(async (
+  const createFileInFolder = async (
     folderId: string,
     fileName: string,
     content: string
@@ -239,8 +240,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         variant: 'destructive',
       });
     }
-  }, [toast]);
-
+  };
 
   /** 💾 Save file to Drive (with Picker for folder selection) */
   const saveFileToDrive = useCallback(
@@ -253,7 +253,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-
+      
       if (!window.google?.picker) {
         toast({
           title: 'Picker Error',
@@ -262,7 +262,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-      
+
       const token = window.gapi.client.getToken();
       if (!token?.access_token) {
         // If token is missing or expired, re-authenticate silently and retry
@@ -298,7 +298,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
       picker.setVisible(true);
     },
-    [isSignedIn, toast, tokenClient, createFileInFolder]
+    [isSignedIn, toast, tokenClient]
   );
   
 
@@ -325,5 +325,3 @@ export function useGoogleDrive() {
   }
   return context;
 }
-
-    
