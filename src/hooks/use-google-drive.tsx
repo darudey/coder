@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -63,6 +62,10 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [tokenClient, setTokenClient] = useState<any>(null);
 
+  const [isGapiLoaded, setIsGapiLoaded] = useState(false);
+  const [isGisLoaded, setIsGisLoaded] = useState(false);
+
+
   // ---- FETCH USER PROFILE ----
   const updateUserProfile = useCallback(async () => {
     try {
@@ -88,107 +91,80 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   // ---- INITIALIZE GAPI + GIS ----
   useEffect(() => {
-    let gapiScript: HTMLScriptElement | null = null;
-    let gisScript: HTMLScriptElement | null = null;
-
-    const loadScript = (src: string): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`)) {
-          resolve();
-          return;
+    const gapiScript = document.createElement('script');
+    gapiScript.src = 'https://apis.google.com/js/api.js';
+    gapiScript.async = true;
+    gapiScript.defer = true;
+    gapiScript.onload = () => {
+      gapi.load('client:picker', async () => {
+        try {
+          await gapi.client.init({ 
+            apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
+            clientId: CLIENT_ID,
+            discoveryDocs: DISCOVERY_DOCS,
+            scope: SCOPES 
+          });
+          setIsGapiLoaded(true);
+        } catch (error) {
+          console.error('Error initializing GAPI client', error);
         }
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => resolve();
-        script.onerror = (err) => reject(new Error(`Failed to load ${src}: ${err}`));
-        document.body.appendChild(script);
-        
-        if (src.includes('api.js')) gapiScript = script;
-        if (src.includes('gsi/client')) gisScript = script;
       });
-    }
+    };
+    document.body.appendChild(gapiScript);
 
-    const initializeApis = async () => {
-      try {
-        await Promise.all([
-          loadScript('https://apis.google.com/js/api.js'),
-          loadScript('https://accounts.google.com/gsi/client')
-        ]);
-
-        // GAPI is loaded, now initialize the client and picker.
-        await new Promise<void>((resolve, reject) => {
-          gapi.load('client:picker', {
-            callback: async () => {
-              try {
-                await gapi.client.init({
-                  apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
-                  clientId: CLIENT_ID,
-                  discoveryDocs: DISCOVERY_DOCS,
-                  scope: SCOPES,
-                });
-                resolve();
-              } catch(err) {
-                reject(err);
+    const gisScript = document.createElement('script');
+    gisScript.src = 'https://accounts.google.com/gsi/client';
+    gisScript.async = true;
+    gisScript.defer = true;
+    gisScript.onload = () => {
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            callback: (tokenResponse: any) => {
+              if (tokenResponse && tokenResponse.access_token) {
+                gapi.client.setToken(tokenResponse);
+                updateUserProfile();
+              } else {
+                 console.error("Access token error", tokenResponse);
+                 toast({ title: 'Sign-In Error', description: 'Could not get access token from Google.', variant: 'destructive' });
               }
             },
-            onerror: reject,
-          });
-        });
-
-        // GIS is loaded, initialize the token client.
-        const client = google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
-          callback: (tokenResponse: any) => {
-            if (tokenResponse?.access_token) {
-              gapi.client.setToken(tokenResponse);
-              updateUserProfile();
-            } else {
-              toast({
-                title: 'Sign-In Error',
-                description: 'Failed to get access token.',
-                variant: 'destructive',
-              });
-            }
-          },
         });
         setTokenClient(client);
-        
-        setIsApiLoaded(true);
-
-      } catch (err) {
-        console.error("🚨 Failed to initialize Google APIs", err);
-        toast({
-            title: 'API Error',
-            description: 'Could not load Google services. Please refresh the page.',
-            variant: 'destructive'
-        });
-      }
+        setIsGisLoaded(true);
     };
-
-    initializeApis();
+    document.body.appendChild(gisScript);
 
     return () => {
-      if (gapiScript) document.body.removeChild(gapiScript);
-      if (gisScript) document.body.removeChild(gisScript);
-    };
+        if (document.body.contains(gapiScript)) {
+            document.body.removeChild(gapiScript);
+        }
+        if (document.body.contains(gisScript)) {
+            document.body.removeChild(gisScript);
+        }
+    }
+
   }, [toast, updateUserProfile]);
+
+  useEffect(() => {
+      if(isGapiLoaded && isGisLoaded){
+          setIsApiLoaded(true);
+      }
+  }, [isGapiLoaded, isGisLoaded])
 
 
   // ---- SIGN IN ----
   const signIn = useCallback(() => {
-    if (!tokenClient) {
-      toast({
-        title: 'Google API Not Ready',
-        description: 'Please wait a moment and try again.',
-        variant: 'destructive',
-      });
-      return;
+    if (!isApiLoaded) {
+       toast({ title: 'API Not Ready', description: 'Google services are still loading. Please wait a moment.', variant: 'destructive'});
+       return;
     }
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  }, [tokenClient, toast]);
+    if (tokenClient) {
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+        toast({ title: "Google API not ready", description: "Please wait a moment and try again.", variant: 'destructive' });
+    }
+  }, [isApiLoaded, tokenClient, toast]);
 
   // ---- SIGN OUT ----
   const signOut = useCallback(() => {
@@ -209,10 +185,10 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   // ---- SAVE FILE ----
   const saveFileToDrive = useCallback(
     (fileName: string, content: string) => {
-      if (!isApiLoaded || !isSignedIn) {
+      if (!isSignedIn) {
         toast({
-          title: 'Not Ready',
-          description: 'Please sign in to Google Drive first.',
+          title: 'Not Signed In',
+          description: 'Please connect to Google Drive first.',
           variant: 'destructive',
         });
         return;
@@ -274,24 +250,34 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         }
       };
 
-      const view = new google.picker.View(google.picker.ViewId.DOCS);
-      view.setMimeTypes('application/vnd.google-apps.folder');
+      const showPicker = () => {
+        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        view.setMimeTypes('application/vnd.google-apps.folder');
 
-      const picker = new google.picker.PickerBuilder()
-        .addView(view)
-        .setOAuthToken(gapi.client.getToken().access_token)
-        .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '')
-        .setCallback((data: any) => {
-          if (data.action === google.picker.Action.PICKED) {
-            const folderId = data.docs[0].id;
-            createFileInFolder(folderId, fileName, content);
-          }
-        })
-        .build();
+        const picker = new google.picker.PickerBuilder()
+          .addView(view)
+          .setOAuthToken(gapi.client.getToken().access_token)
+          .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '')
+          .setCallback((data: any) => {
+            if (data.action === google.picker.Action.PICKED) {
+              const folderId = data.docs[0].id;
+              createFileInFolder(folderId, fileName, content);
+            }
+          })
+          .build();
 
-      picker.setVisible(true);
+        picker.setVisible(true);
+      };
+      
+      // Use the gapi.load callback to ensure picker is ready
+      if (window.google && google.picker) {
+          showPicker();
+      } else {
+          console.warn("Picker not ready yet, loading dynamically...");
+          gapi.load('picker', showPicker);
+      }
     },
-    [isApiLoaded, isSignedIn, toast]
+    [isSignedIn, toast]
   );
 
   // ---- CONTEXT VALUE ----
