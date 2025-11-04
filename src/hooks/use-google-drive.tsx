@@ -96,9 +96,10 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     gapiScript.async = true;
     gapiScript.defer = true;
     gapiScript.onload = async () => {
-      gapi.load('client', async () => {
+      gapi.load('client:picker', async () => {
         await gapi.client.init({ discoveryDocs: DISCOVERY_DOCS });
         setIsGapiLoaded(true);
+        setIsPickerReady(true);
       });
     };
     document.body.appendChild(gapiScript);
@@ -130,22 +131,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     };
     document.body.appendChild(gisScript);
 
-    const pickerScript = document.createElement('script');
-    pickerScript.src = 'https://apis.google.com/js/api.picker.js';
-    pickerScript.async = true;
-    pickerScript.defer = true;
-    pickerScript.onload = () => setIsPickerReady(true);
-    document.body.appendChild(pickerScript);
-
     return () => {
-      const gapiScriptEl = document.querySelector('script[src="https://apis.google.com/js/api.js"]');
-      if (gapiScriptEl) document.body.removeChild(gapiScriptEl);
+      const gapiEl = document.querySelector('script[src="https://apis.google.com/js/api.js"]');
+      if (gapiEl) document.body.removeChild(gapiEl);
       
-      const gisScriptEl = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (gisScriptEl) document.body.removeChild(gisScriptEl);
-
-      const pickerScriptEl = document.querySelector('script[src="https://apis.google.com/js/api.picker.js"]');
-      if(pickerScriptEl) document.body.removeChild(pickerScriptEl);
+      const gisEl = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (gisEl) document.body.removeChild(gisEl);
     };
   }, [toast, updateUserProfile]);
 
@@ -202,11 +193,11 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-
-      if (!isPickerReady) {
+      
+      if (!isPickerReady || !window.google?.picker) {
         toast({
             title: 'Picker Not Ready',
-            description: 'The Google file picker is still loading. Please try again in a moment.',
+            description: 'Google Picker is still loading. Please try again in a moment.',
             variant: 'destructive',
         });
         return;
@@ -274,10 +265,10 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
       // ---- Show Picker ----
       const showPicker = () => {
-        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        const view = new window.google.picker.View(window.google.picker.ViewId.DOCS);
         view.setMimeTypes('application/vnd.google-apps.folder');
 
-        const picker = new google.picker.PickerBuilder()
+        const picker = new window.google.picker.PickerBuilder()
           .addView(view)
           .setOAuthToken(gapi.client.getToken().access_token)
           .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '')
