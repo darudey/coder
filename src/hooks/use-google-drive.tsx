@@ -82,14 +82,17 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.error('Could not fetch user profile', e);
-      // Don't toast here as it can be part of sign out flow
+      // Don't toast here as it may be part of a normal sign-out flow
     }
   }, []);
 
   // ---- INITIALIZE GAPI + GIS ----
   useEffect(() => {
-    const loadScript = (src: string) =>
-      new Promise<void>((resolve, reject) => {
+    let gapiScript: HTMLScriptElement | null = null;
+    let gisScript: HTMLScriptElement | null = null;
+
+    const loadScript = (src: string): Promise<void> => {
+      return new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
           resolve();
           return;
@@ -97,65 +100,64 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         const script = document.createElement('script');
         script.src = src;
         script.async = true;
+        script.defer = true;
         script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        script.onerror = (err) => reject(new Error(`Failed to load ${src}: ${err}`));
         document.body.appendChild(script);
+        
+        if (src.includes('api.js')) gapiScript = script;
+        if (src.includes('gsi/client')) gisScript = script;
       });
+    }
 
-    const initGapiClient = async () => {
+    const initializeApis = async () => {
       try {
-        // 1. Load GAPI and GIS scripts in parallel
         await Promise.all([
           loadScript('https://apis.google.com/js/api.js'),
-          loadScript('https://accounts.google.com/gsi/client'),
+          loadScript('https://accounts.google.com/gsi/client')
         ]);
 
-        // 2. Initialize GAPI client and Auth2
+        // GAPI is loaded, now initialize the client and picker.
         await new Promise<void>((resolve, reject) => {
-          window.gapi.load('client:auth2', async () => {
-            try {
-              await window.gapi.client.init({
-                apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY!,
-                clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-                scope: SCOPES,
-                discoveryDocs: DISCOVERY_DOCS,
-              });
-              resolve();
-            } catch (e) {
-              console.error('❌ GAPI client init failed:', e);
-              reject(e);
-            }
-          });
-        });
-        
-        // 3. Initialize GIS Token Client
-        const client = window.google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: SCOPES,
-            callback: (tokenResponse: any) => {
-              if (tokenResponse?.access_token) {
-                gapi.client.setToken(tokenResponse);
-                updateUserProfile();
-              } else {
-                toast({
-                  title: 'Sign-In Error',
-                  description: 'Failed to get access token.',
-                  variant: 'destructive',
+          gapi.load('client:picker', {
+            callback: async () => {
+              try {
+                await gapi.client.init({
+                  apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
+                  clientId: CLIENT_ID,
+                  discoveryDocs: DISCOVERY_DOCS,
+                  scope: SCOPES,
                 });
+                resolve();
+              } catch(err) {
+                reject(err);
               }
             },
+            onerror: reject,
+          });
+        });
+
+        // GIS is loaded, initialize the token client.
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: (tokenResponse: any) => {
+            if (tokenResponse?.access_token) {
+              gapi.client.setToken(tokenResponse);
+              updateUserProfile();
+            } else {
+              toast({
+                title: 'Sign-In Error',
+                description: 'Failed to get access token.',
+                variant: 'destructive',
+              });
+            }
+          },
         });
         setTokenClient(client);
+        
+        setIsApiLoaded(true);
 
-        // 4. Load Picker API separately
-        await loadScript("https://apis.google.com/js/picker.js");
-
-        if (window.gapi?.client && window.google?.picker) {
-          console.log("✅ GAPI and Picker fully loaded");
-          setIsApiLoaded(true);
-        } else {
-          throw new Error('GAPI or Picker missing after load');
-        }
       } catch (err) {
         console.error("🚨 Failed to initialize Google APIs", err);
         toast({
@@ -166,13 +168,18 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    initGapiClient();
+    initializeApis();
+
+    return () => {
+      if (gapiScript) document.body.removeChild(gapiScript);
+      if (gisScript) document.body.removeChild(gisScript);
+    };
   }, [toast, updateUserProfile]);
 
 
   // ---- SIGN IN ----
   const signIn = useCallback(() => {
-    if (!isApiLoaded || !tokenClient) {
+    if (!tokenClient) {
       toast({
         title: 'Google API Not Ready',
         description: 'Please wait a moment and try again.',
@@ -181,7 +188,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       return;
     }
     tokenClient.requestAccessToken({ prompt: 'consent' });
-  }, [isApiLoaded, tokenClient, toast]);
+  }, [tokenClient, toast]);
 
   // ---- SIGN OUT ----
   const signOut = useCallback(() => {
@@ -210,15 +217,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-      if (!window.google?.picker) {
-          toast({
-              title: 'Picker Not Ready',
-              description: 'The Google file picker is not available yet. Please try again.',
-              variant: 'destructive'
-          });
-          return;
-      }
-
+      
       const createFileInFolder = async (
         folderId: string,
         fileName: string,
