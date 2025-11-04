@@ -7,6 +7,7 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { MainLayout } from '@/layouts/main-layout';
 import { CoursesProvider } from '@/hooks/use-courses';
 import { GoogleDriveProvider } from '@/hooks/use-google-drive';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: '24HrCoding',
@@ -24,6 +25,14 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet" />
+         <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="beforeInteractive"
+        />
+        <Script
+          src="https://apis.google.com/js/api.js"
+          strategy="beforeInteractive"
+        />
       </head>
       <body className="font-body antialiased">
         <SettingsProvider>
@@ -42,5 +51,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    

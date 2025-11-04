@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -40,9 +39,12 @@ const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+
 
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
@@ -88,11 +90,11 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
             window.gapi.load('client:picker', resolve);
         });
         
-        await new Promise<void>((resolve) => {
-            window.gapi.client.init({
-              apiKey: API_KEY,
-              discoveryDocs: [DISCOVERY_DOC],
-            }).then(resolve);
+        await window.gapi.client.init({
+          apiKey: API_KEY,
+          clientId: CLIENT_ID,
+          discoveryDocs: [DISCOVERY_DOC],
+          scope: SCOPES,
         });
 
         const client = window.google.accounts.oauth2.initTokenClient({
@@ -231,6 +233,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         .addView(view)
         .setOAuthToken(token.access_token)
         .setDeveloperKey(API_KEY)
+        .setOrigin(APP_URL)
         .setCallback(async (data: any) => {
           if (data.action === window.google.picker.Action.PICKED) {
             const folderId = data.docs[0].id;
