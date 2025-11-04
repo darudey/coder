@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -80,30 +81,41 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         
         await new Promise<void>((resolve) => {
             const checkGapi = () => {
-                if (window.gapi && window.gapi.load) resolve();
+                if (window.gapi) resolve();
                 else setTimeout(checkGapi, 50);
             };
             checkGapi();
         });
 
-        await new Promise<void>((resolve) => {
-            window.gapi.load('client:picker', resolve);
-        });
-        
-        await window.gapi.client.init({
-          apiKey: API_KEY,
-          clientId: CLIENT_ID,
-          discoveryDocs: [DISCOVERY_DOC],
-          scope: SCOPES,
+        await new Promise<void>((resolve, reject) => {
+          window.gapi.load('client:picker', {
+            callback: async () => {
+              try {
+                await window.gapi.client.init({
+                  apiKey: API_KEY,
+                  clientId: CLIENT_ID,
+                  discoveryDocs: [DISCOVERY_DOC],
+                  scope: SCOPES,
+                });
+
+                const client = window.google.accounts.oauth2.initTokenClient({
+                  client_id: CLIENT_ID,
+                  scope: SCOPES,
+                  callback: () => {}, // will set dynamically
+                });
+
+                setTokenClient(client);
+                setIsApiLoaded(true);
+                resolve();
+
+              } catch (initErr) {
+                 reject(initErr);
+              }
+            },
+            onerror: reject,
+          });
         });
 
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
-          callback: () => {}, // will set dynamically
-        });
-        setTokenClient(client);
-        setIsApiLoaded(true);
       } catch (err) {
         console.error('Google API load failed', err);
         toast({
