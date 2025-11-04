@@ -97,15 +97,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     gapiScript.async = true;
     gapiScript.defer = true;
     gapiScript.onload = () => {
-      gapi.load('client:picker', async () => {
+      gapi.load('client', async () => {
         try {
-          await gapi.client.init({
-            apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
-            discoveryDocs: DISCOVERY_DOCS,
-          });
-          setIsGapiLoaded(true);
-        } catch (error) {
-          console.error('Error initializing GAPI client', error);
+            await gapi.client.init({ discoveryDocs: DISCOVERY_DOCS });
+            setIsGapiLoaded(true);
+        } catch(e) {
+            console.error('Error initializing GAPI client', e);
         }
       });
     };
@@ -122,6 +119,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
             callback: (tokenResponse: any) => {
               if (tokenResponse && tokenResponse.access_token) {
                 gapi.client.setToken(tokenResponse);
+                setIsSignedIn(true);
                 updateUserProfile();
               } else {
                  console.error("Access token error", tokenResponse);
@@ -135,12 +133,8 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     document.body.appendChild(gisScript);
 
     return () => {
-        if (document.body.contains(gapiScript)) {
-            document.body.removeChild(gapiScript);
-        }
-        if (document.body.contains(gisScript)) {
-            document.body.removeChild(gisScript);
-        }
+        if(document.body.contains(gapiScript)) document.body.removeChild(gapiScript);
+        if(document.body.contains(gisScript)) document.body.removeChild(gisScript);
     }
 
   }, [toast, updateUserProfile]);
@@ -154,29 +148,26 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   // ---- SIGN IN ----
   const signIn = useCallback(() => {
-    if (!isApiLoaded) {
-       toast({ title: 'API Not Ready', description: 'Google services are still loading. Please wait a moment.', variant: 'destructive'});
-       return;
+    if (CLIENT_ID.startsWith('YOUR_GOOGLE_CLIENT_ID')) {
+        toast({ title: "Google Drive Not Configured", description: "Please add your Google Client ID.", variant: 'destructive' });
+        return;
     }
     if (tokenClient) {
       tokenClient.requestAccessToken({ prompt: 'consent' });
     } else {
         toast({ title: "Google API not ready", description: "Please wait a moment and try again.", variant: 'destructive' });
     }
-  }, [isApiLoaded, tokenClient, toast]);
+  }, [tokenClient, toast]);
 
   // ---- SIGN OUT ----
   const signOut = useCallback(() => {
     const token = gapi.client.getToken();
-    if (token) {
+    if (token !== null) {
       google.accounts.oauth2.revoke(token.access_token, () => {
-        gapi.client.setToken(null);
+        gapi.client.setToken('');
         setIsSignedIn(false);
         setUserProfile(null);
-        toast({
-          title: 'Signed Out',
-          description: 'You have successfully signed out from Google Drive.',
-        });
+        toast({ title: 'Signed Out', description: 'You have successfully signed out from Google Drive.' });
       });
     }
   }, [toast]);
@@ -273,7 +264,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         picker.setVisible(true);
       };
       
-      showPicker();
+      if (window.google && google.picker) {
+        showPicker();
+      } else {
+        gapi.load('picker', showPicker);
+      }
+
     },
     [isSignedIn, toast]
   );
@@ -298,7 +294,8 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 // ---- HOOK ----
 export function useGoogleDrive() {
   const context = useContext(GoogleDriveContext);
-  if (!context)
+  if (context === undefined) {
     throw new Error('useGoogleDrive must be used within a GoogleDriveProvider');
+  }
   return context;
 }
