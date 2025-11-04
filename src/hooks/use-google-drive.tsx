@@ -55,6 +55,38 @@ const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(
   undefined
 );
 
+// ---- HELPER ----
+function loadPickerScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.google && window.google.picker) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://apis.google.com/js/picker.js";
+    script.async = true;
+    script.defer = true;
+
+    script.onload = async () => {
+      // Wait until window.google.picker becomes available
+      const checkPicker = () => {
+        if (window.google && window.google.picker) {
+          console.log("✅ Google Picker loaded");
+          resolve();
+        } else {
+          setTimeout(checkPicker, 100);
+        }
+      };
+      checkPicker();
+    };
+
+    script.onerror = () => reject("❌ Failed to load Google Picker script");
+
+    document.body.appendChild(script);
+  });
+}
+
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
@@ -174,7 +206,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   // ---- SAVE FILE ----
   const saveFileToDrive = useCallback(
-    (fileName: string, content: string) => {
+    async (fileName: string, content: string) => {
       if (!isSignedIn) {
         toast({
           title: 'Not Signed In',
@@ -241,11 +273,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       };
 
       const showPicker = () => {
-        if (!window.google?.picker?.PickerBuilder) {
-             toast({ title: 'Error', description: 'Google Picker is not available. Please try again.', variant: 'destructive'});
-             return;
-        }
-
         const view = new google.picker.View(google.picker.ViewId.DOCS);
         view.setMimeTypes('application/vnd.google-apps.folder');
 
@@ -264,11 +291,18 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         picker.setVisible(true);
       };
       
-      if (window.google && google.picker) {
-        showPicker();
-      } else {
-        gapi.load('picker', showPicker);
+      try {
+        await loadPickerScript();
+      } catch (error) {
+        toast({
+            title: "Picker Load Error",
+            description: "Google Picker failed to initialize.",
+            variant: "destructive",
+        });
+        return;
       }
+      
+      showPicker();
 
     },
     [isSignedIn, toast]
