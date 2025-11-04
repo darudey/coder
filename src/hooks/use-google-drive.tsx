@@ -82,8 +82,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.error('Could not fetch user profile', e);
-      setIsSignedIn(false);
-      setUserProfile(null);
+      // Don't toast here as it can be part of sign out flow
     }
   }, []);
 
@@ -92,60 +91,82 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     const loadScript = (src: string) =>
       new Promise<void>((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
-          return resolve();
+          resolve();
+          return;
         }
         const script = document.createElement('script');
         script.src = src;
         script.async = true;
-        script.defer = true;
         script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
         document.body.appendChild(script);
       });
 
-    const initializeApis = async () => {
+    const initGapiClient = async () => {
       try {
-        // Load the Google Identity Services (GIS) library for authentication
-        await loadScript('https://accounts.google.com/gsi/client');
-        
-        // Initialize the token client for OAuth2
-        const client = google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
-          callback: (tokenResponse: any) => {
-            if (tokenResponse?.access_token) {
-              gapi.client.setToken(tokenResponse);
-              updateUserProfile();
-            } else {
-              toast({
-                title: 'Sign-In Error',
-                description: 'Failed to get access token from Google.',
-                variant: 'destructive',
+        // 1. Load GAPI and GIS scripts in parallel
+        await Promise.all([
+          loadScript('https://apis.google.com/js/api.js'),
+          loadScript('https://accounts.google.com/gsi/client'),
+        ]);
+
+        // 2. Initialize GAPI client and Auth2
+        await new Promise<void>((resolve, reject) => {
+          window.gapi.load('client:auth2', async () => {
+            try {
+              await window.gapi.client.init({
+                apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY!,
+                clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+                scope: SCOPES,
+                discoveryDocs: DISCOVERY_DOCS,
               });
+              resolve();
+            } catch (e) {
+              console.error('❌ GAPI client init failed:', e);
+              reject(e);
             }
-          },
+          });
+        });
+        
+        // 3. Initialize GIS Token Client
+        const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            callback: (tokenResponse: any) => {
+              if (tokenResponse?.access_token) {
+                gapi.client.setToken(tokenResponse);
+                updateUserProfile();
+              } else {
+                toast({
+                  title: 'Sign-In Error',
+                  description: 'Failed to get access token.',
+                  variant: 'destructive',
+                });
+              }
+            },
         });
         setTokenClient(client);
 
-        // Load the Google API (GAPI) client and Picker libraries
-        await loadScript('https://apis.google.com/js/api.js');
-        await new Promise<void>((resolve) => gapi.load('client:picker', resolve));
-        
-        // Initialize the GAPI client with discovery docs
-        await gapi.client.init({ discoveryDocs: DISCOVERY_DOCS });
+        // 4. Load Picker API separately
+        await loadScript("https://apis.google.com/js/picker.js");
 
-        setIsApiLoaded(true);
-      } catch (error) {
-        console.error('Failed to initialize Google APIs', error);
+        if (window.gapi?.client && window.google?.picker) {
+          console.log("✅ GAPI and Picker fully loaded");
+          setIsApiLoaded(true);
+        } else {
+          throw new Error('GAPI or Picker missing after load');
+        }
+      } catch (err) {
+        console.error("🚨 Failed to initialize Google APIs", err);
         toast({
-          title: 'Initialization Error',
-          description: 'Could not connect to Google services. Please refresh the page.',
-          variant: 'destructive',
+            title: 'API Error',
+            description: 'Could not load Google services. Please refresh the page.',
+            variant: 'destructive'
         });
       }
     };
 
-    initializeApis();
+    initGapiClient();
   }, [toast, updateUserProfile]);
 
 
@@ -181,22 +202,21 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   // ---- SAVE FILE ----
   const saveFileToDrive = useCallback(
     (fileName: string, content: string) => {
-      if (!isSignedIn) {
+      if (!isApiLoaded || !isSignedIn) {
         toast({
-          title: 'Not Signed In',
-          description: 'Please connect to Google Drive first.',
+          title: 'Not Ready',
+          description: 'Please sign in to Google Drive first.',
           variant: 'destructive',
         });
         return;
       }
-      
-      if (!window.google?.picker?.PickerBuilder) {
-        toast({
-          title: 'Picker Not Ready',
-          description: 'The Google file picker is not available yet. Please try again in a moment.',
-          variant: 'destructive',
-        });
-        return;
+      if (!window.google?.picker) {
+          toast({
+              title: 'Picker Not Ready',
+              description: 'The Google file picker is not available yet. Please try again.',
+              variant: 'destructive'
+          });
+          return;
       }
 
       const createFileInFolder = async (
@@ -272,7 +292,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
       picker.setVisible(true);
     },
-    [isSignedIn, toast]
+    [isApiLoaded, isSignedIn, toast]
   );
 
   // ---- CONTEXT VALUE ----
