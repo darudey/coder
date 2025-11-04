@@ -26,7 +26,6 @@ interface GoogleDriveContextValue {
 const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(undefined);
 
 const CLIENT_ID = '1095073746611-dklrdrkmq1km4kv2kddpocc2qi90fpbg.apps.googleusercontent.com';
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
@@ -41,9 +40,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const updateUserProfile = useCallback(async () => {
     try {
-      if (!gapi.client.oauth2) {
-          await gapi.client.load('oauth2', 'v2');
-      }
       const response = await gapi.client.oauth2.userinfo.get();
       const profile = response.result;
       if (profile) {
@@ -70,7 +66,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     gapiScript.defer = true;
     gapiScript.onload = () => {
       gapi.load('client', async () => {
-        await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
+        await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
         setIsGapiLoaded(true);
       });
     };
@@ -101,11 +97,8 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     document.body.appendChild(gisScript);
 
     return () => {
-        const gapiScriptInDom = document.querySelector('script[src="https://apis.google.com/js/api.js"]');
-        if (gapiScriptInDom) document.body.removeChild(gapiScriptInDom);
-
-        const gisScriptInDom = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-        if (gisScriptInDom) document.body.removeChild(gisScriptInDom);
+        document.body.removeChild(gapiScript);
+        document.body.removeChild(gisScript);
     }
 
   }, [toast, updateUserProfile]);
@@ -148,14 +141,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     }
 
     const showPicker = () => {
-        const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-            .setSelectFolderEnabled(true)
-            .setMimeTypes("application/vnd.google-apps.folder");
-
+        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        view.setMimeTypes("application/vnd.google-apps.folder");
         const picker = new google.picker.PickerBuilder()
             .addView(view)
             .setOAuthToken(gapi.client.getToken().access_token)
-            .setDeveloperKey(API_KEY)
+            .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '')
             .setCallback((data: any) => {
                 if (data.action === google.picker.Action.PICKED) {
                     const folderId = data.docs[0].id;
@@ -166,7 +157,11 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         picker.setVisible(true);
     };
     
-    gapi.load('picker', showPicker);
+    if (window.google && google.picker) {
+      showPicker();
+    } else {
+      gapi.load('picker', showPicker);
+    }
 
   }, [isSignedIn, toast]);
 
