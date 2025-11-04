@@ -65,6 +65,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const [tokenClient, setTokenClient] = useState<any>(null);
   const [isGapiLoaded, setIsGapiLoaded] = useState(false);
   const [isGisLoaded, setIsGisLoaded] = useState(false);
+  const [isPickerReady, setIsPickerReady] = useState(false);
 
   // ---- FETCH USER PROFILE ----
   const updateUserProfile = useCallback(async () => {
@@ -133,16 +134,18 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     pickerScript.src = 'https://apis.google.com/js/api.picker.js';
     pickerScript.async = true;
     pickerScript.defer = true;
-    pickerScript.onload = () => {
-      console.log('Google Picker API loaded');
-    };
+    pickerScript.onload = () => setIsPickerReady(true);
     document.body.appendChild(pickerScript);
 
-
     return () => {
-      [gapiScript, gisScript, pickerScript].forEach((s) =>
-        document.body.removeChild(s)
-      );
+      const gapiScriptEl = document.querySelector('script[src="https://apis.google.com/js/api.js"]');
+      if (gapiScriptEl) document.body.removeChild(gapiScriptEl);
+      
+      const gisScriptEl = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (gisScriptEl) document.body.removeChild(gisScriptEl);
+
+      const pickerScriptEl = document.querySelector('script[src="https://apis.google.com/js/api.picker.js"]');
+      if(pickerScriptEl) document.body.removeChild(pickerScriptEl);
     };
   }, [toast, updateUserProfile]);
 
@@ -196,6 +199,15 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           title: 'Not Signed In',
           description: 'Please connect to Google Drive first.',
           variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!isPickerReady) {
+        toast({
+            title: 'Picker Not Ready',
+            description: 'The Google file picker is still loading. Please try again in a moment.',
+            variant: 'destructive',
         });
         return;
       }
@@ -280,14 +292,9 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         picker.setVisible(true);
       };
 
-      if (window.google && google.picker && google.picker.PickerBuilder) {
-        showPicker();
-      } else {
-        console.warn('Picker not ready yet, loading dynamically...');
-        gapi.load('picker', showPicker);
-      }
+      showPicker();
     },
-    [isSignedIn, toast]
+    [isSignedIn, toast, isPickerReady]
   );
 
   // ---- CONTEXT VALUE ----
