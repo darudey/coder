@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -129,10 +130,14 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     document.body.appendChild(gisScript);
 
     const pickerScript = document.createElement('script');
-    pickerScript.src = 'https://apis.google.com/js/api_picker.js';
+    pickerScript.src = 'https://apis.google.com/js/api.picker.js';
     pickerScript.async = true;
     pickerScript.defer = true;
+    pickerScript.onload = () => {
+      console.log('Google Picker API loaded');
+    };
     document.body.appendChild(pickerScript);
+
 
     return () => {
       [gapiScript, gisScript, pickerScript].forEach((s) =>
@@ -275,8 +280,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         picker.setVisible(true);
       };
 
-      if (window.google && google.picker) showPicker();
-      else gapi.load('picker', showPicker);
+      if (window.google && google.picker && google.picker.PickerBuilder) {
+        showPicker();
+      } else {
+        console.warn('Picker not ready yet, loading dynamically...');
+        gapi.load('picker', showPicker);
+      }
     },
     [isSignedIn, toast]
   );
