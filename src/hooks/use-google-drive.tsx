@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -98,11 +99,9 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     gapiScript.onload = () => {
       gapi.load('client:picker', async () => {
         try {
-          await gapi.client.init({ 
+          await gapi.client.init({
             apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
-            clientId: CLIENT_ID,
             discoveryDocs: DISCOVERY_DOCS,
-            scope: SCOPES 
           });
           setIsGapiLoaded(true);
         } catch (error) {
@@ -251,6 +250,11 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       };
 
       const showPicker = () => {
+        if (!window.google?.picker?.PickerBuilder) {
+             toast({ title: 'Error', description: 'Google Picker is not available. Please try again.', variant: 'destructive'});
+             return;
+        }
+
         const view = new google.picker.View(google.picker.ViewId.DOCS);
         view.setMimeTypes('application/vnd.google-apps.folder');
 
@@ -269,13 +273,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         picker.setVisible(true);
       };
       
-      // Use the gapi.load callback to ensure picker is ready
-      if (window.google && google.picker) {
-          showPicker();
-      } else {
-          console.warn("Picker not ready yet, loading dynamically...");
-          gapi.load('picker', showPicker);
-      }
+      showPicker();
     },
     [isSignedIn, toast]
   );
