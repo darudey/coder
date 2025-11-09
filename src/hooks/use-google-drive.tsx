@@ -293,10 +293,9 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
         const view = new window.google.picker.View(window.google.picker.ViewId.FOLDERS);
         view.setSelectableMimeTypes('application/vnd.google-apps.folder');
-        
+
         const picker = new window.google.picker.PickerBuilder()
           .addView(view)
-          .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
           .setOAuthToken(gapi.client.getToken().access_token)
           .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '')
           .setCallback((data: any) => {
