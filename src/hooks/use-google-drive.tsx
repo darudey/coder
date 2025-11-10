@@ -42,60 +42,62 @@ const DISCOVERY_DOCS = [
 
 const GoogleDriveContext = createContext<GoogleDriveContextValue | undefined>(undefined);
 
-// Helper: load a script if not already present
-function loadScript(src: string) {
-  return new Promise<void>((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    s.defer = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.body.appendChild(s);
-  });
-}
-
-// Helper: ensure picker is ready (gapi must be initialized before calling this)
-async function ensurePickerReady(timeoutMs = 8000) {
-  // Make sure api.js exists (gapi), then call gapi.load('picker')
-  if (!window.gapi) {
-    await loadScript('https://apis.google.com/js/api.js');
-    // wait for gapi global
-    await new Promise<void>((resolve) => {
-      const check = () => {
-        if (window.gapi && typeof window.gapi.load === 'function') resolve();
-        else setTimeout(check, 50);
-      };
-      check();
-    });
-  }
-  // load picker.js (attaches picker implementation and registers it with gapi)
-  await loadScript('https://apis.google.com/js/picker.js');
-
-  // Use gapi.load('picker') to initialize the module and wait for window.google.picker
-  await new Promise<void>((resolve, reject) => {
-    const start = Date.now();
-    try {
-      // call gapi.load('picker') safely
-      window.gapi.load('picker', () => {
-        // wait loop until google.picker is attached
-        const waitForPicker = () => {
-          if (window.google && window.google.picker) {
-            resolve();
-          } else if (Date.now() - start > timeoutMs) {
-            reject(new Error('Timeout waiting for google.picker'));
-          } else {
-            setTimeout(waitForPicker, 100);
-          }
-        };
-        waitForPicker();
-      });
-    } catch (e) {
-      reject(e);
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
     }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.body.appendChild(script);
   });
 }
+
+async function ensurePickerReady(timeoutMs = 8000): Promise<void> {
+    if (!window.gapi) {
+      await loadScript('https://apis.google.com/js/api.js');
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          if (window.gapi && typeof window.gapi.load === 'function') resolve();
+          else setTimeout(check, 50);
+        };
+        check();
+      });
+    }
+
+    if (window.google && window.google.picker) {
+      return; // Already loaded
+    }
+    
+    await loadScript('https://apis.google.com/js/picker.js');
+  
+    await new Promise<void>((resolve, reject) => {
+      const start = Date.now();
+      const checkPicker = () => {
+        if (window.google && window.google.picker) {
+          resolve();
+        } else if (Date.now() - start > timeoutMs) {
+          reject(new Error('Timeout waiting for google.picker'));
+        } else {
+          setTimeout(checkPicker, 100);
+        }
+      };
+      
+      // gapi.load can be tricky, so we poll for the result
+      try {
+        window.gapi.load('picker', {callback: checkPicker});
+      } catch (e) {
+        // If gapi.load fails immediately, start polling anyway.
+        checkPicker();
+      }
+    });
+}
+
 
 export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
@@ -109,7 +111,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const updateUserProfile = useCallback(async () => {
     try {
-      // ensure oauth2 discovery doc loaded in gapi.client.init (we set it during init)
       const response = await gapi.client.oauth2.userinfo.get();
       const profile = response.result;
       if (profile) {
@@ -125,18 +126,15 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.error('Could not fetch user profile', e);
-      // no toast here — could be sign-out
     }
   }, []);
 
-  // init gapi & gis
   useEffect(() => {
     const gapiScript = document.createElement('script');
     gapiScript.src = 'https://apis.google.com/js/api.js';
     gapiScript.async = true;
     gapiScript.defer = true;
     gapiScript.onload = () => {
-      // Wait until gapi exists
       if (window.gapi && typeof window.gapi.load === 'function') {
         gapi.load('client', async () => {
           try {
@@ -155,7 +153,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     gisScript.async = true;
     gisScript.defer = true;
     gisScript.onload = () => {
-      // init token client using GIS
       const client = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
@@ -201,13 +198,12 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     const token = gapi.client.getToken();
     if (token) {
       google.accounts.oauth2.revoke(token.access_token, () => {
-        gapi.client.setToken(null); // use null to clear
+        gapi.client.setToken(null);
         setIsSignedIn(false);
         setUserProfile(null);
         toast({ title: 'Signed Out', description: 'You have successfully signed out from Google Drive.' });
       });
     } else {
-      // no token — just clear state
       setIsSignedIn(false);
       setUserProfile(null);
       toast({ title: 'Signed Out', description: 'You have signed out.' });
@@ -216,28 +212,33 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
   const saveFileToDrive = useCallback(
     async (fileName: string, content: string) => {
-      // ensure APIs are loaded
       if (!isApiLoaded) {
         toast({ title: 'APIs loading', description: 'Please wait a moment and try again.', variant: 'destructive' });
         return;
       }
 
-      // require sign-in/token
-      let tokenObj = gapi.client.getToken();
-      if (!tokenObj || !tokenObj.access_token) {
-        // try to request token if tokenClient available
+      let token = gapi.client.getToken();
+      if (!isSignedIn || !token?.access_token) {
         if (tokenClient) {
-          // prompt user to sign in / grant token; tokenClient will call callback and set gapi token
           tokenClient.requestAccessToken({ prompt: 'consent' });
           toast({ title: 'Signing in', description: 'Please accept Google permissions, then retry saving.' });
-          return;
         } else {
           toast({ title: 'Not signed in', description: 'Please connect to Google Drive first.', variant: 'destructive' });
-          return;
         }
+        return;
+      }
+      const accessToken = token.access_token;
+
+      const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+      if (!API_KEY) {
+        toast({
+          title: "Missing API Key",
+          description: "NEXT_PUBLIC_GOOGLE_API_KEY is not configured.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // ensure Picker is ready
       try {
         await ensurePickerReady();
       } catch (err) {
@@ -246,8 +247,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // create file uploader helper
-      const createFileInFolder = async (folderId: string, fileName: string, content: string) => {
+      const createFileInFolder = async (folderId: string) => {
         try {
           const metadata = { name: fileName, parents: [folderId], mimeType: 'application/javascript' };
           const boundary = '-------314159265358979323846';
@@ -266,7 +266,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${gapi.client.getToken().access_token}`,
+              Authorization: `Bearer ${accessToken}`,
               'Content-Type': `multipart/related; boundary=${boundary}`,
             },
             body,
@@ -283,37 +283,37 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           toast({ title: 'Error Saving File', description: err.message || 'Could not save file.', variant: 'destructive' });
         }
       };
+      
+      try {
+        const view = new window.google.picker.View(window.google.picker.ViewId.FOLDERS);
 
-      // build and show picker
-      const showPicker = () => {
-        if (!window.google || !window.google.picker) {
-          toast({ title: 'Picker Not Available', description: 'Google Picker is not available.', variant: 'destructive' });
-          return;
+        if (typeof view.setSelectableMimeTypes === 'function') {
+          view.setSelectableMimeTypes('application/vnd.google-apps.folder');
         }
 
-        const view = new window.google.picker.View(window.google.picker.ViewId.FOLDERS);
-        view.setSelectableMimeTypes('application/vnd.google-apps.folder');
-
-        const picker = new window.google.picker.PickerBuilder()
+        const pickerBuilder = new window.google.picker.PickerBuilder()
           .addView(view)
-          .setOAuthToken(gapi.client.getToken().access_token)
-          .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '')
+          .setOAuthToken(accessToken)
+          .setDeveloperKey(API_KEY)
           .setCallback((data: any) => {
             if (data.action === window.google.picker.Action.PICKED) {
-              const folderId = data.docs[0].id;
-              createFileInFolder(folderId, fileName, content);
-            } else if (data.action === window.google.picker.Action.CANCEL) {
-              // user cancelled
+              const folderId = data.docs?.[0]?.id;
+              if (folderId) createFileInFolder(folderId);
             }
-          })
-          .build();
+          });
 
+        const picker = pickerBuilder.build();
         picker.setVisible(true);
-      };
-
-      showPicker();
+      } catch (e) {
+        console.error('picker build error', e);
+        toast({
+          title: 'Picker Error',
+          description: 'Could not open the picker.',
+          variant: 'destructive',
+        });
+      }
     },
-    [isApiLoaded, tokenClient, toast]
+    [isApiLoaded, isSignedIn, tokenClient, toast]
   );
 
   const value: GoogleDriveContextValue = {
@@ -333,3 +333,5 @@ export function useGoogleDrive() {
   if (context === undefined) throw new Error('useGoogleDrive must be used within a GoogleDriveProvider');
   return context;
 }
+
+    
