@@ -32,7 +32,7 @@ interface SettingsPanelProps {
   onLoadFile: (folderName: string, fileName: string) => void;
   onNewFile: () => void;
   onDeleteFile: (folderName: string, fileName: string) => void;
-  onSaveToDrive: () => void;
+  onOpenFileFromDrive: () => Promise<void>;
 }
 
 export const SettingsPanel: FC<SettingsPanelProps> = ({
@@ -42,7 +42,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   onLoadFile,
   onNewFile,
   onDeleteFile,
-  onSaveToDrive,
+  onOpenFileFromDrive,
 }) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
@@ -53,7 +53,6 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     userProfile,
     signIn,
     signOut,
-    openFileFromDrive,
   } = useGoogleDrive();
 
   useEffect(() => {
@@ -80,23 +79,6 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         description: 'Your Gemini API key has been saved in your browser.',
     });
   };
-
-  const handleOpenFile = async () => {
-    const file = await openFileFromDrive();
-    if (file) {
-      // We can't directly add to the file system state here,
-      // so we use the onLoadFile callback which should handle opening a new tab
-      // and setting the code. A more robust solution might involve
-      // a callback to create the file if it doesn't exist.
-      onLoadFile('Google Drive', file.fileName);
-      
-      // A slight delay to allow the tab to be created before setting its content
-      setTimeout(() => {
-        const event = new CustomEvent('setCode', { detail: { folderName: 'Google Drive', fileName: file.fileName, code: file.content }});
-        window.dispatchEvent(event);
-      }, 100);
-    }
-  }
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -166,11 +148,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                            </div>
                         </div>
                         <div className="flex flex-col gap-2">
-                          <Button className="w-full" onClick={onSaveToDrive}>
-                            <Save className="w-4 h-4 mr-2"/>
-                            Save to Drive
-                          </Button>
-                          <Button variant="outline" className="w-full" onClick={handleOpenFile}>
+                          <Button variant="outline" className="w-full" onClick={onOpenFileFromDrive}>
                             <FolderOpen className="w-4 h-4 mr-2"/>
                             Open from Drive
                           </Button>

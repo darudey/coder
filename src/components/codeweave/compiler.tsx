@@ -125,7 +125,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast();
-  const { saveFileToDrive } = useGoogleDrive();
+  const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   
   const createNewFile = useCallback((activate = true) => {
     let nextFileNumber = 0;
@@ -208,6 +208,31 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     }
     
   }, [openFiles, closeTab]);
+  
+  const loadFile = useCallback((folderName: string, fileName: string) => {
+    setFileSystem(fs => {
+        const newFs = { ...fs };
+        if (!newFs[folderName]) {
+            newFs[folderName] = {};
+        }
+        if (newFs[folderName][fileName] === undefined) {
+           newFs[folderName][fileName] = '';
+        }
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+    
+    const fileToLoad: ActiveFile = { folderName, fileName };
+    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+
+    if (existingTabIndex !== -1) {
+        setActiveFileIndex(existingTabIndex);
+    } else {
+        setOpenFiles(of => [...of, fileToLoad]);
+        setActiveFileIndex(openFiles.length);
+    }
+    setIsSettingsOpen(false);
+  }, [openFiles]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -277,19 +302,14 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       const { detail } = event as CustomEvent;
       const { folderName, fileName, code } = detail;
 
-      const fileIndex = openFiles.findIndex(f => f.folderName === folderName && f.fileName === fileName);
+      loadFile(folderName, fileName);
       
-      if (fileIndex !== -1) {
-          // If file is already open, just switch to it and update code
-          setActiveFileIndex(fileIndex);
-          setHistory([code]);
-          setHistoryIndex(0);
-          if (onCodeChange) onCodeChange(code);
-      } else {
-          // File not open, need to handle this case
-          // This might require adding it to openFiles and then setting it
-          // For now, let's assume onLoadFile handles this.
-      }
+      // A slight delay to allow the tab to be created before setting its content
+      setTimeout(() => {
+        setHistory([code]);
+        setHistoryIndex(0);
+        if (onCodeChange) onCodeChange(code);
+      }, 50);
     };
     
     window.addEventListener('setCode', handleSetCode);
@@ -457,6 +477,15 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       saveFileToDrive(fileName, fileContent);
   }
 
+  const handleOpenFileFromDrive = async () => {
+    const file = await openFileFromDrive();
+    if (file) {
+      const event = new CustomEvent('setCode', { detail: { folderName: 'Google Drive', fileName: file.fileName, code: file.content }});
+      window.dispatchEvent(event);
+    }
+  }
+
+
   const handleShare = useCallback(async () => {
     const codeToShare = variant === 'minimal' ? code : fileSystem[activeFile!.folderName]?.[activeFile!.fileName];
 
@@ -540,31 +569,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     setIsSaveOpen(false);
     toast({ title: 'Code Saved', description: `Saved as ${trimmedFolderName}/${trimmedFileName}` });
   }, [saveForm, activeFile, code, toast, activeFileIndex]);
-  
-  const loadFile = useCallback((folderName: string, fileName: string) => {
-    setFileSystem(fs => {
-        const newFs = { ...fs };
-        if (!newFs[folderName]) {
-            newFs[folderName] = {};
-        }
-        if (newFs[folderName][fileName] === undefined) {
-           newFs[folderName][fileName] = '';
-        }
-        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
-        return newFs;
-    });
-    
-    const fileToLoad: ActiveFile = { folderName, fileName };
-    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
-
-    if (existingTabIndex !== -1) {
-        setActiveFileIndex(existingTabIndex);
-    } else {
-        setOpenFiles(of => [...of, fileToLoad]);
-        setActiveFileIndex(openFiles.length);
-    }
-    setIsSettingsOpen(false);
-  }, [openFiles]);
 
   const renameFile = useCallback((index: number, newFileName: string) => {
     let trimmedNewName = newFileName.trim();
@@ -648,7 +652,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
             onRun={handleRun} 
             onSettings={() => setIsSettingsOpen(true)} 
             isCompiling={isCompiling} 
-            onSaveAs={handleSaveRequest} 
+            onSaveToBrowser={handleSaveRequest} 
+            onSaveToDrive={handleSaveToDrive}
             onShare={handleShare}
             activeFile={activeFile} 
             hasActiveFile={!!activeFile}
@@ -690,7 +695,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         onLoadFile={loadFile}
         onNewFile={() => createNewFile(false)}
         onDeleteFile={deleteFile}
-        onSaveToDrive={handleSaveToDrive}
+        onOpenFileFromDrive={handleOpenFileFromDrive}
       />
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
         <DialogContent className="max-w-2xl h-3/4 flex flex-col">

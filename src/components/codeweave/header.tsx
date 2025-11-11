@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -27,7 +27,8 @@ interface HeaderProps {
   onRun?: () => void;
   onSettings?: () => void;
   isCompiling?: boolean;
-  onSaveAs?: () => void;
+  onSaveToBrowser?: () => void;
+  onSaveToDrive?: () => void;
   onShare?: () => void;
   activeFile?: ActiveFile | null;
   hasActiveFile?: boolean;
@@ -149,7 +150,8 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   onRun, 
   onSettings, 
   isCompiling, 
-  onSaveAs, 
+  onSaveToBrowser, 
+  onSaveToDrive,
   onShare, 
   activeFile, 
   hasActiveFile,
@@ -205,10 +207,18 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
               </Button>
-              <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile} className="h-8 w-8">
-                <Save className="w-4 h-4" />
-                <span className="sr-only">Save As</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" disabled={!hasActiveFile} className="h-8 w-8">
+                    <Save className="w-4 h-4" />
+                    <span className="sr-only">Save</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onSaveToBrowser}>Save to Browser</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
                 <Settings className="w-4 h-4" />
                 <span className="sr-only">Settings</span>
@@ -252,10 +262,18 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
               </Button>
-              <Button variant="outline" size="icon" onClick={onSaveAs} disabled={!hasActiveFile} className="h-8 w-8">
-                <Save className="w-4 h-4" />
-                <span className="sr-only">Save As</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" disabled={!hasActiveFile} className="h-8 w-8">
+                    <Save className="w-4 h-4" />
+                     <span className="sr-only">Save</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onSaveToBrowser}>Save to Browser</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
                 <Settings className="w-4 h-4" />
                 <span className="sr-only">Settings</span>
