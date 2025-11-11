@@ -17,7 +17,7 @@ import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { File, Folder, Plus, Trash2, Moon, Sun, Palette, KeyRound, LogIn, LogOut, Save } from 'lucide-react';
+import { File, Folder, Plus, Trash2, Moon, Sun, Palette, KeyRound, LogIn, LogOut, Save, FolderOpen } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useSettings } from '@/hooks/use-settings';
 import { Slider } from '../ui/slider';
@@ -53,6 +53,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     userProfile,
     signIn,
     signOut,
+    openFileFromDrive,
   } = useGoogleDrive();
 
   useEffect(() => {
@@ -79,6 +80,23 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         description: 'Your Gemini API key has been saved in your browser.',
     });
   };
+
+  const handleOpenFile = async () => {
+    const file = await openFileFromDrive();
+    if (file) {
+      // We can't directly add to the file system state here,
+      // so we use the onLoadFile callback which should handle opening a new tab
+      // and setting the code. A more robust solution might involve
+      // a callback to create the file if it doesn't exist.
+      onLoadFile('Google Drive', file.fileName);
+      
+      // A slight delay to allow the tab to be created before setting its content
+      setTimeout(() => {
+        const event = new CustomEvent('setCode', { detail: { folderName: 'Google Drive', fileName: file.fileName, code: file.content }});
+        window.dispatchEvent(event);
+      }, 100);
+    }
+  }
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -147,10 +165,14 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                               <p className="text-muted-foreground">{userProfile.email}</p>
                            </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                           <Button className="w-full" onClick={onSaveToDrive}>
                             <Save className="w-4 h-4 mr-2"/>
                             Save to Drive
+                          </Button>
+                          <Button variant="outline" className="w-full" onClick={handleOpenFile}>
+                            <FolderOpen className="w-4 h-4 mr-2"/>
+                            Open from Drive
                           </Button>
                           <Button variant="outline" className="w-full" onClick={signOut}>
                             <LogOut className="w-4 h-4 mr-2"/>

@@ -37,6 +37,7 @@ interface GoogleDriveContextValue {
   signIn: () => void;
   signOut: () => void;
   saveFileToDrive: (fileName: string, content: string) => void;
+  openFileFromDrive: () => Promise<{ fileName: string; content: string } | null>;
 }
 
 const CLIENT_ID = '1095073746611-dklrdrkmq1km4kv2kddpocc2qi90fpbg.apps.googleusercontent.com';
@@ -174,6 +175,80 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       setUserProfile(null);
     }
   }, [toast]);
+  
+  const openFileFromDrive = useCallback(
+    async (): Promise<{ fileName: string; content: string } | null> => {
+       if (!isSignedIn || !gapi.client.getToken()?.access_token) {
+        signIn();
+        toast({
+          title: 'Sign In Required',
+          description: 'Please sign in to open files.',
+        });
+        return null;
+      }
+
+      if (!API_KEY) {
+        toast({
+          title: 'Missing API Key',
+          description: 'NEXT_PUBLIC_GOOGLE_API_KEY is not set.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
+      if (!pickerApiLoaded) {
+        toast({
+          title: 'Picker Not Ready',
+          description: 'Google Picker is still loading...',
+          variant: 'destructive',
+        });
+        return null;
+      }
+      
+      return new Promise((resolve) => {
+        const accessToken = gapi.client.getToken().access_token;
+        
+        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        view.setMimeTypes('application/javascript,text/plain');
+
+        const picker = new google.picker.PickerBuilder()
+          .addView(view)
+          .setOAuthToken(accessToken)
+          .setDeveloperKey(API_KEY)
+          .setCallback(async (data: PickerCallbackData) => {
+            if (data.action === google.picker.Action.PICKED) {
+              const fileId = data.docs?.[0]?.id;
+              const fileName = data.docs?.[0]?.name;
+              if (fileId && fileName) {
+                try {
+                  const response = await gapi.client.drive.files.get({
+                    fileId: fileId,
+                    alt: 'media',
+                  });
+                  resolve({ fileName: fileName, content: response.body });
+                } catch (err: any) {
+                  console.error('Error fetching file content:', err);
+                  toast({
+                    title: 'Error Opening File',
+                    description: err.message || 'Could not read file from Drive.',
+                    variant: 'destructive',
+                  });
+                  resolve(null);
+                }
+              }
+            } else if (data.action === google.picker.Action.CANCEL) {
+              resolve(null);
+            } else {
+              resolve(null);
+            }
+          })
+          .build();
+        picker.setVisible(true);
+      });
+    },
+    [isSignedIn, pickerApiLoaded, signIn, toast]
+  );
+
 
   const saveFileToDrive = useCallback(
     async (fileName: string, content: string) => {
@@ -262,9 +337,9 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       try {
         const view = new google.picker.View(google.picker.ViewId.FOLDERS);
         if (typeof view.setSelectableMimeTypes === 'function') {
-          view.setSelectableMimeTypes('application/vnd.google-apps.folder');
+           view.setSelectableMimeTypes('application/vnd.google-apps.folder');
         }
-
+      
         new google.picker.PickerBuilder()
           .addView(view)
           .setOAuthToken(accessToken)
@@ -305,6 +380,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
     signIn,
     signOut,
     saveFileToDrive,
+    openFileFromDrive,
   };
 
   return <GoogleDriveContext.Provider value={value}>{children}</GoogleDriveContext.Provider>;

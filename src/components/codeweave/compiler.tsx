@@ -272,6 +272,30 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         
         setActiveFileIndex(initialActiveIndex);
     }
+    
+    const handleSetCode = (event: Event) => {
+      const { detail } = event as CustomEvent;
+      const { folderName, fileName, code } = detail;
+
+      const fileIndex = openFiles.findIndex(f => f.folderName === folderName && f.fileName === fileName);
+      
+      if (fileIndex !== -1) {
+          // If file is already open, just switch to it and update code
+          setActiveFileIndex(fileIndex);
+          setHistory([code]);
+          setHistoryIndex(0);
+          if (onCodeChange) onCodeChange(code);
+      } else {
+          // File not open, need to handle this case
+          // This might require adding it to openFiles and then setting it
+          // For now, let's assume onLoadFile handles this.
+      }
+    };
+    
+    window.addEventListener('setCode', handleSetCode);
+    return () => {
+      window.removeEventListener('setCode', handleSetCode);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCode, variant]);
 
@@ -518,6 +542,18 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [saveForm, activeFile, code, toast, activeFileIndex]);
   
   const loadFile = useCallback((folderName: string, fileName: string) => {
+    setFileSystem(fs => {
+        const newFs = { ...fs };
+        if (!newFs[folderName]) {
+            newFs[folderName] = {};
+        }
+        if (newFs[folderName][fileName] === undefined) {
+           newFs[folderName][fileName] = '';
+        }
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        return newFs;
+    });
+    
     const fileToLoad: ActiveFile = { folderName, fileName };
     const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
 
