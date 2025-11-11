@@ -336,32 +336,31 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       };
 
       try {
-        const view = new google.picker.View(google.picker.ViewId.FOLDERS);
-        if (typeof view.setSelectableMimeTypes === 'function') {
-           view.setSelectableMimeTypes('application/vnd.google-apps.folder');
-        }
+        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        view.setMimeTypes('application/vnd.google-apps.folder');
+        view.setMode(google.picker.DocsViewMode.LIST);
       
-        new google.picker.PickerBuilder()
+        const picker = new google.picker.PickerBuilder()
+          .enableFeature(google.picker.Feature.NEW_DOCUMENT)
+          .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
           .addView(view)
+          .setTitle('Select a folder to save your file')
           .setOAuthToken(accessToken)
           .setDeveloperKey(API_KEY)
           .setCallback((data: PickerCallbackData) => {
-            console.log('Picker callback:', data); // Debug
             if (data.action === google.picker.Action.PICKED) {
               const folderId = data.docs?.[0]?.id;
               if (folderId) {
                 createFileInFolder(folderId);
               }
             } else if (data.action === google.picker.Action.CANCEL) {
-              console.log('Picker cancelled');
               toast({ description: 'Folder selection cancelled.' });
-            } else if ((data as any).action === 'error') {
-               console.error('Picker error:', data);
-               toast({ title: 'Picker Failed', description: 'Check console for details.', variant: 'destructive' });
             }
           })
-          .build()
-          .setVisible(true);
+          .build();
+        
+        picker.setVisible(true);
+
       } catch (err: any) {
         console.error('Picker error:', err);
         toast({
