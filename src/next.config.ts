@@ -38,7 +38,6 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-    NEXT_PUBLIC_GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
   }
 };
 
