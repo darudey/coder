@@ -261,18 +261,27 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
       try {
         const view = new google.picker.View(google.picker.ViewId.FOLDERS);
-        view.setSelectableMimeTypes?.('application/vnd.google-apps.folder');
+        if (typeof view.setSelectableMimeTypes === 'function') {
+          view.setSelectableMimeTypes('application/vnd.google-apps.folder');
+        }
 
         new google.picker.PickerBuilder()
           .addView(view)
           .setOAuthToken(accessToken)
           .setDeveloperKey(API_KEY)
           .setCallback((data: PickerCallbackData) => {
+            console.log('Picker callback:', data); // Debug
             if (data.action === google.picker.Action.PICKED) {
               const folderId = data.docs?.[0]?.id;
-              if (folderId) createFileInFolder(folderId);
+              if (folderId) {
+                createFileInFolder(folderId);
+              }
             } else if (data.action === google.picker.Action.CANCEL) {
+              console.log('Picker cancelled');
               toast({ description: 'Folder selection cancelled.' });
+            } else if ((data as any).action === 'error') {
+               console.error('Picker error:', data);
+               toast({ title: 'Picker Failed', description: 'Check console for details.', variant: 'destructive' });
             }
           })
           .build()
@@ -304,7 +313,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 export function useGoogleDrive() {
   const context = useContext(GoogleDriveContext);
   if (!context) {
-    throw new Error('useGoogleDrive must be used within GoogleDriveProvider');
+    throw new Error('useGoogleDrive must be used within a GoogleDriveProvider');
   }
   return context;
 }
