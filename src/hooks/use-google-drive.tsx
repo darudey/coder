@@ -336,7 +336,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       };
 
       try {
-        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        const view = new google.picker.DocsView();
         view.setMimeTypes('application/vnd.google-apps.folder');
         view.setMode(google.picker.DocsViewMode.LIST);
       
