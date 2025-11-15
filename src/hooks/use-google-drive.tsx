@@ -337,11 +337,10 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
 
       try {
         const view = new google.picker.DocsView();
-        view.setMimeTypes('application/vnd.google-apps.folder');
-        view.setMode(google.picker.DocsViewMode.LIST);
+        view.setIncludeFolders(true);
+        view.setSelectFolderEnabled(true);
       
         const picker = new google.picker.PickerBuilder()
-          .enableFeature(google.picker.Feature.NEW_DOCUMENT)
           .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
           .addView(view)
           .setTitle('Select a folder to save your file')
