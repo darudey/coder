@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import type { FC } from 'react';
-import type { FileSystem } from './compiler';
+import type { FileSystem } from '@/hooks/use-compiler-fs';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
@@ -248,3 +248,5 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     </Sheet>
   );
 };
+
+    
