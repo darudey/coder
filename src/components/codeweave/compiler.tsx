@@ -211,15 +211,14 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [debouncedCode, activeFile, isMounted, fileSystem]);
 
   // Effect to load file content into the editor's history when the active file changes.
-  // This is the CRITICAL fix for the race condition.
   useEffect(() => {
       if (!isMounted || !activeFile) return;
 
       const content = fileSystem[activeFile.folderName]?.[activeFile.fileName];
-
+      
       // If content is not yet available, do nothing. This effect will re-run when it is.
       if (content === undefined) return;
-
+      
       // Prevent resetting history if the content is already what's in the editor
       if (history[historyIndex] === content) return;
 
@@ -227,7 +226,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       setHistoryIndex(0);
       onCodeChange?.(content);
   // The key is to depend on the *specific* file content from the filesystem.
-  // This ensures the effect runs only when the data it needs is actually ready.
   }, [isMounted, activeFile?.folderName, activeFile?.fileName, fileSystem[activeFile?.folderName]?.[activeFile?.fileName]]);
 
 
@@ -719,3 +717,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
