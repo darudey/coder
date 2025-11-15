@@ -210,27 +210,41 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [openFiles, closeTab]);
   
   const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
+    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+
+    if (existingTabIndex !== -1) {
+        setActiveFileIndex(existingTabIndex);
+        setIsSettingsOpen(false);
+        return;
+    }
+
+    const fileToLoad: ActiveFile = { folderName, fileName };
+    
+    // Always ensure fileSystem has the correct content
     setFileSystem(fs => {
         const newFs = { ...fs };
         if (!newFs[folderName]) {
             newFs[folderName] = {};
         }
-        // If content is provided, update or create the file. Otherwise, ensure it exists.
-        newFs[folderName][fileName] = fileContent ?? newFs[folderName][fileName] ?? '';
+
+        const finalContent = fileContent !== undefined
+            ? fileContent
+            : (newFs[folderName]?.[fileName] ?? '');
+        
+        newFs[folderName][fileName] = finalContent;
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
-    
-    const fileToLoad: ActiveFile = { folderName, fileName };
-    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
 
-    if (existingTabIndex !== -1) {
-        setActiveFileIndex(existingTabIndex);
-    } else {
-        setOpenFiles(of => [...of, fileToLoad]);
-        setActiveFileIndex(openFiles.length);
-    }
-    setIsSettingsOpen(false);
+    // Use setTimeout to ensure the file system state update is processed before we change the active tab
+    setTimeout(() => {
+        setOpenFiles(of => {
+            const newOpenFiles = [...of, fileToLoad];
+            setActiveFileIndex(newOpenFiles.length - 1);
+            return newOpenFiles;
+        });
+        setIsSettingsOpen(false);
+    }, 0);
   }, [openFiles]);
 
   useEffect(() => {
@@ -361,26 +375,26 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [debouncedCode, activeFile, isMounted, fileSystem, initialCode, variant]);
   
   useEffect(() => {
-    if (!isMounted) return;
-    
-    let codeToSet = '';
-    if (variant === 'minimal' && initialCode) {
-      codeToSet = initialCode;
-    } else if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
-      codeToSet = fileSystem[activeFile.folderName][activeFile.fileName];
-    } else if (!activeFile && openFiles.length > 0 && activeFileIndex !== -1) {
-        // This case handles when a file is deleted.
-        const firstFile = openFiles[0];
-        codeToSet = fileSystem[firstFile.folderName]?.[firstFile.fileName] || '';
-    }
+    if (!isMounted || !activeFile) return;
 
-    setHistory([codeToSet]);
-    setHistoryIndex(0);
-    if(onCodeChange) {
-        onCodeChange(codeToSet);
+    const folder = activeFile.folderName;
+    const file = activeFile.fileName;
+
+    const content = fileSystem[folder]?.[file];
+    
+    // Wait until file content exists in the filesystem
+    if (content === undefined) return;
+
+    // Only update if the content is different from what's currently in the editor history
+    if (history[historyIndex] !== content) {
+        setHistory([content]);
+        setHistoryIndex(0);
+        if (onCodeChange) {
+            onCodeChange(content);
+        }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFile, isMounted, initialCode, variant]);
+  }, [isMounted, activeFile, fileSystem, onCodeChange]); // This is the key fix
+
 
   useEffect(() => {
     if (variant === 'minimal' || !isMounted || initialCode) return;
@@ -532,7 +546,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         if (!newFs[newActiveFile.folderName]) {
             newFs[newActiveFile.folderName] = {};
         }
-        newFs[newActiveFile.folderName][newFile.fileName] = code;
+        newFs[newActiveFile.folderName][newActiveFile.fileName] = code;
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
@@ -752,3 +766,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
