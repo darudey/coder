@@ -226,7 +226,30 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
                     fileId: fileId,
                     alt: 'media',
                   });
-                  resolve({ fileName: fileName, content: response.body });
+                  
+                  // Normalize all possible formats Google may return
+                  let raw =
+                    response.body ||
+                    (response as any).result ||
+                    (response as any).result?.body ||
+                    "";
+
+                  // If binary – convert to text
+                  if (raw && typeof raw !== "string") {
+                    try {
+                      // @ts-ignore - 'raw' can be ArrayBuffer here
+                      raw = new TextDecoder("utf-8").decode(raw);
+                    } catch (e) {
+                      console.error("Decode failed, using fallback", e);
+                      raw = String(raw);
+                    }
+                  }
+
+                  resolve({
+                    fileName,
+                    content: raw,
+                  });
+
                 } catch (err: any) {
                   console.error('Error fetching file content:', err);
                   toast({
