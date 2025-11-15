@@ -209,15 +209,14 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     
   }, [openFiles, closeTab]);
   
-  const loadFile = useCallback((folderName: string, fileName: string) => {
+  const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
     setFileSystem(fs => {
         const newFs = { ...fs };
         if (!newFs[folderName]) {
             newFs[folderName] = {};
         }
-        if (newFs[folderName][fileName] === undefined) {
-           newFs[folderName][fileName] = '';
-        }
+        // If content is provided, update or create the file. Otherwise, ensure it exists.
+        newFs[folderName][fileName] = fileContent ?? newFs[folderName][fileName] ?? '';
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
@@ -296,25 +295,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         }
         
         setActiveFileIndex(initialActiveIndex);
-    }
-    
-    const handleSetCode = (event: Event) => {
-      const { detail } = event as CustomEvent;
-      const { folderName, fileName, code } = detail;
-
-      loadFile(folderName, fileName);
-      
-      // A slight delay to allow the tab to be created before setting its content
-      setTimeout(() => {
-        setHistory([code]);
-        setHistoryIndex(0);
-        if (onCodeChange) onCodeChange(code);
-      }, 50);
-    };
-    
-    window.addEventListener('setCode', handleSetCode);
-    return () => {
-      window.removeEventListener('setCode', handleSetCode);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCode, variant]);
@@ -480,8 +460,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const handleOpenFileFromDrive = async () => {
     const file = await openFileFromDrive();
     if (file) {
-      const event = new CustomEvent('setCode', { detail: { folderName: 'Google Drive', fileName: file.fileName, code: file.content }});
-      window.dispatchEvent(event);
+      loadFile('Google Drive', file.fileName, file.content);
     }
   }
 

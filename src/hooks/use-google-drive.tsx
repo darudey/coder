@@ -43,7 +43,7 @@ interface GoogleDriveContextValue {
 
 const CLIENT_ID = '1095073746611-dklrdrkmq1km4kv2kddpocc2qi90fpbg.apps.googleusercontent.com';
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY; // Must be public
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.readonly';
 const DISCOVERY_DOCS = [
   'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
   'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest',
@@ -209,7 +209,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
       return new Promise((resolve) => {
         const accessToken = gapi.client.getToken().access_token;
         
-        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
         view.setMimeTypes('application/javascript,text/plain');
 
         const picker = new google.picker.PickerBuilder()
@@ -231,7 +231,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
                   console.error('Error fetching file content:', err);
                   toast({
                     title: 'Error Opening File',
-                    description: err.message || 'Could not read file from Drive.',
+                    description: err.result?.error?.message || 'Could not read file from Drive.',
                     variant: 'destructive',
                   });
                   resolve(null);
