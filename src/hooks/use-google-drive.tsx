@@ -231,7 +231,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
                   let raw =
                     response.body ||
                     (response as any).result ||
-                    (response as any).result?.body ||
                     "";
 
                   // If binary – convert to text
@@ -415,5 +414,3 @@ export function useGoogleDrive() {
   }
   return context;
 }
-
-    
