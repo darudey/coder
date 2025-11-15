@@ -209,39 +209,43 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     
   }, [openFiles, closeTab]);
   
-  const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
-    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-    if (existingTabIndex !== -1) {
-        setActiveFileIndex(existingTabIndex);
+  const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
+    const existingIndex = openFiles.findIndex(f =>
+        f.folderName === folderName && f.fileName === fileName
+    );
+
+    // If the tab already exists → just activate it
+    if (existingIndex !== -1) {
+        setActiveFileIndex(existingIndex);
         setIsSettingsOpen(false);
         return;
     }
 
-    const fileToLoad: ActiveFile = { folderName, fileName };
-    
-    // Always ensure fileSystem has the correct content
+    // Write file content into FS (correctly)
     setFileSystem(fs => {
         const newFs = { ...fs };
-        if (!newFs[folderName]) {
-            newFs[folderName] = {};
-        }
+        if (!newFs[folderName]) newFs[folderName] = {};
 
-        const finalContent = fileContent !== undefined
-            ? fileContent
-            : (newFs[folderName]?.[fileName] ?? '');
-        
+        // ALWAYS SET CONTENT — never leave undefined
+        const finalContent =
+            fileContent !== undefined ? fileContent :
+            newFs[folderName][fileName] !== undefined ? newFs[folderName][fileName] :
+            '';
+
         newFs[folderName][fileName] = finalContent;
+
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
 
-    // Use setTimeout to ensure the file system state update is processed before we change the active tab
+    // Add to open tabs AFTER FS writes
     setTimeout(() => {
-        setOpenFiles(of => {
-            const newOpenFiles = [...of, fileToLoad];
-            setActiveFileIndex(newOpenFiles.length - 1);
-            return newOpenFiles;
+        setOpenFiles(prev => {
+            const updated = [...prev, { folderName, fileName }];
+            setActiveFileIndex(updated.length - 1);
+            return updated;
         });
         setIsSettingsOpen(false);
     }, 0);
@@ -320,7 +324,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   
   const [isCompiling, setIsCompiling] = useState(false);
   const [isAiChecking, setIsAiChecking] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>({ errorChecking: false });
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
@@ -380,16 +383,11 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     const folder = activeFile.folderName;
     const file = activeFile.fileName;
     const content = fileSystem[folder]?.[file];
-    
-    // This effect ensures the editor's content is synchronized with the active file.
-    // It runs when the active file changes, or when the content of that specific file changes in the file system.
-    if (content === undefined) {
-        // If content is not yet available (e.g., during an async load), do nothing and wait.
-        return;
-    }
 
-    // Only update the editor if its current content is different from the file system's content.
-    // This prevents wiping out the undo/redo history on every render.
+    if (content === undefined) return; // Wait for content to exist.
+
+    // Only update editor if the content is different from what's being shown.
+    // This prevents wiping out undo history when switching tabs.
     if (history[historyIndex] !== content) {
         setHistory([content]);
         setHistoryIndex(0);
@@ -399,10 +397,13 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     }
   }, [
     isMounted,
-    activeFile,
-    fileSystem, // Listen to the whole fileSystem object to catch async updates.
-    onCodeChange
-    // NOTE: `history` and `historyIndex` are intentionally omitted to prevent re-running this effect on every keystroke.
+    activeFile?.folderName,
+    activeFile?.fileName,
+    // This is the key: this dependency will change only when the *content*
+    // of the active file changes in the file system state.
+    fileSystem[activeFile?.folderName]?.[activeFile?.fileName]
+    // history, historyIndex, and onCodeChange are intentionally omitted
+    // to prevent unwanted re-runs of this effect.
   ]);
 
 
@@ -776,6 +777,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
 
     
 
