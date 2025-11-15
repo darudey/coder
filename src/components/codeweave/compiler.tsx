@@ -379,13 +379,17 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
     const folder = activeFile.folderName;
     const file = activeFile.fileName;
-
     const content = fileSystem[folder]?.[file];
     
-    // Wait until file content exists in the filesystem
-    if (content === undefined) return;
+    // This effect ensures the editor's content is synchronized with the active file.
+    // It runs when the active file changes, or when the content of that specific file changes in the file system.
+    if (content === undefined) {
+        // If content is not yet available (e.g., during an async load), do nothing and wait.
+        return;
+    }
 
-    // Only update if the content is different from what's currently in the editor history
+    // Only update the editor if its current content is different from the file system's content.
+    // This prevents wiping out the undo/redo history on every render.
     if (history[historyIndex] !== content) {
         setHistory([content]);
         setHistoryIndex(0);
@@ -393,7 +397,13 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
             onCodeChange(content);
         }
     }
-  }, [isMounted, activeFile, fileSystem, onCodeChange]); // This is the key fix
+  }, [
+    isMounted,
+    activeFile,
+    fileSystem, // Listen to the whole fileSystem object to catch async updates.
+    onCodeChange
+    // NOTE: `history` and `historyIndex` are intentionally omitted to prevent re-running this effect on every keystroke.
+  ]);
 
 
   useEffect(() => {
@@ -766,5 +776,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
 
     
