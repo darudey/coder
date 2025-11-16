@@ -212,12 +212,13 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
     const fileToLoad: ActiveFile = { folderName, fileName };
     const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
-    
+
     setFileSystem(fs => {
         const newFs = { ...fs };
         if (!newFs[folderName]) {
             newFs[folderName] = {};
         }
+        // Use provided content if available, otherwise use existing or default to empty string
         newFs[folderName][fileName] = fileContent ?? fs[folderName]?.[fileName] ?? '';
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
@@ -754,3 +755,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
