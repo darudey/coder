@@ -212,26 +212,27 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
     const fileToLoad: ActiveFile = { folderName, fileName };
     
-    setFileSystem(fs => {
-        const newFs = { ...fs };
+    // Atomically update filesystem, open files, and active index
+    setFileSystem(currentFs => {
+        const newFs = { ...currentFs };
         if (!newFs[folderName]) {
             newFs[folderName] = {};
         }
-        newFs[folderName][fileName] = fileContent ?? fs[folderName]?.[fileName] ?? '';
+        newFs[folderName][fileName] = fileContent ?? currentFs[folderName]?.[fileName] ?? '';
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
-        
-        setOpenFiles(of => {
-            const existingTabIndex = of.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+
+        setOpenFiles(currentOpenFiles => {
+            const existingTabIndex = currentOpenFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
             if (existingTabIndex !== -1) {
                 setActiveFileIndex(existingTabIndex);
-                return of;
+                return currentOpenFiles;
             } else {
-                const newOpenFiles = [...of, fileToLoad];
+                const newOpenFiles = [...currentOpenFiles, fileToLoad];
                 setActiveFileIndex(newOpenFiles.length - 1);
                 return newOpenFiles;
             }
         });
-
+        
         return newFs;
     });
 
@@ -759,4 +760,6 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+    
+
     

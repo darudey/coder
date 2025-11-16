@@ -210,7 +210,8 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         const accessToken = gapi.client.getToken().access_token;
         
         const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
-        view.setMimeTypes('application/javascript,text/plain');
+        // Do NOT set mime types to allow any text-based file to be selected.
+        // view.setMimeTypes('application/javascript,text/plain');
 
         const picker = new google.picker.PickerBuilder()
           .addView(view)
@@ -407,3 +408,5 @@ export function useGoogleDrive() {
   }
   return context;
 }
+
+    
