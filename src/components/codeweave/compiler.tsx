@@ -211,30 +211,32 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   
   const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
     const fileToLoad: ActiveFile = { folderName, fileName };
-    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
-
+    
     setFileSystem(fs => {
         const newFs = { ...fs };
         if (!newFs[folderName]) {
             newFs[folderName] = {};
         }
-        // Use provided content if available, otherwise use existing or default to empty string
         newFs[folderName][fileName] = fileContent ?? fs[folderName]?.[fileName] ?? '';
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        
+        setOpenFiles(of => {
+            const existingTabIndex = of.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+            if (existingTabIndex !== -1) {
+                setActiveFileIndex(existingTabIndex);
+                return of;
+            } else {
+                const newOpenFiles = [...of, fileToLoad];
+                setActiveFileIndex(newOpenFiles.length - 1);
+                return newOpenFiles;
+            }
+        });
+
         return newFs;
     });
 
-    if (existingTabIndex !== -1) {
-        setActiveFileIndex(existingTabIndex);
-    } else {
-        setOpenFiles(of => {
-            const newOpenFiles = [...of, fileToLoad];
-            setActiveFileIndex(newOpenFiles.length - 1);
-            return newOpenFiles;
-        });
-    }
     setIsSettingsOpen(false);
-  }, [openFiles]);
+  }, []);
 
   useEffect(() => {
     setIsMounted(true);
@@ -756,4 +758,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
+    
     
