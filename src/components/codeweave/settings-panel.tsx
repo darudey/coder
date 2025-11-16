@@ -10,14 +10,14 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
-import type { FC } from 'react';
+import React, { FC, useRef } from 'react';
 import type { FileSystem } from './compiler';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { File, Folder, Plus, Trash2, Moon, Sun, Palette, KeyRound, LogIn, LogOut, Save, FolderOpen } from 'lucide-react';
+import { File, Folder, Plus, Trash2, Moon, Sun, Palette, KeyRound, LogIn, LogOut, Save, FolderOpen, Upload } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useSettings } from '@/hooks/use-settings';
 import { Slider } from '../ui/slider';
@@ -29,7 +29,7 @@ interface SettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fileSystem: FileSystem;
-  onLoadFile: (folderName: string, fileName: string) => void;
+  onLoadFile: (folderName: string, fileName: string, fileContent?: string) => void;
   onNewFile: () => void;
   onDeleteFile: (folderName: string, fileName: string) => void;
   onOpenFileFromDrive: () => Promise<void>;
@@ -54,6 +54,8 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     signIn,
     signOut,
   } = useGoogleDrive();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (open) {
@@ -78,6 +80,46 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         title: 'API Key Saved',
         description: 'Your Gemini API key has been saved in your browser.',
     });
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/javascript' && !file.name.endsWith('.js')) {
+        toast({
+            title: 'Invalid File Type',
+            description: 'Please upload a JavaScript (.js) file.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const content = e.target?.result as string;
+        onLoadFile('Uploaded Files', file.name, content);
+        toast({
+            title: 'File Uploaded',
+            description: `${file.name} has been added to your files.`,
+        });
+        // Reset file input so the same file can be uploaded again
+        if(fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+    reader.onerror = () => {
+        toast({
+            title: 'Error Reading File',
+            description: 'Could not read the selected file.',
+            variant: 'destructive',
+        });
+    };
+    reader.readAsText(file);
   };
   
   return (
@@ -203,10 +245,23 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
         <div className="flex-grow flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-semibold">Saved Code</h3>
-                <Button variant="ghost" size="icon" onClick={onNewFile}>
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">New File</span>
-                </Button>
+                <div className="flex items-center">
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange}
+                        accept=".js,application/javascript"
+                        className="hidden" 
+                    />
+                    <Button variant="ghost" size="icon" onClick={handleUploadClick}>
+                        <Upload className="h-4 w-4" />
+                        <span className="sr-only">Upload File</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={onNewFile}>
+                        <Plus className="h-4 w-4" />
+                        <span className="sr-only">New File</span>
+                    </Button>
+                </div>
             </div>
             <div className="flex-grow border rounded-md min-h-0">
                 <ScrollArea className="h-full">
