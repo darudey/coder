@@ -449,9 +449,10 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   
   const handleEditorClick = () => {
     if (isMobile) {
-      setSettings({...settings, isVirtualKeyboardEnabled: true });
       setIsKeyboardVisible(true);
-      updateSuggestions();
+      if (settings.isVirtualKeyboardEnabled) {
+          updateSuggestions();
+      }
     }
   }
 
@@ -585,5 +586,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
+
+    
 
     
