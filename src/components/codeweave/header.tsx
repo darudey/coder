@@ -65,7 +65,7 @@ const NavItems = () => {
   ];
   
   const studentNavItems = [
-      { href: '/live-answer', label: 'Live Answer', icon: MessageSquare, roles: ['student'] },
+      { href: '/live-answer', label: 'Live Session', icon: MessageSquare, roles: ['student'] },
   ]
 
   const visibleAdminItems = adminNavItems.filter(item => item.roles.includes(userRole || ''));
@@ -281,11 +281,11 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                 <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                 <span className="sr-only">Toggle theme</span>
               </Button>
+              <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8 ml-auto">
+                <Settings className="w-4 h-4" />
+                <span className="sr-only">Settings</span>
+              </Button>
           </div>
-          <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
-            <Settings className="w-4 h-4" />
-            <span className="sr-only">Settings</span>
-          </Button>
         </div>
       </div>
       <Separator />
