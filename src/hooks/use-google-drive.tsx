@@ -226,7 +226,22 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
                     fileId: fileId,
                     alt: 'media',
                   });
-                  resolve({ fileName: fileName, content: response.body });
+
+                  // Normalize content: response.body might be ArrayBuffer or string
+                  let content = '';
+                  if (typeof response.body === 'string') {
+                    content = response.body;
+                  } else if (response.result instanceof ArrayBuffer) {
+                    content = new TextDecoder('utf-8').decode(response.result);
+                  } else if (typeof response.result === 'object' && response.result !== null) {
+                    // Fallback for cases where it's returned as a JSON object with character codes
+                    content = String.fromCharCode(...Object.values(response.result));
+                  } else {
+                    // Final fallback to just use the body if it's some other type
+                    content = response.body;
+                  }
+                  
+                  resolve({ fileName: fileName, content: content });
                 } catch (err: any) {
                   console.error('Error fetching file content:', err);
                   toast({

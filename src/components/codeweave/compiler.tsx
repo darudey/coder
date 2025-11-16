@@ -210,25 +210,27 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   }, [openFiles, closeTab]);
   
   const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
+    const fileToLoad: ActiveFile = { folderName, fileName };
+    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
+    
     setFileSystem(fs => {
         const newFs = { ...fs };
         if (!newFs[folderName]) {
             newFs[folderName] = {};
         }
-        // If content is provided, update or create the file. Otherwise, ensure it exists.
-        newFs[folderName][fileName] = fileContent ?? newFs[folderName][fileName] ?? '';
+        newFs[folderName][fileName] = fileContent ?? fs[folderName]?.[fileName] ?? '';
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
-    
-    const fileToLoad: ActiveFile = { folderName, fileName };
-    const existingTabIndex = openFiles.findIndex(f => f.fileName === fileName && f.folderName === folderName);
 
     if (existingTabIndex !== -1) {
         setActiveFileIndex(existingTabIndex);
     } else {
-        setOpenFiles(of => [...of, fileToLoad]);
-        setActiveFileIndex(openFiles.length);
+        setOpenFiles(of => {
+            const newOpenFiles = [...of, fileToLoad];
+            setActiveFileIndex(newOpenFiles.length - 1);
+            return newOpenFiles;
+        });
     }
     setIsSettingsOpen(false);
   }, [openFiles]);
@@ -532,7 +534,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         if (!newFs[newActiveFile.folderName]) {
             newFs[newActiveFile.folderName] = {};
         }
-        newFs[newActiveFile.folderName][newFile.fileName] = code;
+        newFs[newFile.fileName] = code;
         localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
