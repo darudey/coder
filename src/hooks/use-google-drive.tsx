@@ -211,7 +211,6 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
         
         const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
         // Do NOT set mime types to allow any text-based file to be selected.
-        // view.setMimeTypes('application/javascript,text/plain');
 
         const picker = new google.picker.PickerBuilder()
           .addView(view)
