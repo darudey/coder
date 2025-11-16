@@ -355,14 +355,16 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         !textareaRef.current.contains(target) &&
         (!keyboard || !keyboard.contains(target))
       ) {
-        setIsKeyboardVisible(false);
+        if(isMobile) {
+          setIsKeyboardVisible(false);
+        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [isMobile]);
   
   const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const textarea = textareaRef.current;
@@ -445,7 +447,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     }
   }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress]);
 
-  const showKeyboard = isKeyboardVisible && isMobile && settings.isVirtualKeyboardEnabled;
+  const showKeyboard = isMobile && isKeyboardVisible && settings.isVirtualKeyboardEnabled;
   
   const handleEditorClick = () => {
     if (isMobile) {
@@ -548,22 +550,24 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
           </div>
         </CardContent>
       </Card>
-      <div id="coder-keyboard" className={cn(
-        "fixed bottom-0 left-0 right-0 transition-transform duration-300 ease-in-out z-[999]",
-        showKeyboard ? "translate-y-0" : "translate-y-full"
-      )}>
-        <CoderKeyboard 
-            onKeyPress={handleKeyPress} 
-            ctrlActive={ctrlActive} 
-            onHide={() => {
-              setIsKeyboardVisible(false);
-              setSettings({...settings, isVirtualKeyboardEnabled: false});
-            }}
-            isSuggestionsOpen={suggestions.length > 0}
-            onNavigateSuggestions={handleNavigateSuggestions}
-            onSelectSuggestion={() => handleSuggestionSelection(suggestions[activeSuggestion])}
-        />
-      </div>
+      {isMobile && (
+        <div id="coder-keyboard" className={cn(
+          "fixed bottom-0 left-0 right-0 transition-transform duration-300 ease-in-out z-[999]",
+          showKeyboard ? "translate-y-0" : "translate-y-full"
+        )}>
+          <CoderKeyboard 
+              onKeyPress={handleKeyPress} 
+              ctrlActive={ctrlActive} 
+              onHide={() => {
+                setIsKeyboardVisible(false);
+                setSettings({...settings, isVirtualKeyboardEnabled: false});
+              }}
+              isSuggestionsOpen={suggestions.length > 0}
+              onNavigateSuggestions={handleNavigateSuggestions}
+              onSelectSuggestion={() => handleSuggestionSelection(suggestions[activeSuggestion])}
+          />
+        </div>
+      )}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -586,6 +590,8 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
+
+    
 
     
 
