@@ -37,8 +37,7 @@ interface GoogleDriveContextValue {
   userProfile: UserProfile | null;
   signIn: () => void;
   signOut: () => void;
-  saveFileToDrive: (fileName: string, content: string) => void;
-  openFileFromDrive: () => Promise<{ fileName: string; content: string } | null>;
+  openFileFromDrive: (onFileOpened: (fileName: string, content: string) => void) => void;
 }
 
 const CLIENT_ID = '1095073746611-dklrdrkmq1km4kv2kddpocc2qi90fpbg.apps.googleusercontent.com';
@@ -178,14 +177,14 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
   }, [toast]);
   
   const openFileFromDrive = useCallback(
-    async (): Promise<{ fileName: string; content: string } | null> => {
+    (onFileOpened: (fileName: string, content: string) => void): void => {
        if (!isSignedIn || !gapi.client.getToken()?.access_token) {
         signIn();
         toast({
           title: 'Sign In Required',
           description: 'Please sign in to open files.',
         });
-        return null;
+        return;
       }
 
       if (!API_KEY) {
@@ -194,7 +193,7 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           description: 'NEXT_PUBLIC_GOOGLE_API_KEY is not set.',
           variant: 'destructive',
         });
-        return null;
+        return;
       }
 
       if (!pickerApiLoaded) {
@@ -203,64 +202,58 @@ export function GoogleDriveProvider({ children }: { children: ReactNode }) {
           description: 'Google Picker is still loading...',
           variant: 'destructive',
         });
-        return null;
+        return;
       }
       
-      return new Promise((resolve) => {
-        const accessToken = gapi.client.getToken().access_token;
-        
-        const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
-        // Do NOT set mime types to allow any text-based file to be selected.
+      const accessToken = gapi.client.getToken().access_token;
+      
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS);
+      // Do NOT set mime types to allow any text-based file to be selected.
 
-        const picker = new google.picker.PickerBuilder()
-          .addView(view)
-          .setOAuthToken(accessToken)
-          .setDeveloperKey(API_KEY)
-          .setCallback(async (data: PickerCallbackData) => {
-            if (data.action === google.picker.Action.PICKED) {
-              const fileId = data.docs?.[0]?.id;
-              const fileName = data.docs?.[0]?.name;
-              if (fileId && fileName) {
-                try {
-                  const response = await gapi.client.drive.files.get({
-                    fileId: fileId,
-                    alt: 'media',
-                  });
+      const picker = new google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(accessToken)
+        .setDeveloperKey(API_KEY)
+        .setCallback(async (data: PickerCallbackData) => {
+          if (data.action === google.picker.Action.PICKED) {
+            const fileId = data.docs?.[0]?.id;
+            const fileName = data.docs?.[0]?.name;
+            if (fileId && fileName) {
+              try {
+                const response = await gapi.client.drive.files.get({
+                  fileId: fileId,
+                  alt: 'media',
+                });
 
-                  // Normalize content: response.body might be ArrayBuffer or string
-                  let content = '';
-                  if (typeof response.body === 'string') {
-                    content = response.body;
-                  } else if (response.result instanceof ArrayBuffer) {
-                    content = new TextDecoder('utf-8').decode(response.result);
-                  } else if (typeof response.result === 'object' && response.result !== null) {
-                    // Fallback for cases where it's returned as a JSON object with character codes
-                    content = String.fromCharCode(...Object.values(response.result));
-                  } else {
-                    // Final fallback to just use the body if it's some other type
-                    content = response.body;
-                  }
-                  
-                  resolve({ fileName: fileName, content: content });
-                } catch (err: any) {
-                  console.error('Error fetching file content:', err);
-                  toast({
-                    title: 'Error Opening File',
-                    description: err.result?.error?.message || 'Could not read file from Drive.',
-                    variant: 'destructive',
-                  });
-                  resolve(null);
+                // Normalize content: response.body might be ArrayBuffer or string
+                let content = '';
+                if (typeof response.body === 'string') {
+                  content = response.body;
+                } else if (response.result instanceof ArrayBuffer) {
+                  content = new TextDecoder('utf-8').decode(response.result);
+                } else if (typeof response.result === 'object' && response.result !== null) {
+                  // Fallback for cases where it's returned as a JSON object with character codes
+                  content = String.fromCharCode(...Object.values(response.result));
+                } else {
+                  // Final fallback to just use the body if it's some other type
+                  content = response.body;
                 }
+                
+                onFileOpened(fileName, content);
+
+              } catch (err: any) {
+                console.error('Error fetching file content:', err);
+                toast({
+                  title: 'Error Opening File',
+                  description: err.result?.error?.message || 'Could not read file from Drive.',
+                  variant: 'destructive',
+                });
               }
-            } else if (data.action === google.picker.Action.CANCEL) {
-              resolve(null);
-            } else {
-              resolve(null);
             }
-          })
-          .build();
-        picker.setVisible(true);
-      });
+          }
+        })
+        .build();
+      picker.setVisible(true);
     },
     [isSignedIn, pickerApiLoaded, signIn, toast]
   );
@@ -407,5 +400,3 @@ export function useGoogleDrive() {
   }
   return context;
 }
-
-    

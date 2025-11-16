@@ -175,29 +175,40 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
   }, [openFiles, activeFileIndex, isFsReady, initialCode, variant]);
 
 
-  const loadFile = useCallback((folderName: string, fileName: string, fileContent?: string) => {
+  const addFile = useCallback((folderName: string, fileName: string, fileContent: string) => {
     setFileSystem(fs => {
-        const newFs = { ...fs };
-        if (!newFs[folderName]) {
-            newFs[folderName] = {};
+      const newFs = { ...fs };
+      if (!newFs[folderName]) {
+        newFs[folderName] = {};
+      }
+      newFs[folderName][fileName] = fileContent;
+      localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+      
+      setOpenFiles(of => {
+        const existingIndex = of.findIndex(f => f.folderName === folderName && f.fileName === fileName);
+        if (existingIndex !== -1) {
+          setActiveFileIndex(existingIndex);
+          return of;
         }
-        newFs[folderName][fileName] = fileContent ?? newFs[folderName]?.[fileName] ?? '';
-        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        const newOpenFiles = [...of, { folderName, fileName }];
+        setActiveFileIndex(newOpenFiles.length - 1);
+        return newOpenFiles;
+      });
 
-        setOpenFiles(of => {
-            const existingIndex = of.findIndex(f => f.folderName === folderName && f.fileName === fileName);
-            if (existingIndex !== -1) {
-                setActiveFileIndex(existingIndex);
-                return of;
-            }
-            const newOpenFiles = [...of, { folderName, fileName }];
-            setActiveFileIndex(newOpenFiles.length - 1);
-            return newOpenFiles;
-        });
-        
-        return newFs;
+      return newFs;
     });
   }, []);
+
+  const loadFile = useCallback((folderName: string, fileName: string) => {
+    const existingIndex = openFiles.findIndex(f => f.folderName === folderName && f.fileName === fileName);
+    if (existingIndex !== -1) {
+        setActiveFileIndex(existingIndex);
+        return;
+    }
+    const newOpenFiles = [...openFiles, { folderName, fileName }];
+    setOpenFiles(newOpenFiles);
+    setActiveFileIndex(newOpenFiles.length - 1);
+  }, [openFiles]);
 
   const createNewFile = useCallback((activate = true) => {
     const prefix = "24hrcoding";
@@ -315,6 +326,7 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
     historyIndex,
     setCode,
     loadFile,
+    addFile,
     createNewFile,
     closeTab,
     deleteFile,
@@ -322,5 +334,3 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
     setActiveFileIndex,
   };
 }
-
-    

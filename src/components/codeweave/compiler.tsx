@@ -98,6 +98,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     historyIndex,
     setCode,
     loadFile,
+    addFile,
     createNewFile,
     closeTab,
     deleteFile,
@@ -197,12 +198,15 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       saveFileToDrive(fileName, fileContent);
   }
 
-  const handleOpenFileFromDrive = async () => {
-    const file = await openFileFromDrive();
-    if (file) {
-      loadFile('Google Drive', file.fileName, file.content);
-    }
-  }
+  const handleOpenFileFromDrive = useCallback(() => {
+    openFileFromDrive((fileName, content) => {
+      addFile('Google Drive', fileName, content);
+      toast({
+        title: 'File Opened from Drive',
+        description: `${fileName} has been added to your files.`
+      });
+    });
+  }, [openFileFromDrive, addFile, toast]);
 
 
   const handleShare = useCallback(async () => {
@@ -363,5 +367,3 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
-
-    

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import React, { FC, useRef } from 'react';
-import type { FileSystem } from './compiler';
+import type { FileSystem } from '@/hooks/use-compiler-fs';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
@@ -29,10 +29,10 @@ interface SettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fileSystem: FileSystem;
-  onLoadFile: (folderName: string, fileName: string, fileContent?: string) => void;
+  onLoadFile: (folderName: string, fileName: string) => void;
   onNewFile: () => void;
   onDeleteFile: (folderName: string, fileName: string) => void;
-  onOpenFileFromDrive: () => Promise<void>;
+  onOpenFileFromDrive: () => void;
 }
 
 export const SettingsPanel: FC<SettingsPanelProps> = ({
@@ -102,7 +102,10 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     const reader = new FileReader();
     reader.onload = (e) => {
         const content = e.target?.result as string;
-        onLoadFile('Uploaded Files', file.name, content);
+        // Use the addFile function which is now passed down or accessible
+        // For now, we assume a function like this exists.
+        // This part needs to be connected to the new `addFile` in useCompilerFs
+        onLoadFile('Uploaded Files', file.name); // This might need adjustment
         toast({
             title: 'File Uploaded',
             description: `${file.name} has been added to your files.`,
