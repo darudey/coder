@@ -35,7 +35,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const isMobile = useIsMobile();
   const [ctrlActive, setCtrlActive] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { settings } = useSettings();
+  const { settings, setSettings } = useSettings();
   const fontSize = settings.editorFontSize;
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -445,8 +445,16 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     }
   }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress]);
 
-  const showKeyboard = isKeyboardVisible;
+  const showKeyboard = isKeyboardVisible && isMobile && settings.isVirtualKeyboardEnabled;
   
+  const handleEditorClick = () => {
+    if (isMobile) {
+      setSettings({...settings, isVirtualKeyboardEnabled: true });
+      setIsKeyboardVisible(true);
+      updateSuggestions();
+    }
+  }
+
   const editorStyles: React.CSSProperties = useMemo(() => ({
       fontFamily: 'var(--font-code)',
       fontSize: 'var(--editor-font-size)',
@@ -505,11 +513,8 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
                     onChange={(e) => onCodeChange(e.target.value)}
                     onScroll={syncScroll}
                     onKeyDown={handleNativeKeyDown}
-                    onClick={() => {
-                        setIsKeyboardVisible(true);
-                        updateSuggestions();
-                    }}
-                    onKeyUp={updateSuggestions}
+                    onClick={handleEditorClick}
+                    onFocus={handleEditorClick}
                     placeholder="Enter your JavaScript code here..."
                     className={cn(
                     "font-code text-base flex-grow w-full h-full resize-none rounded-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 caret-black dark:caret-white",
@@ -549,7 +554,10 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         <CoderKeyboard 
             onKeyPress={handleKeyPress} 
             ctrlActive={ctrlActive} 
-            onHide={() => setIsKeyboardVisible(false)}
+            onHide={() => {
+              setIsKeyboardVisible(false);
+              setSettings({...settings, isVirtualKeyboardEnabled: false});
+            }}
             isSuggestionsOpen={suggestions.length > 0}
             onNavigateSuggestions={handleNavigateSuggestions}
             onSelectSuggestion={() => handleSuggestionSelection(suggestions[activeSuggestion])}

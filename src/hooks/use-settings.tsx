@@ -7,6 +7,7 @@ type Theme = 'light' | 'dark' | 'system';
 
 interface Settings {
   editorFontSize: number;
+  isVirtualKeyboardEnabled: boolean;
 }
 
 interface SettingsContextValue {
@@ -19,6 +20,7 @@ interface SettingsContextValue {
 
 const defaultSettings: Settings = {
   editorFontSize: 14,
+  isVirtualKeyboardEnabled: true,
 };
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -33,7 +35,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     try {
       const item = window.localStorage.getItem('app-settings');
       if (item) {
-        setSettings(JSON.parse(item));
+        const storedSettings = JSON.parse(item);
+        // Merge stored settings with defaults to avoid breaking changes
+        setSettings(prev => ({...prev, ...storedSettings}));
       }
       const storedTheme = localStorage.getItem('theme') as Theme;
       if (storedTheme) {
