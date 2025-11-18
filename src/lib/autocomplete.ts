@@ -191,10 +191,9 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
             return { suggestions: [], word: '', startPos: 0 };
         }
 
-        const wordsInCode = [...new Set(code.match(/(?:function|let|const|var)\s+([a-zA-Z_]\w*)/g) || [])]
-            .map(decl => decl.split(/\s+/)[1])
-            .filter(word => word.length >= 3) // Exclude short words
-            .filter(word => !keywords.some(kw => kw.value === word)) // Exclude existing keywords
+        const wordsInCode = [...new Set(code.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [])]
+            .filter(word => word.length >= 3)
+            .filter(word => !keywords.some(kw => kw.value === word))
             .map(word => ({ value: word, type: 'variable' as const }));
         
         const allKeywords = [
@@ -207,6 +206,7 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
         const uniqueSuggestions = allKeywords
             .map(keyword => ({ suggestion: keyword, score: fuzzyMatch(partialWord, keyword) }))
             .filter(item => item.score > 0)
+            .filter(item => item.suggestion.value.toLowerCase() !== partialWord.toLowerCase())
             .sort((a, b) => b.score - a.score)
             .map(item => item.suggestion)
             .filter((value, index, self) => self.findIndex(s => s.value === value.value) === index);
