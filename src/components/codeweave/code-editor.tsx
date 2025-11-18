@@ -369,32 +369,37 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    if (suggestions.length > 0) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveSuggestion(prev => (prev + 1) % suggestions.length);
+            return;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
+            return;
+        }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSuggestionSelection(suggestions[activeSuggestion]);
+            return;
+        }
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            handleSuggestionSelection(suggestions[activeSuggestion]);
+            return;
+        }
+        if (e.key === 'Escape') {
+            setSuggestions([]);
+            return;
+        }
+    }
+
     if (e.key === 'Enter') {
       e.preventDefault();
       handleEnterPress();
       return;
-    }
-
-    if (suggestions.length > 0) {
-      if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          setActiveSuggestion(prev => (prev + 1) % suggestions.length);
-          return;
-      }
-      if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
-          return;
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-          e.preventDefault();
-          handleSuggestionSelection(suggestions[activeSuggestion]);
-          return;
-      }
-      if (e.key === 'Escape') {
-          setSuggestions([]);
-          return;
-      }
     }
 
     if (e.ctrlKey || e.metaKey) {
@@ -436,11 +441,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
     if (e.key === 'Tab') {
         e.preventDefault();
-        if (suggestions.length > 0) {
-            handleSuggestionSelection(suggestions[activeSuggestion]);
-        } else {
-            handleKeyPress('Tab');
-        }
+        handleKeyPress('Tab');
         return;
     }
     
@@ -459,7 +460,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         const end = textarea.selectionEnd;
         const open = e.key;
         const close = pairMap[e.key];
-        const newCode = code.substring(0, start) + open + code.substring(start, end) + close + code.substring(end);
+        const newCode = code.substring(0, start) + code.substring(start, end) + close + code.substring(end);
         const newCursorPosition = start + 1;
         
         onCodeChange(newCode);
@@ -620,3 +621,4 @@ export const CodeEditor = React.memo(MemoizedCodeEditor);
     
 
     
+
