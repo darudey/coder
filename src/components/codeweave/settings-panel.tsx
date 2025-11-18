@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -137,31 +136,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
           </SheetDescription>
         </SheetHeader>
         <div className="grid gap-2 py-6">
-          <Accordion type="single" collapsible className="w-full" defaultValue="appearance">
-            <AccordionItem value="appearance">
-              <AccordionTrigger>
-                <div className="flex items-center gap-2">
-                    <Palette className="h-4 w-4" />
-                    <span className="font-semibold text-base">Appearance</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="grid gap-4 pt-4">
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="font-size-slider">Font Size</Label>
-                        <span className="text-sm text-muted-foreground">{settings.editorFontSize}px</span>
-                    </div>
-                    <Slider
-                        id="font-size-slider"
-                        min={10}
-                        max={24}
-                        step={1}
-                        value={[settings.editorFontSize]}
-                        onValueChange={(value) => setSettings({ ...settings, editorFontSize: value[0] })}
-                    />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+          <Accordion type="single" collapsible className="w-full" defaultValue="google-drive">
             <AccordionItem value="google-drive">
               <AccordionTrigger>
                 <div className="flex items-center gap-2">

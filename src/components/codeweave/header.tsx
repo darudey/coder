@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel
 } from "@/components/ui/dropdown-menu"
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
@@ -22,6 +23,8 @@ import { useSettings } from '@/hooks/use-settings';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { AboutContent } from './about-content';
+import { Slider } from '../ui/slider';
+import { Label } from '../ui/label';
 
 interface HeaderProps {
   onRun?: () => void;
@@ -159,7 +162,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   children,
   actions
 }) => {
-  const { toggleTheme } = useSettings();
+  const { settings, setSettings, toggleTheme } = useSettings();
 
   const MainNav = ({className}: {className?: string}) => (
      <DropdownMenu>
@@ -172,6 +175,36 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
         <DropdownMenuContent align="start" className="p-0 bg-popover/80 backdrop-blur-sm border-border/50">
             <NavItems />
         </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const AppearanceMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" className="h-8 w-8">
+            <Palette className="w-4 h-4" />
+            <span className="sr-only">Appearance</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="p-2">
+            <div className="flex items-center justify-between text-sm">
+                <Label htmlFor="font-size-slider">Font Size</Label>
+                <span className="text-muted-foreground">{settings.editorFontSize}px</span>
+            </div>
+            <Slider
+                id="font-size-slider"
+                min={10}
+                max={24}
+                step={1}
+                value={[settings.editorFontSize]}
+                onValueChange={(value) => setSettings({ ...settings, editorFontSize: value[0] })}
+                className="mt-2"
+            />
+        </div>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 
@@ -221,6 +254,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                   <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <AppearanceMenu />
               <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
                 <Settings className="w-4 h-4" />
                 <span className="sr-only">Settings</span>
@@ -276,6 +310,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                   <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <AppearanceMenu />
                <Button variant="outline" size="icon" onClick={toggleTheme} className="h-8 w-8 hidden md:inline-flex">
                 <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
