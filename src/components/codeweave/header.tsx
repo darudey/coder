@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -68,7 +69,7 @@ const NavItems = () => {
   ];
   
   const studentNavItems = [
-      { href: '/live-answer', label: 'Live Session', icon: MessageSquare, roles: ['student'] },
+      { href: '/live-answer', label: 'Live Session', roles: ['student'] },
   ]
 
   const visibleAdminItems = adminNavItems.filter(item => item.roles.includes(userRole || ''));
@@ -111,7 +112,7 @@ const NavItems = () => {
                 "my-1 border focus:bg-primary/20 active:bg-primary/30",
                 pathname.startsWith(item.href) && "border-primary"
             )}>
-                <item.icon className="mr-2 h-4 w-4" />
+                <MessageSquare className="mr-2 h-4 w-4" />
                 <span>{item.label}</span>
             </DropdownMenuItem>
          </Link>
@@ -178,10 +179,10 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
     </DropdownMenu>
   );
 
-  const AppearanceMenu = () => (
+  const AppearanceMenu = ({className}: {className?: string}) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="h-8 w-8">
+        <Button variant="outline" size="icon" className={cn("h-8 w-8", className)}>
             <Palette className="w-4 h-4" />
             <span className="sr-only">Appearance</span>
         </Button>
@@ -254,7 +255,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                   <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <AppearanceMenu />
+              <AppearanceMenu className="hidden md:inline-flex" />
               <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
                 <Settings className="w-4 h-4" />
                 <span className="sr-only">Settings</span>
@@ -310,7 +311,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                   <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <AppearanceMenu />
+              <AppearanceMenu className="hidden md:inline-flex" />
                <Button variant="outline" size="icon" onClick={toggleTheme} className="h-8 w-8 hidden md:inline-flex">
                 <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />

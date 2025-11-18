@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -45,7 +46,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
-  const { settings, setSettings, toggleTheme } = useSettings();
+  const { settings, setSettings, theme, setTheme } = useSettings();
   const { 
     isApiLoaded,
     isSignedIn,
@@ -136,7 +137,45 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
           </SheetDescription>
         </SheetHeader>
         <div className="grid gap-2 py-6">
-          <Accordion type="single" collapsible className="w-full" defaultValue="google-drive">
+          <Accordion type="single" collapsible className="w-full" defaultValue="appearance">
+            <AccordionItem value="appearance">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    <span className="font-semibold text-base">Appearance</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid gap-4 pt-4">
+                  <div>
+                    <Label htmlFor="font-size-slider">Font Size ({settings.editorFontSize}px)</Label>
+                    <Slider
+                      id="font-size-slider"
+                      min={10}
+                      max={24}
+                      step={1}
+                      value={[settings.editorFontSize]}
+                      onValueChange={(value) => setSettings({ ...settings, editorFontSize: value[0] })}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label>Theme</Label>
+                    <div className="flex gap-2 mt-2">
+                        <Button variant={theme === 'light' ? 'secondary' : 'outline'} size="sm" onClick={() => setTheme('light')}>
+                            <Sun className="w-4 h-4 mr-2" /> Light
+                        </Button>
+                         <Button variant={theme === 'dark' ? 'secondary' : 'outline'} size="sm" onClick={() => setTheme('dark')}>
+                            <Moon className="w-4 h-4 mr-2" /> Dark
+                        </Button>
+                         <Button variant={theme === 'system' ? 'secondary' : 'outline'} size="sm" onClick={() => setTheme('system')}>
+                            System
+                        </Button>
+                    </div>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
             <AccordionItem value="google-drive">
               <AccordionTrigger>
                 <div className="flex items-center gap-2">
