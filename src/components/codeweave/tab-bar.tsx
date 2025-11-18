@@ -29,6 +29,26 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editingName, setEditingName] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const scrollArea = scrollAreaRef.current;
+        if (!scrollArea) return;
+
+        const handleWheel = (e: WheelEvent) => {
+            const viewport = scrollArea.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport && viewport.scrollWidth > viewport.clientWidth) {
+                e.preventDefault();
+                viewport.scrollLeft += e.deltaY;
+            }
+        };
+
+        scrollArea.addEventListener('wheel', handleWheel);
+
+        return () => {
+            scrollArea.removeEventListener('wheel', handleWheel);
+        };
+    }, []);
 
     useEffect(() => {
         if (editingIndex !== null) {
@@ -56,7 +76,7 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
 
     return (
         <div className="flex items-center bg-muted/50 border-b border-border pl-2 -mt-0.5">
-            <ScrollArea className="flex-grow whitespace-nowrap w-0">
+            <ScrollArea className="flex-grow whitespace-nowrap w-0" ref={scrollAreaRef}>
                 <div className="flex items-stretch">
                     {openFiles.map((file, index) => (
                         <div
