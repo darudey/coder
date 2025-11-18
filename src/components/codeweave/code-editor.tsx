@@ -351,13 +351,12 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       const keyboard = document.getElementById('coder-keyboard');
       const target = event.target as Node;
       if (
+        isMobile &&
         textareaRef.current &&
         !textareaRef.current.contains(target) &&
         (!keyboard || !keyboard.contains(target))
       ) {
-        if(isMobile) {
-          setIsKeyboardVisible(false);
-        }
+        setIsKeyboardVisible(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -388,11 +387,9 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
           return;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
-          if (e.key === 'Enter') {
-              e.preventDefault();
-              handleSuggestionSelection(suggestions[activeSuggestion]);
-              return;
-          }
+          e.preventDefault();
+          handleSuggestionSelection(suggestions[activeSuggestion]);
+          return;
       }
       if (e.key === 'Escape') {
           setSuggestions([]);
@@ -444,17 +441,44 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         } else {
             handleKeyPress('Tab');
         }
+        return;
     }
-  }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress]);
+    
+    const pairMap: {[key:string]: string} = {
+        '(': ')',
+        '{': '}',
+        '[': ']',
+        "'": "'",
+        '"': '"',
+        '`': '`',
+    };
+
+    if (pairMap[e.key]) {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const open = e.key;
+        const close = pairMap[e.key];
+        const newCode = code.substring(0, start) + open + code.substring(start, end) + close + code.substring(end);
+        const newCursorPosition = start + 1;
+        
+        onCodeChange(newCode);
+
+        requestAnimationFrame(() => {
+          textarea.selectionStart = newCursorPosition;
+          textarea.selectionEnd = (end - start) + newCursorPosition;
+          textarea.focus();
+        });
+    }
+
+  }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, code, onCodeChange]);
 
   const showKeyboard = isMobile && isKeyboardVisible && settings.isVirtualKeyboardEnabled;
   
   const handleEditorClick = () => {
-    if (isMobile) {
+    if (isMobile && settings.isVirtualKeyboardEnabled) {
       setIsKeyboardVisible(true);
-      if (settings.isVirtualKeyboardEnabled) {
-          updateSuggestions();
-      }
+      updateSuggestions();
     }
   }
 
@@ -550,7 +574,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
           </div>
         </CardContent>
       </Card>
-      {isMobile && (
+      {isMobile && showKeyboard && (
         <div id="coder-keyboard" className={cn(
           "fixed bottom-0 left-0 right-0 transition-transform duration-300 ease-in-out z-[999]",
           showKeyboard ? "translate-y-0" : "translate-y-full"
