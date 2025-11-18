@@ -136,43 +136,28 @@ const isConsonant = (char: string) => {
 
 const fuzzyMatch = (partialWord: string, suggestion: Suggestion) => {
     const suggestionValue = suggestion.value;
-    let score = 0;
-    let suggestionIndex = 0;
-    let consecutiveMatches = 0;
     const lowerPartial = partialWord.toLowerCase();
     const lowerSuggestion = suggestionValue.toLowerCase();
 
     if (lowerSuggestion.startsWith(lowerPartial)) {
-        score += 100; // Big bonus for prefix match
+        // Strong score for prefix matches
+        return 100 - (lowerSuggestion.length - lowerPartial.length);
     }
-
+    
+    // For non-prefix matches, be much stricter
+    let suggestionIndex = 0;
     for (let i = 0; i < partialWord.length; i++) {
         const char = lowerPartial[i];
         const index = lowerSuggestion.indexOf(char, suggestionIndex);
 
-        if (index !== -1) {
-            score += 10;
-            
-            if (isConsonant(char)) {
-                score += 15; // Bonus for consonant match
-            }
-
-            if (index === suggestionIndex) {
-                consecutiveMatches++;
-                score += 10 * consecutiveMatches;
-            } else {
-                consecutiveMatches = 0;
-            }
-            suggestionIndex = index + 1;
-        } else {
-            return 0; // If a character is not found, it's not a match
+        if (index === -1) {
+            return 0; // If a character is not found, it's not a match at all
         }
+        suggestionIndex = index + 1;
     }
     
-    // Penalize for length difference
-    score -= Math.abs(suggestionValue.length - partialWord.length);
-
-    return score;
+    // Only return a score if it's a subsequence match
+    return 10;
 }
 
 export const getSuggestions = (code: string, cursorPosition: number): { suggestions: Suggestion[], word: string, startPos: number } => {
@@ -206,7 +191,8 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
             return { suggestions: [], word: '', startPos: 0 };
         }
 
-        const wordsInCode = [...new Set(code.match(/\b[a-zA-Z_]\w*\b/g) || [])]
+        const wordsInCode = [...new Set(code.match(/(?:function|let|const|var)\s+([a-zA-Z_]\w*)/g) || [])]
+            .map(decl => decl.split(/\s+/)[1])
             .filter(word => word.length >= 3) // Exclude short words
             .filter(word => !keywords.some(kw => kw.value === word)) // Exclude existing keywords
             .map(word => ({ value: word, type: 'variable' as const }));
