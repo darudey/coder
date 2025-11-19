@@ -19,13 +19,6 @@ import { Copy, Check, X, Activity } from 'lucide-react';
 // Types
 import type { RunResult } from './compiler';
 
-interface OutputDisplayProps {
-  output: RunResult | null;
-  isCompiling: boolean;
-  isAiChecking?: boolean;
-  expectedOutput?: string;
-}
-
 /* ------------------- Helpers ------------------- */
 const getErrorLine = (text: string): string | null => {
   if (!text) return null;
@@ -105,6 +98,9 @@ const HeaderBar: React.FC<{
       </div>
 
       <div className="flex items-center gap-2">
+        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+            <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
+        </kbd>
         {issues.length > 0 && (
           <div className="text-xs text-amber-600">⚠️ {issues.length} issue(s)</div>
         )}
@@ -396,5 +392,3 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 };
 
 export const OutputDisplay = React.memo(MemoizedOutputDisplay);
-
-    
