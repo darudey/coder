@@ -21,6 +21,7 @@ import { useGoogleDrive } from '@/hooks/use-google-drive';
 import { useCompilerFs, type ActiveFile, type FileSystem } from '@/hooks/use-compiler-fs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader } from '../ui/card';
+import { useSettings } from '@/hooks/use-settings';
 
 export interface RunResult {
     output: string;
@@ -80,6 +81,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
+  const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
   
   const {
     fileSystem,
@@ -427,6 +429,9 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     </Card>
   );
 
+  const showFloatingPanel = isResultOpen && (!isMobile || globalSettings.isFloatingOutputEnabled);
+  const showDialogPanel = isResultOpen && isMobile && !globalSettings.isFloatingOutputEnabled;
+
   return (
     <div className="bg-background">
       <div className="sticky top-0 z-[999] bg-background">
@@ -473,7 +478,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         <div className="h-[75vh]" />
       </div>
 
-      {isResultOpen && !isMobile && DraggableOutputPanel}
+      {showFloatingPanel && DraggableOutputPanel}
 
       <SettingsPanel
         open={isSettingsOpen}
@@ -484,7 +489,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         onDeleteFile={deleteFile}
         onOpenFileFromDrive={handleOpenFileFromDrive}
       />
-      {isMobile && (
+      {showDialogPanel && (
         <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
             <DialogContent className="max-w-2xl h-3/4 flex flex-col">
             <DialogHeader>
@@ -540,7 +545,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
-
-    
 
     

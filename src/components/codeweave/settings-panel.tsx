@@ -24,6 +24,8 @@ import { Slider } from '../ui/slider';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
+import { Switch } from '../ui/switch';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -47,6 +49,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const { settings, setSettings, theme, setTheme } = useSettings();
+  const isMobile = useIsMobile();
   const { 
     isApiLoaded,
     isSignedIn,
@@ -173,6 +176,21 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                         </Button>
                     </div>
                   </div>
+                   {isMobile && (
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="floating-output-toggle">Floating Output Panel</Label>
+                            <p className="text-xs text-muted-foreground">
+                                Show output in a floating panel instead of a dialog.
+                            </p>
+                        </div>
+                        <Switch
+                            id="floating-output-toggle"
+                            checked={settings.isFloatingOutputEnabled}
+                            onCheckedChange={(checked) => setSettings({...settings, isFloatingOutputEnabled: checked})}
+                        />
+                    </div>
+                   )}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -315,3 +333,5 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     </Sheet>
   );
 };
+
+    

@@ -8,6 +8,7 @@ type Theme = 'light' | 'dark' | 'system';
 interface Settings {
   editorFontSize: number;
   isVirtualKeyboardEnabled: boolean;
+  isFloatingOutputEnabled: boolean;
 }
 
 interface SettingsContextValue {
@@ -21,6 +22,7 @@ interface SettingsContextValue {
 const defaultSettings: Settings = {
   editorFontSize: 14,
   isVirtualKeyboardEnabled: true,
+  isFloatingOutputEnabled: false,
 };
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -119,3 +121,5 @@ export function useSettings() {
   }
   return context;
 }
+
+    
