@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -29,7 +28,9 @@ interface OutputDisplayProps {
 /* ------------------- Helpers ------------------- */
 const getErrorLine = (text: string): string | null => {
   if (!text) return null;
-  const match = text.match(/(?:<anonymous>|eval).*?:(\d+):(\d+)/);
+  // This regex specifically looks for the line number associated with the anonymous script execution,
+  // which corresponds to the user's code, ignoring line numbers from the runner script itself.
+  const match = text.match(/<anonymous>:(\d+):(\d+)/);
   return match?.[1] ?? null;
 };
 
