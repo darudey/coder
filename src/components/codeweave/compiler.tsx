@@ -236,13 +236,13 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
-      setCode(history[historyIndex - 1], history, historyIndex - 1);
+      setCode(history[historyIndex - 1], history, history, historyIndex - 1);
     }
   }, [historyIndex, history, setCode]);
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setCode(history[historyIndex + 1], history, historyIndex + 1);
+      setCode(history[historyIndex + 1], history, history, historyIndex + 1);
     }
   }, [historyIndex, history, setCode]);
 
@@ -287,6 +287,20 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     run: handleRun,
     getCode: () => code,
   }));
+
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (e.shiftKey && e.key.toUpperCase() === 'N') {
+                e.preventDefault();
+                createNewFile(true);
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleGlobalKeyDown);
+        };
+    }, [createNewFile]);
 
   const handleSaveRequest = useCallback(() => {
     if (!activeFile) return;
@@ -392,7 +406,9 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       >
         <div className="flex items-center gap-2">
             <Grab className="w-4 h-4 text-muted-foreground" />
-            <p className="font-semibold text-sm">Output</p>
+            <kbd className="h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
+            </kbd>
         </div>
         <div className="flex items-center">
              <div className="flex items-center space-x-2 mr-2">
@@ -545,5 +561,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
 
     
