@@ -117,7 +117,7 @@ HeaderBar.displayName = 'HeaderBar';
 const LineRendered = ({ line, idx, isError }: { line: string; idx: number; isError?: boolean }) => (
   <div className="flex min-w-0">
     <div className="select-none pr-3 text-xs text-muted-foreground tabular-nums">{idx + 1}</div>
-    <div className={cn('whitespace-pre-wrap font-code flex-1', isError ? 'text-destructive' : 'text-foreground')}>
+    <div className={cn('whitespace-pre-wrap font-code flex-1', isError ? 'text-destructive' : 'text-foreground')} style={{ wordBreak: 'break-word' }}>
       <span dangerouslySetInnerHTML={{ __html: line }} />
     </div>
   </div>
