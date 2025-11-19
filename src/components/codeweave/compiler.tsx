@@ -14,7 +14,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
-import { Copy, Grab, X, GripHorizontal } from 'lucide-react';
+import { Copy, Grab, X, GripHorizontal, GripVertical } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
@@ -120,9 +120,9 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const elementStartPos = React.useRef({ top: 0, left: 0 });
   
   // State for resizable panel
-  const [isResizing, setIsResizing] = React.useState(false);
-  const [panelHeight, setPanelHeight] = React.useState(400); // Initial height in pixels
-  const resizeStartPos = React.useRef({ y: 0, height: 0 });
+  const [resizeMode, setResizeMode] = React.useState<'height' | 'width' | null>(null);
+  const [panelSize, setPanelSize] = React.useState({ width: 450, height: 400 });
+  const resizeStartPos = React.useRef({ x: 0, y: 0, width: 0, height: 0 });
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -143,14 +143,20 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 
   const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
-    if (isResizing) {
-        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    if (resizeMode) {
+      if (resizeMode === 'height') {
         const deltaY = clientY - resizeStartPos.current.y;
         const newHeight = resizeStartPos.current.height + deltaY;
-        setPanelHeight(Math.max(150, Math.min(newHeight, window.innerHeight - 50)));
+        setPanelSize(s => ({ ...s, height: Math.max(150, Math.min(newHeight, window.innerHeight - 50)) }));
+      } else if (resizeMode === 'width') {
+        const deltaX = clientX - resizeStartPos.current.x;
+        const newWidth = resizeStartPos.current.width - deltaX; // Inverted for left handle
+        setPanelSize(s => ({...s, width: Math.max(300, Math.min(newWidth, window.innerWidth - 50))}));
+      }
     } else if (isDragging) {
-        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
         const deltaX = clientX - dragStartPos.current.x;
         const deltaY = clientY - dragStartPos.current.y;
         setPosition({
@@ -158,30 +164,40 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
           left: elementStartPos.current.left + deltaX,
         });
     }
-  }, [isDragging, isResizing]);
+  }, [isDragging, resizeMode]);
 
   const handleMouseUp = React.useCallback(() => {
     setIsDragging(false);
-    setIsResizing(false);
+    setResizeMode(null);
   }, []);
 
-  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>, mode: 'height' | 'width') => {
     e.preventDefault();
     e.stopPropagation();
-    setIsResizing(true);
-    resizeStartPos.current = { y: e.clientY, height: panelHeight };
+    setResizeMode(mode);
+    resizeStartPos.current = { 
+      x: e.clientX, 
+      y: e.clientY, 
+      width: panelSize.width, 
+      height: panelSize.height 
+    };
   };
 
-  const handleResizeTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleResizeTouchStart = (e: React.TouchEvent<HTMLDivElement>, mode: 'height' | 'width') => {
     e.preventDefault();
     e.stopPropagation();
-    setIsResizing(true);
+    setResizeMode(mode);
     const touch = e.touches[0];
-    resizeStartPos.current = { y: touch.clientY, height: panelHeight };
+    resizeStartPos.current = { 
+      x: touch.clientX, 
+      y: touch.clientY, 
+      width: panelSize.width, 
+      height: panelSize.height 
+    };
   };
 
   React.useEffect(() => {
-    if (isDragging || isResizing) {
+    if (isDragging || resizeMode) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       document.addEventListener('touchmove', handleMouseMove);
@@ -198,7 +214,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       document.removeEventListener('touchmove', handleMouseMove);
       document.removeEventListener('touchend', handleMouseUp);
     };
-  }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
+  }, [isDragging, resizeMode, handleMouseMove, handleMouseUp]);
 
 
   const handleCodeChange = useCallback((newCode: string) => {
@@ -344,9 +360,20 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   const DraggableOutputPanel = (
     <Card 
-        className="fixed w-[450px] flex flex-col shadow-2xl z-40"
-        style={{ top: position.top, left: position.left, cursor: isDragging ? 'grabbing' : 'default', height: `${panelHeight}px` }}
+        className="fixed flex flex-col shadow-2xl z-40"
+        style={{ 
+          top: position.top, 
+          left: position.left, 
+          cursor: isDragging ? 'grabbing' : 'default', 
+          width: `${panelSize.width}px`,
+          height: `${panelSize.height}px` 
+        }}
     >
+      <div
+        className="absolute left-0 top-0 h-full w-2 cursor-ew-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, 'width')}
+        onTouchStart={(e) => handleResizeTouchStart(e, 'width')}
+      />
       <CardHeader 
         className="flex flex-row items-center justify-between p-2 border-b cursor-grab"
         onMouseDown={handleMouseDown}
@@ -378,11 +405,16 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       </CardContent>
       <div 
         className="w-full h-2 cursor-ns-resize flex items-center justify-center bg-muted/50"
-        onMouseDown={handleResizeMouseDown}
-        onTouchStart={handleResizeTouchStart}
+        onMouseDown={(e) => handleResizeMouseDown(e, 'height')}
+        onTouchStart={(e) => handleResizeTouchStart(e, 'height')}
       >
         <GripHorizontal className="w-4 h-4 text-muted-foreground/50" />
       </div>
+       <div
+        className="absolute right-0 top-0 h-full w-2 cursor-ew-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, 'width')}
+        onTouchStart={(e) => handleResizeTouchStart(e, 'width')}
+      />
     </Card>
   );
 
@@ -499,3 +531,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
