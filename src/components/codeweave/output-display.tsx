@@ -85,7 +85,9 @@ const HeaderBar: React.FC<{
   return (
     <div className="flex items-center justify-between px-3 py-2 border-b">
       <div className="flex items-center gap-3">
-        <div className="text-sm font-medium">Output</div>
+        <kbd className="h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+          <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
+        </kbd>
         {typeof runTime === 'number' && (
           <div className="text-xs text-muted-foreground">Execution: {runTime}ms</div>
         )}
@@ -98,9 +100,6 @@ const HeaderBar: React.FC<{
       </div>
 
       <div className="flex items-center gap-2">
-        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-            <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
-        </kbd>
         {issues.length > 0 && (
           <div className="text-xs text-amber-600">⚠️ {issues.length} issue(s)</div>
         )}
@@ -232,6 +231,13 @@ const OutputBlock: React.FC<{
 OutputBlock.displayName = 'OutputBlock';
 
 /* ------------------- Main Component ------------------- */
+interface OutputDisplayProps {
+    output: RunResult | null;
+    isCompiling: boolean;
+    isAiChecking?: boolean;
+    expectedOutput?: string;
+}
+
 
 const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   output,
