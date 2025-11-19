@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -28,11 +29,20 @@ interface OutputDisplayProps {
 /* ------------------- Helpers ------------------- */
 const getErrorLine = (text: string): string | null => {
   if (!text) return null;
-  // This regex specifically looks for the line number associated with the anonymous script execution,
-  // which corresponds to the user's code, ignoring line numbers from the runner script itself.
+  // This regex specifically looks for the line number associated with the anonymous script execution.
   const match = text.match(/<anonymous>:(\d+):(\d+)/);
-  return match?.[1] ?? null;
+  if (match && match[1]) {
+    // There is a consistent offset of 2 lines from the web worker's boilerplate.
+    // Subtracting 2 gives the correct line number from the editor.
+    const lineNumber = parseInt(match[1], 10);
+    if (!isNaN(lineNumber) && lineNumber > 2) {
+      return (lineNumber - 2).toString();
+    }
+    return match[1]; // Fallback if parsing or subtraction fails
+  }
+  return null;
 };
+
 
 const detectBeginnerIssues = (text: string) => {
   if (!text) return [];
@@ -386,3 +396,5 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 };
 
 export const OutputDisplay = React.memo(MemoizedOutputDisplay);
+
+    
