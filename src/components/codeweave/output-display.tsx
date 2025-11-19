@@ -29,7 +29,7 @@ interface OutputDisplayProps {
 /* ------------------- Helpers ------------------- */
 const getErrorLine = (text: string): string | null => {
   if (!text) return null;
-  const match = text.match(/(?:<anonymous>|eval):(\d+):(\d+)/);
+  const match = text.match(/(?:<anonymous>|eval).*?:(\d+):(\d+)/);
   return match?.[1] ?? null;
 };
 
@@ -198,7 +198,7 @@ const OutputBlock: React.FC<{
                   </div>
                 )
               ) : (
-                <div className="prose max-h-[240px] overflow-hidden text-sm">
+                <div className="prose max-h-[240px] overflow-hidden text-sm" style={{ wordWrap: 'break-word' }}>
                   <div dangerouslySetInnerHTML={{ __html: html.slice(0, collapseThreshold) }} />
                   {html.length > collapseThreshold && <span>... </span>}
                 </div>
