@@ -125,34 +125,38 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const resizeStartPos = React.useRef({ y: 0, height: 0 });
 
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    
     setIsDragging(true);
-    dragStartPos.current = { x: clientX, y: clientY };
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
     elementStartPos.current = { top: position.top, left: position.left };
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    // Prevent the default touch action, like scrolling
+    e.preventDefault();
+    setIsDragging(true);
+    const touch = e.touches[0];
+    dragStartPos.current = { x: touch.clientX, y: touch.clientY };
+    elementStartPos.current = { top: position.top, left: position.left };
+};
+
+
   const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
-    if (isDragging) {
-        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-        const deltaX = clientX - dragStartPos.current.x;
-        const deltaY = clientY - dragStartPos.current.y;
-
-        setPosition({
-        top: elementStartPos.current.top + deltaY,
-        left: elementStartPos.current.left + deltaX,
-        });
-    } else if (isResizing) {
+    if (isResizing) {
         const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
         const deltaY = clientY - resizeStartPos.current.y;
-        const newHeight = resizeStartPos.current.height - deltaY; // Inverted for bottom handle
-        // Set min and max height constraints
+        const newHeight = resizeStartPos.current.height + deltaY;
         setPanelHeight(Math.max(150, Math.min(newHeight, window.innerHeight - 50)));
+    } else if (isDragging) {
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        const deltaX = clientX - dragStartPos.current.x;
+        const deltaY = clientY - dragStartPos.current.y;
+        setPosition({
+          top: elementStartPos.current.top + deltaY,
+          left: elementStartPos.current.left + deltaX,
+        });
     }
   }, [isDragging, isResizing]);
 
@@ -161,13 +165,19 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     setIsResizing(false);
   }, []);
 
-  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
     setIsResizing(true);
-    resizeStartPos.current = { y: clientY, height: panelHeight };
+    resizeStartPos.current = { y: e.clientY, height: panelHeight };
+  };
+
+  const handleResizeTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    const touch = e.touches[0];
+    resizeStartPos.current = { y: touch.clientY, height: panelHeight };
   };
 
   React.useEffect(() => {
@@ -340,7 +350,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       <CardHeader 
         className="flex flex-row items-center justify-between p-2 border-b cursor-grab"
         onMouseDown={handleMouseDown}
-        onTouchStart={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         <div className="flex items-center gap-2">
             <Grab className="w-4 h-4 text-muted-foreground" />
@@ -369,7 +379,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       <div 
         className="w-full h-2 cursor-ns-resize flex items-center justify-center bg-muted/50"
         onMouseDown={handleResizeMouseDown}
-        onTouchStart={handleResizeMouseDown}
+        onTouchStart={handleResizeTouchStart}
       >
         <GripHorizontal className="w-4 h-4 text-muted-foreground/50" />
       </div>
