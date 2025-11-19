@@ -14,20 +14,13 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
-import { Copy } from 'lucide-react';
+import { Copy, Grab, X } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
 import { useCompilerFs, type ActiveFile, type FileSystem } from '@/hooks/use-compiler-fs';
-
-const defaultCode = `// Welcome to 24HrCoding!
-// Use the settings panel to save and load your creations.
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-
-console.log(greet('World'));
-`;
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Card, CardContent, CardHeader } from '../ui/card';
 
 export interface RunResult {
     output: string;
@@ -86,6 +79,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
+  const isMobile = useIsMobile();
   
   const {
     fileSystem,
@@ -118,6 +112,62 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [isSharing, setIsSharing] = useState(false);
+
+  // State for draggable panel
+  const [position, setPosition] = React.useState({ top: 80, left: window.innerWidth / 2 + 100 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragStartPos = React.useRef({ x: 0, y: 0 });
+  const elementStartPos = React.useRef({ top: 0, left: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    setIsDragging(true);
+    dragStartPos.current = { x: clientX, y: clientY };
+    elementStartPos.current = { top: position.top, left: position.left };
+  };
+
+  const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = clientX - dragStartPos.current.x;
+    const deltaY = clientY - dragStartPos.current.y;
+
+    setPosition({
+      top: elementStartPos.current.top + deltaY,
+      left: elementStartPos.current.left + deltaX,
+    });
+  }, [isDragging]);
+
+  const handleMouseUp = React.useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleMouseMove);
+      document.addEventListener('touchend', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
 
   const handleCodeChange = useCallback((newCode: string) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -260,6 +310,43 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   const editorVisible = variant === 'default' ? !!activeFile : true;
 
+  const DraggableOutputPanel = (
+    <Card 
+        className="fixed w-[400px] h-[50vh] max-h-[600px] flex flex-col shadow-2xl z-40"
+        style={{ top: position.top, left: position.left, cursor: isDragging ? 'grabbing' : 'default' }}
+    >
+      <CardHeader 
+        className="flex flex-row items-center justify-between p-2 border-b cursor-grab"
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleMouseDown}
+      >
+        <div className="flex items-center gap-2">
+            <Grab className="w-4 h-4 text-muted-foreground" />
+            <p className="font-semibold text-sm">Output</p>
+        </div>
+        <div className="flex items-center">
+             <div className="flex items-center space-x-2 mr-2">
+                <Label htmlFor="error-checking-toggle-float" className="text-xs font-medium flex-shrink-0">
+                  AI Check
+                </Label>
+                <Switch
+                  id="error-checking-toggle-float"
+                  checked={settings.errorChecking}
+                  onCheckedChange={handleAiCheckToggle}
+                  className="h-5 w-9"
+                />
+              </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsResultOpen(false)}>
+                <X className="w-4 h-4" />
+            </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0 flex-grow overflow-hidden">
+        <OutputDisplay output={output} isCompiling={isCompiling} isAiChecking={isAiChecking} />
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="bg-background">
       <div className="sticky top-0 z-[999] bg-background">
@@ -304,6 +391,9 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         )}
         <div className="h-[75vh]" />
       </div>
+
+      {isResultOpen && !isMobile && DraggableOutputPanel}
+
       <SettingsPanel
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
@@ -313,28 +403,30 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         onDeleteFile={deleteFile}
         onOpenFileFromDrive={handleOpenFileFromDrive}
       />
-      <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
-        <DialogContent className="max-w-2xl h-3/4 flex flex-col">
-          <DialogHeader>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-              <DialogTitle>Result</DialogTitle>
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="error-checking-toggle" className="text-sm font-medium flex-shrink-0">
-                  AI Error Check
-                </Label>
-                <Switch
-                  id="error-checking-toggle"
-                  checked={settings.errorChecking}
-                  onCheckedChange={handleAiCheckToggle}
-                />
-              </div>
+      {isMobile && (
+        <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
+            <DialogContent className="max-w-2xl h-3/4 flex flex-col">
+            <DialogHeader>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <DialogTitle>Result</DialogTitle>
+                <div className="flex items-center space-x-2">
+                    <Label htmlFor="error-checking-toggle" className="text-sm font-medium flex-shrink-0">
+                    AI Error Check
+                    </Label>
+                    <Switch
+                    id="error-checking-toggle"
+                    checked={settings.errorChecking}
+                    onCheckedChange={handleAiCheckToggle}
+                    />
+                </div>
+                </div>
+            </DialogHeader>
+            <div className="flex-grow overflow-hidden">
+                <OutputDisplay output={output} isCompiling={isCompiling} isAiChecking={isAiChecking} />
             </div>
-          </DialogHeader>
-          <div className="flex-grow overflow-hidden">
-            <OutputDisplay output={output} isCompiling={isCompiling} isAiChecking={isAiChecking} />
-          </div>
-        </DialogContent>
-      </Dialog>
+            </DialogContent>
+        </Dialog>
+      )}
       
        <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent>
@@ -367,3 +459,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
