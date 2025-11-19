@@ -23,18 +23,41 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   isAiChecking,
   expectedOutput,
 }) => {
-  const renderOutputContent = (content: string, type: 'result' | 'error' = 'result') => {
-    return (
-      <pre
-        className={cn(
-            "p-4 text-sm whitespace-pre-wrap font-code h-full",
-            type === 'error' ? 'text-destructive' : 'text-foreground'
-        )}
-        style={{ overflowWrap: 'anywhere' }}
-        dangerouslySetInnerHTML={{ __html: AnsiToHtml(content) }}
-      />
-    );
-  };
+    const parseErrorLine = (errorOutput: string): [string, string | null] => {
+        if (!errorOutput) return ['', null];
+
+        const lines = errorOutput.split('\n');
+        const errorLineRegex = /(?:<anonymous>|eval):(\d+):(\d+)/;
+        const mainErrorLine = lines.find(line => errorLineRegex.test(line)) || lines[0];
+
+        const match = mainErrorLine.match(errorLineRegex);
+        if (match && match[1]) {
+            return [errorOutput, match[1]];
+        }
+        return [errorOutput, null];
+    };
+
+    const renderOutputContent = (content: string, type: 'result' | 'error' = 'result') => {
+        const [parsedContent, errorLine] = type === 'error' ? parseErrorLine(content) : [content, null];
+
+        return (
+            <div className="p-4 h-full">
+                {errorLine && (
+                    <div className="mb-2 text-sm font-semibold text-destructive/80">
+                        Error on line {errorLine}
+                    </div>
+                )}
+                <pre
+                    className={cn(
+                        "whitespace-pre-wrap font-code",
+                        type === 'error' ? 'text-destructive' : 'text-foreground'
+                    )}
+                    style={{ overflowWrap: 'anywhere' }}
+                    dangerouslySetInnerHTML={{ __html: AnsiToHtml(parsedContent) }}
+                />
+            </div>
+        );
+    };
 
   const renderLoading = () => (
     <div className="flex items-center justify-center h-full">
