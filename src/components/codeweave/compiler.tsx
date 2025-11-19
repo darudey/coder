@@ -121,7 +121,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   
   // State for resizable panel
   const [resizeMode, setResizeMode] = React.useState<'height' | 'width-left' | 'width-right' | null>(null);
-  const [panelSize, setPanelSize] = React.useState({ width: 450, height: 400 });
+  const [panelSize, setPanelSize] = React.useState({ width: Math.max(350, window.innerWidth / 6), height: 400 });
   const resizeStartPos = React.useRef({ x: 0, y: 0, width: 0, height: 0, left: 0 });
 
 
@@ -540,5 +540,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
 
     
