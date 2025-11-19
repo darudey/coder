@@ -226,7 +226,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   }
 
   const RunButton = () => (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={200}>
         <Tooltip>
             <TooltipTrigger asChild>
                 <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
@@ -236,7 +236,6 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                     <>
                         <Play className="w-4 h-4" />
                         <span className="ml-1.5 hidden sm:inline">Run</span>
-                        <span className="hidden lg:inline text-xs ml-2 opacity-70">(Shift+Enter)</span>
                     </>
                     )}
                 </Button>
