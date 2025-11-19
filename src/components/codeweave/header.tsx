@@ -26,6 +26,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { AboutContent } from './about-content';
 import { Slider } from '../ui/slider';
 import { Label } from '../ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface HeaderProps {
   onRun?: () => void;
@@ -224,20 +225,34 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
     );
   }
 
+  const RunButton = () => (
+    <TooltipProvider>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
+                    {isCompiling ? (
+                    <DotLoader />
+                    ) : (
+                    <>
+                        <Play className="w-4 h-4" />
+                        <span className="ml-1.5 hidden sm:inline">Run</span>
+                        <span className="hidden lg:inline text-xs ml-2 opacity-70">(Shift+Enter)</span>
+                    </>
+                    )}
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>Shift + Enter</p>
+            </TooltipContent>
+        </Tooltip>
+    </TooltipProvider>
+  )
+
   if (variant === 'minimal') {
     return (
       <header className="bg-background">
         <div className={cn("flex items-center justify-between py-2 px-2 gap-2")}>
-          <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
-            {isCompiling ? (
-              <DotLoader />
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                <span className="ml-1.5 hidden sm:inline">Run</span>
-              </>
-            )}
-          </Button>
+          <RunButton />
            <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
                 <Share2 className="w-4 h-4" />
@@ -284,16 +299,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-          <Button onClick={onRun} disabled={isCompiling || !hasActiveFile} className="min-w-[70px] md:min-w-[88px] h-8 px-3">
-            {isCompiling ? (
-              <DotLoader />
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                <span className="ml-1.5 hidden sm:inline">Run</span>
-              </>
-            )}
-          </Button>
+          <RunButton />
           <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
                 <Share2 className="w-4 h-4" />
@@ -330,3 +336,5 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
+
+    
