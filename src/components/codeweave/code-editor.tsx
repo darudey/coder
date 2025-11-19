@@ -48,7 +48,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    const { suggestions, word } = getSuggestions(code, textarea.selectionStart);
+    const { suggestions, word } = getSuggestions(code, textarea.selectionStart, isMobile);
     if(suggestions.length > 0) {
         setSuggestions(suggestions);
         setActiveSuggestion(0);
@@ -60,7 +60,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     } else {
         setSuggestions([]);
     }
-  }, [code, fontSize]);
+  }, [code, fontSize, isMobile]);
 
   useEffect(() => {
     updateSuggestions();
@@ -154,7 +154,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    const { word, startPos } = getSuggestions(code, textarea.selectionStart);
+    const { word, startPos } = getSuggestions(code, textarea.selectionStart, isMobile);
     
     const newCode = code.substring(0, startPos) + suggestion.value + code.substring(textarea.selectionStart);
     const newCursorPosition = startPos + suggestion.value.length;
@@ -167,7 +167,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         textarea.selectionEnd = newCursorPosition;
         textarea.focus();
     });
-  }, [code, onCodeChange]);
+  }, [code, onCodeChange, isMobile]);
 
   const handleNavigateSuggestions = useCallback((direction: 'next' | 'prev') => {
       if (suggestions.length === 0) return;

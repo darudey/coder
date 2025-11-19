@@ -160,7 +160,7 @@ const fuzzyMatch = (partialWord: string, suggestion: Suggestion) => {
     return 10;
 }
 
-export const getSuggestions = (code: string, cursorPosition: number): { suggestions: Suggestion[], word: string, startPos: number } => {
+export const getSuggestions = (code: string, cursorPosition: number, isMobile: boolean): { suggestions: Suggestion[], word: string, startPos: number } => {
     const textBeforeCursor = code.slice(0, cursorPosition);
     
     // Match object property access, e.g., "console."
@@ -204,7 +204,7 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
             ...wordsInCode,
         ];
 
-        const uniqueSuggestions = allKeywords
+        let uniqueSuggestions = allKeywords
             .map(keyword => ({ suggestion: keyword, score: fuzzyMatch(partialWord, keyword) }))
             .filter(item => item.score > 0)
             .filter(item => item.suggestion.value.toLowerCase() !== partialWord.toLowerCase())
@@ -212,12 +212,13 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
             .map(item => item.suggestion)
             .filter((value, index, self) => self.findIndex(s => s.value === value.value) === index);
         
-        const exactMatchSuggestion = { value: partialWord, type: 'variable' as const };
+        if (isMobile) {
+            const exactMatchSuggestion = { value: partialWord + " ", type: 'variable' as const };
+            uniqueSuggestions = [exactMatchSuggestion, ...uniqueSuggestions];
+        }
 
-        return { suggestions: [exactMatchSuggestion, ...uniqueSuggestions], word: partialWord, startPos };
+        return { suggestions: uniqueSuggestions, word: partialWord, startPos };
     }
 
     return { suggestions: [], word: '', startPos: 0 };
 };
-
-    
