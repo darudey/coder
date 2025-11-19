@@ -176,7 +176,10 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
                 .filter(item => item.score > 0)
                 .sort((a, b) => b.score - a.score)
                 .map(item => item.suggestion);
-            return { suggestions, word: partialProperty, startPos };
+            
+            const exactMatchSuggestion = { value: partialProperty + ' ', type: 'variable' as const };
+            
+            return { suggestions: [exactMatchSuggestion, ...suggestions], word: partialProperty, startPos };
         }
         return { suggestions: [], word: '', startPos: 0 };
     }
@@ -210,9 +213,10 @@ export const getSuggestions = (code: string, cursorPosition: number): { suggesti
             .sort((a, b) => b.score - a.score)
             .map(item => item.suggestion)
             .filter((value, index, self) => self.findIndex(s => s.value === value.value) === index);
+        
+        const exactMatchSuggestion = { value: partialWord + ' ', type: 'variable' as const };
 
-
-        return { suggestions: uniqueSuggestions, word: partialWord, startPos };
+        return { suggestions: [exactMatchSuggestion, ...uniqueSuggestions], word: partialWord, startPos };
     }
 
     return { suggestions: [], word: '', startPos: 0 };

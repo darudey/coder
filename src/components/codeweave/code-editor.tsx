@@ -24,9 +24,10 @@ interface CodeEditorProps {
   onRedo: () => void;
   onDeleteFile: () => void;
   hasActiveFile: boolean;
+  onRun: () => void;
 }
 
-const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile }) => {
+const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile, onRun }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
@@ -369,6 +370,12 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    if (e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        onRun();
+        return;
+    }
+
     if (suggestions.length > 0) {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -380,12 +387,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
             setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
             return;
         }
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleSuggestionSelection(suggestions[activeSuggestion]);
-            return;
-        }
-        if (e.key === 'Tab') {
+        if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault();
             handleSuggestionSelection(suggestions[activeSuggestion]);
             return;
@@ -414,7 +416,6 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
             return;
         }
         if (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'x') {
-            // If no text is selected, select the whole line
             if (textarea.selectionStart === textarea.selectionEnd) {
                 const currentCursor = textarea.selectionStart;
                 const text = textarea.value;
@@ -422,12 +423,10 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
                 const lineEnd = text.indexOf('\n', currentCursor);
                 const finalLineEnd = lineEnd === -1 ? text.length : lineEnd;
 
-                // We set a timeout to allow the browser to select the text before the copy/cut command is executed.
                 setTimeout(() => {
                     textarea.setSelectionRange(lineStart, finalLineEnd);
                 }, 0)
             }
-            // We do NOT preventDefault here, allowing the native copy/cut to proceed.
             return;
         }
         if (e.key.toLowerCase() === 'd') {
@@ -460,19 +459,35 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         const end = textarea.selectionEnd;
         const open = e.key;
         const close = pairMap[e.key];
-        const newCode = code.substring(0, start) + code.substring(start, end) + close + code.substring(end);
-        const newCursorPosition = start + 1;
+        
+        let newCode;
+        let newCursorPosition;
+
+        if (start === end) { // No selection
+            newCode = code.substring(0, start) + open + close + code.substring(end);
+            newCursorPosition = start + 1;
+        } else { // Selection exists
+            const selectedText = code.substring(start, end);
+            newCode = code.substring(0, start) + open + selectedText + close + code.substring(end);
+            newCursorPosition = start + open.length + selectedText.length + close.length;
+        }
         
         onCodeChange(newCode);
 
         requestAnimationFrame(() => {
-          textarea.selectionStart = newCursorPosition;
-          textarea.selectionEnd = (end - start) + newCursorPosition;
+          if (start === end) {
+            textarea.selectionStart = newCursorPosition;
+            textarea.selectionEnd = newCursorPosition;
+          } else {
+            textarea.selectionStart = start + open.length;
+            textarea.selectionEnd = end + open.length;
+          }
           textarea.focus();
         });
+        return;
     }
 
-  }, [onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, code, onCodeChange]);
+  }, [onRun, onUndo, onRedo, hasActiveFile, handleKeyPress, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, code, onCodeChange]);
 
   const showKeyboard = isMobile && isKeyboardVisible && settings.isVirtualKeyboardEnabled;
   
@@ -615,10 +630,3 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
-
-    
-
-    
-
-    
-

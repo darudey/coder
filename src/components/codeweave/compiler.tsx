@@ -150,7 +150,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     } else if (isResizing) {
         const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
         const deltaY = clientY - resizeStartPos.current.y;
-        const newHeight = resizeStartPos.current.height + deltaY;
+        const newHeight = resizeStartPos.current.height - deltaY; // Inverted for bottom handle
         // Set min and max height constraints
         setPanelHeight(Math.max(150, Math.min(newHeight, window.innerHeight - 50)));
     }
@@ -367,7 +367,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         <OutputDisplay output={output} isCompiling={isCompiling} isAiChecking={isAiChecking} />
       </CardContent>
       <div 
-        className="w-full h-2 cursor-ns-resize flex items-center justify-center"
+        className="w-full h-2 cursor-ns-resize flex items-center justify-center bg-muted/50"
         onMouseDown={handleResizeMouseDown}
         onTouchStart={handleResizeMouseDown}
       >
@@ -412,6 +412,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
                 onRedo={redo}
                 onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
                 hasActiveFile={!!activeFile}
+                onRun={handleRun}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
