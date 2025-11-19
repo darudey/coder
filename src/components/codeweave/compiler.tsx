@@ -14,7 +14,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
-import { Copy, Grab, X } from 'lucide-react';
+import { Copy, Grab, X, GripHorizontal } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
@@ -118,6 +118,12 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const [isDragging, setIsDragging] = React.useState(false);
   const dragStartPos = React.useRef({ x: 0, y: 0 });
   const elementStartPos = React.useRef({ top: 0, left: 0 });
+  
+  // State for resizable panel
+  const [isResizing, setIsResizing] = React.useState(false);
+  const [panelHeight, setPanelHeight] = React.useState(400); // Initial height in pixels
+  const resizeStartPos = React.useRef({ y: 0, height: 0 });
+
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -130,26 +136,42 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   };
 
   const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
-    if (!isDragging) return;
+    if (isDragging) {
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        const deltaX = clientX - dragStartPos.current.x;
+        const deltaY = clientY - dragStartPos.current.y;
 
-    const deltaX = clientX - dragStartPos.current.x;
-    const deltaY = clientY - dragStartPos.current.y;
-
-    setPosition({
-      top: elementStartPos.current.top + deltaY,
-      left: elementStartPos.current.left + deltaX,
-    });
-  }, [isDragging]);
+        setPosition({
+        top: elementStartPos.current.top + deltaY,
+        left: elementStartPos.current.left + deltaX,
+        });
+    } else if (isResizing) {
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        const deltaY = clientY - resizeStartPos.current.y;
+        const newHeight = resizeStartPos.current.height + deltaY;
+        // Set min and max height constraints
+        setPanelHeight(Math.max(150, Math.min(newHeight, window.innerHeight - 50)));
+    }
+  }, [isDragging, isResizing]);
 
   const handleMouseUp = React.useCallback(() => {
     setIsDragging(false);
+    setIsResizing(false);
   }, []);
 
+  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    setIsResizing(true);
+    resizeStartPos.current = { y: clientY, height: panelHeight };
+  };
+
   React.useEffect(() => {
-    if (isDragging) {
+    if (isDragging || isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       document.addEventListener('touchmove', handleMouseMove);
@@ -166,7 +188,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       document.removeEventListener('touchmove', handleMouseMove);
       document.removeEventListener('touchend', handleMouseUp);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
 
 
   const handleCodeChange = useCallback((newCode: string) => {
@@ -312,8 +334,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   const DraggableOutputPanel = (
     <Card 
-        className="fixed w-[400px] h-[50vh] max-h-[600px] flex flex-col shadow-2xl z-40"
-        style={{ top: position.top, left: position.left, cursor: isDragging ? 'grabbing' : 'default' }}
+        className="fixed w-[450px] flex flex-col shadow-2xl z-40"
+        style={{ top: position.top, left: position.left, cursor: isDragging ? 'grabbing' : 'default', height: `${panelHeight}px` }}
     >
       <CardHeader 
         className="flex flex-row items-center justify-between p-2 border-b cursor-grab"
@@ -344,6 +366,13 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       <CardContent className="p-0 flex-grow overflow-hidden">
         <OutputDisplay output={output} isCompiling={isCompiling} isAiChecking={isAiChecking} />
       </CardContent>
+      <div 
+        className="w-full h-2 cursor-ns-resize flex items-center justify-center"
+        onMouseDown={handleResizeMouseDown}
+        onTouchStart={handleResizeMouseDown}
+      >
+        <GripHorizontal className="w-4 h-4 text-muted-foreground/50" />
+      </div>
     </Card>
   );
 
@@ -459,5 +488,3 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
-
-    
