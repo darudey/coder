@@ -8,6 +8,7 @@ import { Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { Input } from '../ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface TabBarProps {
     openFiles: ActiveFile[];
@@ -123,9 +124,18 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <div className="p-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNewFile}>
-                    <Plus className="w-4 h-4" />
-                </Button>
+                <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNewFile}>
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Shift + N</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
         </div>
     );
