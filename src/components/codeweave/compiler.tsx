@@ -298,7 +298,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
     useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            if (e.shiftKey && e.key.toUpperCase() === 'N') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 createNewFile(true);
             }
@@ -572,7 +572,3 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
-
-    
-
-    

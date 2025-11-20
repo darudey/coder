@@ -132,7 +132,7 @@ const MemoizedTabBar: React.FC<TabBarProps> = ({
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p>Shift + N</p>
+                            <p>Alt + N</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
