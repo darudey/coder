@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot, BookOpen } from "lucide-react";
+import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot, BookOpen, SkipForward } from "lucide-react";
 
 export function AboutContent() {
 
@@ -50,6 +50,13 @@ export function AboutContent() {
 
              <FeatureCard title="AI-Powered Features" icon={<Bot className="text-primary"/>}>
                 <p>Leveraging Google's Gemini models via Genkit, the app offers AI-driven error checking to help you find and fix bugs faster.</p>
+            </FeatureCard>
+            
+            <FeatureCard title="Quick-Jump" icon={<SkipForward className="text-primary"/>} badge="Desktop">
+                <p>When your cursor is inside a pair of matching symbols like parentheses, brackets, or quotes, you can quickly jump past the closing symbol.</p>
+                 <ul className="list-disc pl-5 space-y-1">
+                    <li><strong className="flex items-center gap-2">Triple-Press <Key>Space</Key>:</strong> Press the spacebar three times in quick succession to move the cursor immediately after the closing symbol.</li>
+                </ul>
             </FeatureCard>
 
             <FeatureCard title="Spacebar Power-ups" icon={<Keyboard className="text-primary"/>} badge="Mobile">
