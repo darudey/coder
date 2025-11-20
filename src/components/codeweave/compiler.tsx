@@ -95,6 +95,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     history,
     historyIndex,
     setCode,
+    setHistory,
+    setHistoryIndex,
     loadFile,
     addFile,
     createNewFile,
@@ -239,22 +241,20 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 
   const handleCodeChange = useCallback((newCode: string) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newCode);
-    setCode(newCode, newHistory, historyIndex + 1);
-  }, [history, historyIndex, setCode]);
+    setCode(newCode);
+  }, [setCode]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
-      setCode(history[historyIndex - 1], history, history, historyIndex - 1);
+      setHistoryIndex(prev => prev - 1);
     }
-  }, [historyIndex, history, setCode]);
+  }, [historyIndex, setHistoryIndex]);
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setCode(history[historyIndex + 1], history, history, historyIndex + 1);
+      setHistoryIndex(prev => prev + 1);
     }
-  }, [historyIndex, history, setCode]);
+  }, [historyIndex, history.length, setHistoryIndex]);
 
   const handleRun = useCallback(async (): Promise<RunResult> => {
     if (variant !== 'minimal') {
@@ -590,3 +590,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    

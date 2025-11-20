@@ -60,24 +60,34 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
   const activeFile = activeFileIndex !== -1 ? openFiles[activeFileIndex] : null;
 
-  const [history, setHistory] = useState<string[]>(['']);
+  const [_code, _setCode] = useState('');
+  const [history, setHistory] = useState<string[]>([_code]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
   const [isFsReady, setIsFsReady] = useState(false);
 
   const code = history[historyIndex];
   const debouncedCode = useDebounce(code, 500);
+  const debouncedInternalCode = useDebounce(_code, 500);
 
-  const setCode = useCallback((newCode: string, newHistory: string[], newHistoryIndex: number) => {
-    setHistory(newHistory);
-    setHistoryIndex(newHistoryIndex);
-    if (onCodeChange) {
-      onCodeChange(newCode);
+  const setCode = useCallback((newCode: string) => {
+    _setCode(newCode);
+    setHistory(h => {
+        const newHistory = h.slice(0, historyIndex + 1);
+        newHistory.push(newCode);
+        return newHistory;
+    });
+    setHistoryIndex(i => i + 1);
+    if(onCodeChange) {
+        onCodeChange(newCode);
     }
-  }, [onCodeChange]);
+  }, [historyIndex, onCodeChange]);
+  
 
   // Load initial file system from localStorage or props
   useEffect(() => {
     if (variant === 'minimal' && initialCode) {
+      _setCode(initialCode);
       setHistory([initialCode]);
       setHistoryIndex(0);
       setIsFsReady(true);
@@ -130,20 +140,15 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
 
   // Load code into editor when active file changes
   useEffect(() => {
-    if (!isFsReady || variant === 'minimal') return;
+    if (!isFsReady || variant === 'minimal' || !activeFile) return;
     
-    let codeToSet = '';
-    if (activeFile && fileSystem[activeFile.folderName]?.[activeFile.fileName] !== undefined) {
-      codeToSet = fileSystem[activeFile.folderName][activeFile.fileName];
-    } else if (!activeFile && openFiles.length > 0 && activeFileIndex !== -1) {
-      const firstFile = openFiles[0];
-      codeToSet = fileSystem[firstFile.folderName]?.[firstFile.fileName] || '';
-    }
+    const codeToSet = fileSystem[activeFile.folderName]?.[activeFile.fileName] ?? '';
 
-    if (codeToSet !== code) {
+    if (codeToSet !== _code) {
+      _setCode(codeToSet);
       setHistory([codeToSet]);
       setHistoryIndex(0);
-      if (onCodeChange) {
+       if (onCodeChange) {
         onCodeChange(codeToSet);
       }
     }
@@ -154,18 +159,18 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
   // Debounced save to file system state
   useEffect(() => {
     if (!isFsReady || variant === 'minimal' || !activeFile || initialCode) return;
-    if (fileSystem[activeFile.folderName]?.[activeFile.fileName] !== debouncedCode) {
+    if (fileSystem[activeFile.folderName]?.[activeFile.fileName] !== debouncedInternalCode) {
         setFileSystem(fs => {
             const newFs = { ...fs };
             if (!newFs[activeFile.folderName]) {
                 newFs[activeFile.folderName] = {};
             }
-            newFs[activeFile.folderName][activeFile.fileName] = debouncedCode;
+            newFs[activeFile.folderName][activeFile.fileName] = debouncedInternalCode;
             localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
             return newFs;
         });
     }
-  }, [debouncedCode, activeFile, isFsReady, fileSystem, initialCode, variant]);
+  }, [debouncedInternalCode, activeFile, isFsReady, fileSystem, initialCode, variant]);
 
   // Save open files and active index to localStorage
   useEffect(() => {
@@ -325,6 +330,8 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
     history,
     historyIndex,
     setCode,
+    setHistory,
+    setHistoryIndex,
     loadFile,
     addFile,
     createNewFile,
@@ -334,3 +341,5 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
     setActiveFileIndex,
   };
 }
+
+    
