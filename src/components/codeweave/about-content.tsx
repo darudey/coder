@@ -53,9 +53,10 @@ export function AboutContent() {
             </FeatureCard>
             
             <FeatureCard title="Quick-Jump" icon={<SkipForward className="text-primary"/>} badge="Desktop">
-                <p>When your cursor is inside a pair of matching symbols like parentheses, brackets, or quotes, you can quickly jump past the closing symbol.</p>
-                 <ul className="list-disc pl-5 space-y-1">
-                    <li><strong className="flex items-center gap-2">Triple-Press <Key>Space</Key>:</strong> Press the spacebar three times in quick succession to move the cursor immediately after the closing symbol.</li>
+                <p>Quickly navigate through your code with these spacebar-powered shortcuts.</p>
+                 <ul className="list-disc pl-5 space-y-2">
+                    <li><strong className="flex items-center gap-2">Jump Forward:</strong> Press <Key>Shift</Key> or <Key>Alt</Key> + <Key>Space</Key> to jump the cursor to the beginning of the next word, symbol, or block of spaces.</li>
+                    <li><strong className="flex items-center gap-2">Jump Out of Pairs:</strong> When your cursor is just inside a closing symbol like `)` or `\'\'\'`, press <Key>Space</Key> three times quickly to jump the cursor just outside of it.</li>
                 </ul>
             </FeatureCard>
 
