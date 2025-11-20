@@ -371,6 +371,31 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    // Smart pair deletion
+    if (e.key === 'Backspace') {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+
+        if (start === end && start > 0) { // No selection
+            const charBefore = code.charAt(start - 1);
+            const charAfter = code.charAt(start);
+            const pairs: { [key: string]: string } = { '(': ')', '{': '}', '[': ']' };
+
+            if (pairs[charBefore] === charAfter) {
+                e.preventDefault();
+                const newCode = code.substring(0, start - 1) + code.substring(start + 1);
+                onCodeChange(newCode);
+                
+                requestAnimationFrame(() => {
+                    textarea.selectionStart = start - 1;
+                    textarea.selectionEnd = start - 1;
+                    textarea.focus();
+                });
+                return;
+            }
+        }
+    }
+
     if (e.key === ' ') {
         const now = Date.now();
         spacePressTimestampsRef.current.push(now);
