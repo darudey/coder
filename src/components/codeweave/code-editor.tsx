@@ -38,6 +38,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { settings, setSettings } = useSettings();
   const fontSize = settings.editorFontSize;
+  const spacePressTimestampsRef = useRef<number[]>([]);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
@@ -369,6 +370,37 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+
+    if (e.key === ' ') {
+        const now = Date.now();
+        spacePressTimestampsRef.current.push(now);
+        if (spacePressTimestampsRef.current.length > 3) {
+            spacePressTimestampsRef.current.shift();
+        }
+
+        if (spacePressTimestampsRef.current.length === 3) {
+            const [first, second, third] = spacePressTimestampsRef.current;
+            if (third - first < 500) { // Triple press within 500ms
+                const cursorPosition = textarea.selectionStart;
+                const nextChar = code[cursorPosition];
+                const closingSymbols = [')', '}', ']', "'", '"', '`'];
+                if (closingSymbols.includes(nextChar)) {
+                    e.preventDefault();
+                    const newCursorPosition = cursorPosition + 1;
+                    requestAnimationFrame(() => {
+                        textarea.selectionStart = newCursorPosition;
+                        textarea.selectionEnd = newCursorPosition;
+                        textarea.focus();
+                    });
+                    spacePressTimestampsRef.current = []; // Reset after jump
+                    return;
+                }
+            }
+        }
+    } else {
+        spacePressTimestampsRef.current = [];
+    }
+
 
     if (e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
