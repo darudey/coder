@@ -22,11 +22,13 @@ import { useCompilerFs, type ActiveFile, type FileSystem } from '@/hooks/use-com
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { useSettings } from '@/hooks/use-settings';
+import { parse } from 'esprima-next';
 
 export interface RunResult {
     output: string;
     type: 'result' | 'error';
     aiAnalysis?: string;
+    lineNumber?: number;
 }
 
 export interface Settings {
@@ -261,6 +263,22 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
         setOutput(null); // Clear previous output
     }
     
+    // Client-side syntax check
+    try {
+        parse(code, { tolerant: false });
+    } catch (e: any) {
+        const result: RunResult = {
+            output: `SyntaxError: ${e.description}`,
+            type: 'error',
+            lineNumber: e.lineNumber,
+        };
+        if (variant !== 'minimal') {
+            setOutput(result);
+            setIsCompiling(false);
+        }
+        return result;
+    }
+
     let result: RunResult;
     
     if (settings.errorChecking) {

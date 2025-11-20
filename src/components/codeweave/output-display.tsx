@@ -20,21 +20,23 @@ import { Copy, Check, X, Activity } from 'lucide-react';
 import type { RunResult } from './compiler';
 
 /* ------------------- Helpers ------------------- */
-const getErrorLine = (text: string): string | null => {
-  if (!text) return null;
-  // This regex specifically looks for the line number associated with the anonymous script execution.
-  const match = text.match(/<anonymous>:(\d+):(\d+)/);
-  if (match && match[1]) {
-    // There is a consistent offset of 2 lines from the web worker's boilerplate.
-    // Subtracting 2 gives the correct line number from the editor.
-    const lineNumber = parseInt(match[1], 10);
-    if (!isNaN(lineNumber) && lineNumber > 2) {
-      return (lineNumber - 2).toString();
+const getErrorLine = (output: RunResult | null): string | null => {
+    if (!output) return null;
+    if (output.lineNumber) return String(output.lineNumber);
+
+    // This regex specifically looks for the line number associated with the anonymous script execution.
+    const match = output.output.match(/<anonymous>:(\d+):(\d+)/);
+    if (match && match[1]) {
+      // There is a consistent offset of 2 lines from the web worker's boilerplate.
+      // Subtracting 2 gives the correct line number from the editor.
+      const lineNumber = parseInt(match[1], 10);
+      if (!isNaN(lineNumber) && lineNumber > 2) {
+        return (lineNumber - 2).toString();
+      }
+      return match[1]; // Fallback if parsing or subtraction fails
     }
-    return match[1]; // Fallback if parsing or subtraction fails
-  }
-  return null;
-};
+    return null;
+  };
 
 
 const detectBeginnerIssues = (text: string) => {
@@ -85,9 +87,6 @@ const HeaderBar: React.FC<{
   return (
     <div className="flex items-center justify-between px-3 py-2 border-b">
       <div className="flex items-center gap-3">
-        <kbd className="h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-          <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
-        </kbd>
         {typeof runTime === 'number' && (
           <div className="text-xs text-muted-foreground">Execution: {runTime}ms</div>
         )}
@@ -98,6 +97,10 @@ const HeaderBar: React.FC<{
           </div>
         )}
       </div>
+
+      <kbd className="h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+        <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
+      </kbd>
 
       <div className="flex items-center gap-2">
         {issues.length > 0 && (
@@ -294,7 +297,7 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   const userOutput = (output as any).output ?? '';
   const outputType = (output as any).type ?? 'result';
 
-  const errorLine = getErrorLine(userOutput);
+  const errorLine = getErrorLine(output);
 
   // pass/fail detection for expected output
   const passed = typeof expectedOutput === 'string' ? expectedOutput.trim() === userOutput.trim() : null;
@@ -302,7 +305,14 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   /* ------------- Render with enhanced UI ------------- */
   return (
     <Card className="flex flex-col h-full overflow-hidden shadow-none border-0">
-      
+      <HeaderBar
+        onCopy={onCopy}
+        copied={copied}
+        runTime={runTime}
+        issues={issues}
+        isError={outputType === 'error'}
+        passed={passed}
+      />
       <CardContent className="flex-grow p-0 overflow-hidden h-full">
         <div className="h-full flex flex-col">
           {expectedOutput ? (
@@ -397,5 +407,3 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 };
 
 export const OutputDisplay = React.memo(MemoizedOutputDisplay);
-
-    
