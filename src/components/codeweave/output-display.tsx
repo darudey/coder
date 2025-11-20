@@ -397,3 +397,5 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 };
 
 export const OutputDisplay = React.memo(MemoizedOutputDisplay);
+
+    
