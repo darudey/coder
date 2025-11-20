@@ -14,7 +14,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
-import { Copy, Grab, X, GripHorizontal } from 'lucide-react';
+import { Copy, Grab, X, GripHorizontal, Play } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
@@ -125,6 +125,14 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
   const [resizeMode, setResizeMode] = React.useState<'height' | 'width-left' | 'width-right' | null>(null);
   const [panelSize, setPanelSize] = React.useState({ width: Math.max(350, window.innerWidth / 6), height: 400 });
   const resizeStartPos = React.useRef({ x: 0, y: 0, width: 0, height: 0, left: 0 });
+
+  const [isApiKeySet, setIsApiKeySet] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        setIsApiKeySet(!!localStorage.getItem('gemini-api-key'));
+    }
+  }, [isSettingsOpen]);
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -406,22 +414,25 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       >
         <div className="flex items-center gap-2">
             <Grab className="w-4 h-4 text-muted-foreground" />
-            <kbd className="h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
-            </kbd>
+            <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
+              {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
+            </Button>
         </div>
+        <span className="font-semibold text-sm">Output</span>
         <div className="flex items-center">
-             <div className="flex items-center space-x-2 mr-2">
-                <Label htmlFor="error-checking-toggle-float" className="text-xs font-medium flex-shrink-0">
-                  AI Check
-                </Label>
-                <Switch
-                  id="error-checking-toggle-float"
-                  checked={settings.errorChecking}
-                  onCheckedChange={handleAiCheckToggle}
-                  className="h-5 w-9"
-                />
-              </div>
+             {isApiKeySet && (
+                <div className="flex items-center space-x-2 mr-2">
+                    <Label htmlFor="error-checking-toggle-float" className="text-xs font-medium flex-shrink-0">
+                    AI Check
+                    </Label>
+                    <Switch
+                    id="error-checking-toggle-float"
+                    checked={settings.errorChecking}
+                    onCheckedChange={handleAiCheckToggle}
+                    className="h-5 w-9"
+                    />
+                </div>
+            )}
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsResultOpen(false)}>
                 <X className="w-4 h-4" />
             </Button>

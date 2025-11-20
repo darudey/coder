@@ -302,8 +302,7 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   /* ------------- Render with enhanced UI ------------- */
   return (
     <Card className="flex flex-col h-full overflow-hidden shadow-none border-0">
-      <HeaderBar onCopy={onCopy} copied={copied} runTime={runTime} issues={issues} isError={outputType === 'error'} passed={passed} />
-
+      
       <CardContent className="flex-grow p-0 overflow-hidden h-full">
         <div className="h-full flex flex-col">
           {expectedOutput ? (
