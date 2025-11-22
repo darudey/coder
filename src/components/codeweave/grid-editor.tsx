@@ -16,22 +16,6 @@ interface OverlayEditorProps {
   onCodeChange: (code: string) => void;
 }
 
-function indexToRowCol(code: string, index: number) {
-  const lines = code.split('\n');
-  let remaining = index;
-
-  for (let row = 0; row < lines.length; row++) {
-    const lineLength = lines[row].length + 1; // +1 for '\n'
-    if (remaining < lineLength) {
-      return { row, col: remaining };
-    }
-    remaining -= lineLength;
-  }
-
-  const lastRow = Math.max(0, lines.length - 1);
-  return { row: lastRow, col: lines[lastRow]?.length ?? 0 };
-}
-
 export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
   code,
   onCodeChange,
@@ -41,8 +25,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const gutterRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
-
-  const [cursor, setCursor] = useState({ index: 0, row: 0, col: 0 });
+  const [activeLine, setActiveLine] = useState(0);
 
   const fontSize = settings.editorFontSize ?? 14;
 
@@ -62,7 +45,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     const gutter = gutterRef.current;
     const ta = textareaRef.current;
     if (!measure || !gutter || !ta) return;
-    
+
     measure.style.width = `${ta.clientWidth}px`;
     gutter.innerHTML = '';
 
@@ -70,30 +53,31 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
       const text = lines[i] === '' ? '\u00A0' : lines[i];
       measure.textContent = text;
       const height = measure.offsetHeight;
-      const visualRows = Math.max(1, Math.round(height / (fontSize * 1.5)));
-      
-      const lineContainer = document.createElement('div');
-      lineContainer.style.height = `${height}px`;
-      lineContainer.className = 'flex';
 
-      const numberEl = document.createElement('div');
-      numberEl.className = cn(
-        'w-full h-full px-2 flex items-start',
-         i === cursor.row && 'text-foreground font-semibold'
+      const div = document.createElement('div');
+      div.className = cn(
+        'px-2 flex items-start text-xs text-muted-foreground',
+        i === activeLine && 'text-foreground font-semibold'
       );
-      numberEl.textContent = String(i + 1);
-      
-      lineContainer.appendChild(numberEl);
-      gutter.appendChild(lineContainer);
+      div.style.height = `${height}px`;
+      div.textContent = String(i + 1);
+      gutter.appendChild(div);
     }
-  }, [lines, fontSize, cursor.row]);
-  
+  }, [lines, fontSize, activeLine]);
+
   const handleSelectionChange = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     const index = ta.selectionStart ?? 0;
-    const { row, col } = indexToRowCol(code, index);
-    setCursor({ index, row, col });
+    
+    let line = 0;
+    for (let i = 0; i < index; i++) {
+        if (code[i] === '\n') {
+            line++;
+        }
+    }
+    setActiveLine(line);
+
   }, [code]);
 
   useEffect(() => {
@@ -106,15 +90,15 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     observer.observe(ta);
 
     const handler = () => handleSelectionChange();
+    document.addEventListener('selectionchange', handler);
     ta.addEventListener('keyup', handler);
     ta.addEventListener('click', handler);
-    ta.addEventListener('keydown', handler);
 
     return () => {
         observer.disconnect();
+        document.removeEventListener('selectionchange', handler);
         ta.removeEventListener('keyup', handler);
         ta.removeEventListener('click', handler);
-        ta.removeEventListener('keydown', handler);
     };
   }, [handleSelectionChange, computeWrappedRows]);
 
@@ -130,7 +114,6 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
   }, []);
 
-
   return (
     <div
       className="relative flex border rounded-md bg-background"
@@ -139,7 +122,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="w-12 shrink-0 border-r bg-muted text-xs text-muted-foreground overflow-hidden py-2"
+        className="w-12 shrink-0 border-r bg-muted py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
@@ -155,9 +138,11 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
           className="absolute inset-0 overflow-auto pointer-events-none px-3 py-2"
           style={textStyle}
         >
-          {lines.map((line, i) => (
-             <div key={i}>{line === '' ? '\u00A0' : line}</div>
-          ))}
+            {lines.map((line, i) => (
+                <div key={i} className={cn(i === activeLine && "bg-muted/50")}>
+                    {line === '' ? '\u00A0' : line}
+                </div>
+            ))}
         </div>
 
         {/* REAL textarea */}
