@@ -8,7 +8,6 @@ import { useSettings } from '@/hooks/use-settings';
 interface GridEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
-  // These props are passed by the Compiler but not used by this simple grid editor yet.
   onUndo?: () => void;
   onRedo?: () => void;
   onDeleteFile?: () => void;
@@ -109,14 +108,23 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
     };
 
     useEffect(() => {
-        // Ensure cursor is within bounds after code change
+        // Ensure cursor is within bounds after code change, allowing cursor at end of line
         const currentLines = code.split('\n');
-        const newRow = Math.min(cursor.row, currentLines.length - 1);
-        const newCol = Math.min(cursor.col, currentLines[newRow].length);
+        let newRow = Math.min(cursor.row, currentLines.length - 1);
+        if (newRow < 0) newRow = 0;
+        
+        let newCol = Math.min(cursor.col, currentLines[newRow].length);
+        if (newCol < 0) newCol = 0;
+        
         if (newRow !== cursor.row || newCol !== cursor.col) {
             setCursor({ row: newRow, col: newCol });
         }
     }, [code, cursor]);
+
+    // Ensure textarea is focused on mount
+    useEffect(() => {
+        hiddenTextareaRef.current?.focus();
+    }, []);
 
     return (
         <div 
@@ -170,7 +178,15 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
                 ref={hiddenTextareaRef}
                 onKeyDown={handleKeyDown}
                 className="absolute opacity-0 w-0 h-0"
-                autoFocus
+                value={code} // Keep textarea value in sync for accessibility
+                onChange={() => {}} // onChange is handled by onKeyDown
+                onFocus={() => {
+                    // Ensure cursor state is valid on focus
+                    const currentLines = code.split('\n');
+                    const newRow = Math.min(cursor.row, currentLines.length - 1);
+                    const newCol = Math.min(cursor.col, currentLines[newRow].length);
+                    setCursor({ row: newRow, col: newCol });
+                }}
             />
         </div>
     );
