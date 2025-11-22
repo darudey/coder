@@ -49,6 +49,7 @@
     "genkit": "^1.14.1",
     "googleapis": "^140.0.1",
     "highlight.js": "^11.9.0",
+    "lucide-react": "^0.408.0",
     "marked": "^13.0.2",
     "nanoid": "^5.0.7",
     "next": "15.3.3",
