@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette, Grid } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from './compiler';
 import { DotLoader } from './dot-loader';
@@ -62,6 +62,7 @@ const NavItems = () => {
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/courses', label: 'Courses', icon: Book },
     { href: '/', label: 'Compiler', icon: Code },
+    { href: '/session', label: 'Session', icon: Grid },
   ];
   
   const adminNavItems = [
@@ -335,5 +336,3 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
-
-    

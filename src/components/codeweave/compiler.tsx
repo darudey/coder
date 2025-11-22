@@ -40,6 +40,7 @@ interface CompilerProps {
   variant?: 'default' | 'minimal';
   hideHeader?: boolean;
   onCodeChange?: (code: string) => void;
+  EditorComponent?: React.FC<any>;
 }
 
 export interface CompilerRef {
@@ -79,7 +80,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange }, ref) => {
+const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange, EditorComponent = CodeEditor }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
@@ -506,7 +507,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
       </div>
       <div className="p-4 grid grid-cols-1 gap-4">
         {editorVisible ? (
-            <CodeEditor
+            <EditorComponent
                 code={code || ''}
                 onCodeChange={handleCodeChange}
                 onUndo={undo}
@@ -590,5 +591,3 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
-
-    
