@@ -34,7 +34,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     fontSize,
     lineHeight: 1.5,
     whiteSpace: 'pre-wrap',
-    overflowWrap: 'break-word', // Use break-word for consistent wrapping
+    overflowWrap: 'break-word',
     tabSize: 2,
   }), [fontSize]);
 
@@ -52,10 +52,17 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
 
     for (let i = 0; i < lines.length; i++) {
       const text = lines[i] === '' ? '\u00A0' : lines[i];
+
+      // Put text into measurement mirror
       measure.textContent = text;
+
+      // Height of wrapped line in px
       const height = measure.offsetHeight;
+
+      // Each visual row = lineHeight * fontSize * 1.5
       const visualRows = Math.max(1, Math.round(height / (fontSize * 1.5)));
 
+      // Add equal rows to gutter
       for (let v = 0; v < visualRows; v++) {
         const div = document.createElement('div');
         div.className =
@@ -70,11 +77,6 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     }
   }, [lines, fontSize]);
 
-  useEffect(() => {
-    computeWrappedRows();
-  }, [code, computeWrappedRows]);
-  
-  // Ensure measure div has same width as textarea for correct wrapping calculation
   useEffect(() => {
     const ta = textareaRef.current;
     const measure = measureRef.current;
@@ -137,7 +139,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="w-12 shrink-0 border-r bg-muted overflow-hidden"
+        className="w-12 shrink-0 border-r bg-muted overflow-hidden py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
