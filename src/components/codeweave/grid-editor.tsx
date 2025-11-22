@@ -16,7 +16,7 @@ interface OverlayEditorProps {
   onCodeChange: (code: string) => void;
 }
 
-export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
+export const GridEditor: React.FC<OverlayEditorProps> = ({
   code,
   onCodeChange,
 }) => {
@@ -46,6 +46,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     const ta = textareaRef.current;
     if (!measure || !gutter || !ta) return;
 
+    // Sync measure div width with textarea width
     measure.style.width = `${ta.clientWidth}px`;
     gutter.innerHTML = '';
 
@@ -56,7 +57,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
 
       const div = document.createElement('div');
       div.className = cn(
-        'px-2 flex items-start text-xs text-muted-foreground',
+        'px-2 flex items-start text-xs text-muted-foreground h-full',
         i === activeLine && 'text-foreground font-semibold'
       );
       div.style.height = `${height}px`;
@@ -110,14 +111,14 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
   const syncScroll = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    if (overlayRef.current) overlayRef.current.scrollTop = ta.scrollTop;
-    if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
+    const scrollTop = ta.scrollTop;
+    if (overlayRef.current) overlayRef.current.style.transform = `translateY(-${scrollTop}px)`;
+    if (gutterRef.current) gutterRef.current.style.transform = `translateY(-${scrollTop}px)`;
   }, []);
 
   return (
     <div
-      className="relative flex border rounded-md bg-background"
-      style={{ height: 'calc(100vh - 80px)' }}
+      className="relative flex border rounded-md bg-background min-h-[70vh] overflow-hidden"
     >
       {/* Gutter with dynamic wrapped rows */}
       <div
@@ -131,11 +132,11 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
       />
 
       {/* Editor area */}
-      <div className="relative flex-1 h-full">
+      <div className="relative flex-1 h-full overflow-hidden">
         {/* Overlay text mirror */}
         <div
           ref={overlayRef}
-          className="absolute inset-0 overflow-auto pointer-events-none px-3 py-2"
+          className="absolute inset-0 pointer-events-none px-3 py-2"
           style={textStyle}
         >
             {lines.map((line, i) => (
