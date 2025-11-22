@@ -16,6 +16,22 @@ interface OverlayEditorProps {
   onCodeChange: (code: string) => void;
 }
 
+function indexToRowCol(code: string, index: number) {
+  const lines = code.split('\n');
+  let remaining = index;
+
+  for (let row = 0; row < lines.length; row++) {
+    const lineLength = lines[row].length + 1; // +1 for '\n'
+    if (remaining < lineLength) {
+      return { row, col: remaining };
+    }
+    remaining -= lineLength;
+  }
+
+  const lastRow = Math.max(0, lines.length - 1);
+  return { row: lastRow, col: lines[lastRow]?.length ?? 0 };
+}
+
 export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
   code,
   onCodeChange,
@@ -26,9 +42,10 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
   const gutterRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
 
+  const [cursor, setCursor] = useState({ index: 0, row: 0, col: 0 });
+
   const fontSize = settings.editorFontSize ?? 14;
 
-  // Shared text style (MUST MATCH EXACTLY)
   const textStyle = useMemo<React.CSSProperties>(() => ({
     fontFamily: 'var(--font-code)',
     fontSize,
@@ -40,66 +57,72 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
 
   const lines = useMemo(() => code.split('\n'), [code]);
 
-  /** -------------------------------------------------------------------
-   *  Measure wrapped height using mirror (no-drift + correct gutter)
-   * ------------------------------------------------------------------*/
   const computeWrappedRows = useCallback(() => {
     const measure = measureRef.current;
     const gutter = gutterRef.current;
-    if (!measure || !gutter) return;
-
-    gutter.innerHTML = ''; // reset
+    const ta = textareaRef.current;
+    if (!measure || !gutter || !ta) return;
+    
+    measure.style.width = `${ta.clientWidth}px`;
+    gutter.innerHTML = '';
 
     for (let i = 0; i < lines.length; i++) {
       const text = lines[i] === '' ? '\u00A0' : lines[i];
-
-      // Put text into measurement mirror
       measure.textContent = text;
-
-      // Height of wrapped line in px
       const height = measure.offsetHeight;
-
-      // Each visual row = lineHeight * fontSize * 1.5
       const visualRows = Math.max(1, Math.round(height / (fontSize * 1.5)));
+      
+      const lineContainer = document.createElement('div');
+      lineContainer.style.height = `${height}px`;
+      lineContainer.className = 'flex';
 
-      // Add equal rows to gutter
-      for (let v = 0; v < visualRows; v++) {
-        const div = document.createElement('div');
-        div.className =
-          'px-2 flex items-center text-xs text-gray-500 dark:text-gray-400';
-        div.style.height = `${fontSize * 1.5}px`;
-
-        if (v === 0) div.textContent = String(i + 1);
-        else div.textContent = ''; // wrapped continuation
-
-        gutter.appendChild(div);
-      }
+      const numberEl = document.createElement('div');
+      numberEl.className = cn(
+        'w-full h-full px-2 flex items-start',
+         i === cursor.row && 'text-foreground font-semibold'
+      );
+      numberEl.textContent = String(i + 1);
+      
+      lineContainer.appendChild(numberEl);
+      gutter.appendChild(lineContainer);
     }
-  }, [lines, fontSize]);
+  }, [lines, fontSize, cursor.row]);
+  
+  const handleSelectionChange = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const index = ta.selectionStart ?? 0;
+    const { row, col } = indexToRowCol(code, index);
+    setCursor({ index, row, col });
+  }, [code]);
 
   useEffect(() => {
     const ta = textareaRef.current;
-    const measure = measureRef.current;
-    if (!ta || !measure) return;
-
+    if (!ta) return;
+    
     const observer = new ResizeObserver(() => {
-        measure.style.width = `${ta.clientWidth}px`;
         computeWrappedRows();
     });
-
     observer.observe(ta);
-    
-    // Initial sync
-    measure.style.width = `${ta.clientWidth}px`;
+
+    const handler = () => handleSelectionChange();
+    ta.addEventListener('keyup', handler);
+    ta.addEventListener('click', handler);
+    ta.addEventListener('keydown', handler);
+
+    return () => {
+        observer.disconnect();
+        ta.removeEventListener('keyup', handler);
+        ta.removeEventListener('click', handler);
+        ta.removeEventListener('keydown', handler);
+    };
+  }, [handleSelectionChange, computeWrappedRows]);
+
+  useEffect(() => {
     computeWrappedRows();
+    handleSelectionChange();
+  }, [code, computeWrappedRows, handleSelectionChange]);
 
-    return () => observer.disconnect();
-  }, [computeWrappedRows]);
-
-
-  /** -------------------------------------------------------------------
-   *  Scroll sync: textarea → overlay + gutter
-   * ------------------------------------------------------------------*/
   const syncScroll = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -107,29 +130,6 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
   }, []);
 
-  /** -------------------------------------------------------------------
-   *  Cursor highlight (optional)
-   * ------------------------------------------------------------------*/
-  const [cursorPos, setCursorPos] = useState(0);
-
-  const handleSelection = () => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    setCursorPos(ta.selectionStart);
-  };
-
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.addEventListener('click', handleSelection);
-    ta.addEventListener('keyup', handleSelection);
-    ta.addEventListener('keydown', handleSelection);
-    return () => {
-      ta.removeEventListener('click', handleSelection);
-      ta.removeEventListener('keyup', handleSelection);
-      ta.removeEventListener('keydown', handleSelection);
-    };
-  }, []);
 
   return (
     <div
@@ -139,7 +139,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="w-12 shrink-0 border-r bg-muted overflow-hidden py-2"
+        className="w-12 shrink-0 border-r bg-muted text-xs text-muted-foreground overflow-hidden py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
@@ -155,7 +155,9 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
           className="absolute inset-0 overflow-auto pointer-events-none px-3 py-2"
           style={textStyle}
         >
-          {lines.join('\n')}
+          {lines.map((line, i) => (
+             <div key={i}>{line === '' ? '\u00A0' : line}</div>
+          ))}
         </div>
 
         {/* REAL textarea */}
@@ -177,7 +179,7 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
         <div
           ref={measureRef}
           className="absolute invisible pointer-events-none"
-          style={{...textStyle, paddingLeft: '0.75rem', paddingRight: '0.75rem' }}
+          style={{ ...textStyle, padding: 0, border: 0 }}
         />
       </div>
     </div>
