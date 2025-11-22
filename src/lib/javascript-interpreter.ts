@@ -25,7 +25,10 @@ class Interpreter {
   }
 
   private logTimeline(node: any) {
-    const serializedScope = JSON.parse(JSON.stringify(this.scope, (key, value) => {
+    // Exclude 'console' which has a circular reference back to the interpreter instance
+    const { console, ...scopeToSerialize } = this.scope;
+
+    const serializedScope = JSON.parse(JSON.stringify(scopeToSerialize, (key, value) => {
         if (typeof value === 'function') return '[Function]';
         return value;
     }));
@@ -82,6 +85,12 @@ class Interpreter {
       case 'CallExpression':
         const callee = this.evaluate(node.callee);
         const args = node.arguments.map((arg: any) => this.evaluate(arg));
+        
+        if (node.callee.type === 'MemberExpression' && typeof callee === 'function') {
+            const object = this.evaluate(node.callee.object);
+            return callee.apply(object, args);
+        }
+
         if (typeof callee === 'function') {
            return callee(...args);
         }
@@ -92,7 +101,7 @@ class Interpreter {
             const funcNode = this.functionDeclarations[funcName];
             const originalScope = this.scope;
             
-            const localScope = { ...this.scope };
+            const localScope: Record<string, any> = { ...this.scope };
             funcNode.params.forEach((param: any, index: number) => {
               localScope[param.name] = args[index];
             });
@@ -144,8 +153,6 @@ class Interpreter {
         if (node.name in this.scope) {
             return this.scope[node.name];
         }
-        // Special case for member expressions like console.log
-        if(this.stack.length > 0 && node.name === 'console') return this.scope.console;
         throw new Error(`ReferenceError: ${node.name} is not defined`);
       case 'Literal':
         return node.value;
@@ -168,8 +175,12 @@ class Interpreter {
   }
 
   run() {
-    const ast = esprima.parseScript(this.codeLines.join('\n'), { loc: true });
-    this.evaluate(ast);
+    try {
+        const ast = esprima.parseScript(this.codeLines.join('\n'), { loc: true });
+        this.evaluate(ast);
+    } catch(e: any) {
+        this.logOutput([`Error: ${e.message}`]);
+    }
     return this.timeline;
   }
 }
