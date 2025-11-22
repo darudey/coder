@@ -95,7 +95,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
         }
         break;
 
-      case 'Enter':
+      case 'Enter': {
         const before = currentLines[row].slice(0, col);
         const after = currentLines[row].slice(col);
         currentLines[row] = before;
@@ -103,8 +103,9 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
         row++;
         col = 0;
         break;
+      }
 
-      case 'Backspace':
+      case 'Backspace': {
         if (col > 0) {
           currentLines[row] =
             currentLines[row].slice(0, col - 1) + currentLines[row].slice(col);
@@ -117,8 +118,9 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
           col = prevLength;
         }
         break;
+      }
 
-      default:
+      default: {
         if (key.length === 1) {
           currentLines[row] =
             currentLines[row].slice(0, col) +
@@ -127,13 +129,14 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
           col++;
         }
         break;
+      }
     }
 
     onCodeChange(currentLines.join('\n'));
     setCursor({ row, col });
   };
 
-  // ⭐ Scroll cursor into view
+  // Scroll cursor into view
   useEffect(() => {
     const container = editorRef.current;
     if (!container) return;
@@ -158,21 +161,22 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
       className="
         font-code p-4 bg-white dark:bg-gray-800 
         rounded-lg shadow-lg cursor-text 
-        h-[calc(100vh-80px)] overflow-y-auto
+        h-[calc(100vh-80px)] 
+        overflow-auto overflow-x-hidden
       "
       style={{
         fontSize: `${settings.editorFontSize}px`,
-        lineHeight: "1.5",
+        lineHeight: '1.5',
       }}
       onClick={() => hiddenTextareaRef.current?.focus()}
     >
       {lines.map((line, row) => (
-        <div key={row} className="flex">
+        <div key={row} className="flex items-start">
           <div className="text-right pr-4 text-gray-500 w-10 select-none">
             {row + 1}
           </div>
 
-          <div className="flex">
+          <div className="flex flex-wrap">
             {line.split('').map((ch, col) => (
               <GridSquare
                 key={`${row}-${col}`}
@@ -184,7 +188,6 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
               />
             ))}
 
-            {/* End of line position */}
             <GridSquare
               key={`${row}-eol`}
               char={null}
