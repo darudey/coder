@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, {
@@ -14,18 +15,20 @@ import { useSettings } from '@/hooks/use-settings';
 interface OverlayEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
+  activeLine?: number;
 }
 
 export const GridEditor: React.FC<OverlayEditorProps> = ({
   code,
   onCodeChange,
+  activeLine = 0,
 }) => {
   const { settings } = useSettings();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const gutterRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
-  const [activeLine, setActiveLine] = useState(0);
+  const [cursorLine, setCursorLine] = useState(0);
 
   const fontSize = settings.editorFontSize ?? 14;
 
@@ -58,13 +61,13 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       const div = document.createElement('div');
       div.className = cn(
         'px-2 flex items-start text-xs text-muted-foreground h-full',
-        i === activeLine && 'text-foreground font-semibold'
+        i === cursorLine && 'text-foreground font-semibold'
       );
       div.style.height = `${height}px`;
       div.textContent = String(i + 1);
       gutter.appendChild(div);
     }
-  }, [lines, fontSize, activeLine]);
+  }, [lines, fontSize, cursorLine]);
 
   const handleSelectionChange = useCallback(() => {
     const ta = textareaRef.current;
@@ -77,7 +80,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             line++;
         }
     }
-    setActiveLine(line);
+    setCursorLine(line);
 
   }, [code]);
 
@@ -140,7 +143,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           style={textStyle}
         >
             {lines.map((line, i) => (
-                <div key={i} className={cn(i === activeLine && "bg-muted/50")}>
+                <div key={i} className={cn(
+                    i === activeLine && "bg-blue-500/20",
+                    i === cursorLine && "bg-muted/50"
+                  )}>
                     {line === '' ? '\u00A0' : line}
                 </div>
             ))}
