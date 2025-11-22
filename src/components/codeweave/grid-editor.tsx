@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -21,7 +20,7 @@ const GridSquare = React.memo(function GridSquare({
   isCursor: boolean;
   row: number;
   col: number;
-  onClick: () => void;
+  onClick: (row: number, col: number) => void;
 }) {
   return (
     <div
@@ -29,7 +28,7 @@ const GridSquare = React.memo(function GridSquare({
       data-col={col}
       onClick={(e) => {
         e.stopPropagation();
-        onClick();
+        onClick(row, col);
       }}
       className={cn(
         'relative w-[1ch] h-[1.5em] flex items-center justify-center',
@@ -185,12 +184,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
     ) as HTMLElement | null;
 
     if (square) {
-      const rect = square.getBoundingClientRect();
-      const crect = container.getBoundingClientRect();
-
-      if (rect.top < crect.top + 60 || rect.bottom > crect.bottom - 60) {
-        square.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      }
+      square.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
     }
   }, [cursor]);
 
@@ -199,7 +193,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
       ref={editorRef}
       className={cn(
         'font-code p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg cursor-text',
-        'h-[calc(100vh-80px)] overflow-auto overflow-x-hidden'
+        'h-[calc(100vh-80px)] overflow-auto'
       )}
       style={{
         fontSize: `${settings.editorFontSize}px`,
@@ -213,7 +207,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
             {row + 1}
           </div>
 
-          <div className="flex flex-wrap">
+          <div className="flex">
             {line.split('').map((ch, col) => (
               <GridSquare
                 key={`${row}-${col}`}
@@ -221,7 +215,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
                 row={row}
                 col={col}
                 isCursor={cursor.row === row && cursor.col === col}
-                onClick={() => handleCharClick(row, col)}
+                onClick={handleCharClick}
               />
             ))}
 
@@ -231,7 +225,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
               row={row}
               col={line.length}
               isCursor={cursor.row === row && cursor.col === line.length}
-              onClick={() => handleCharClick(row, line.length)}
+              onClick={handleCharClick}
             />
           </div>
         </div>
