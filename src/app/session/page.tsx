@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Compiler } from '@/components/codeweave/compiler';
