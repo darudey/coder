@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, {
@@ -35,14 +34,14 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
     fontSize,
     lineHeight: 1.5,
     whiteSpace: 'pre-wrap',
-    overflowWrap: 'normal',
+    overflowWrap: 'break-word', // Use break-word for consistent wrapping
     tabSize: 2,
   }), [fontSize]);
 
   const lines = useMemo(() => code.split('\n'), [code]);
 
   /** -------------------------------------------------------------------
-   *  #1 FIX: Measure wrapped height using mirror (no-drift + correct gutter)
+   *  Measure wrapped height using mirror (no-drift + correct gutter)
    * ------------------------------------------------------------------*/
   const computeWrappedRows = useCallback(() => {
     const measure = measureRef.current;
@@ -53,17 +52,10 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
 
     for (let i = 0; i < lines.length; i++) {
       const text = lines[i] === '' ? '\u00A0' : lines[i];
-
-      // Put text into measurement mirror
       measure.textContent = text;
-
-      // Height of wrapped line in px
       const height = measure.offsetHeight;
-
-      // Each visual row = lineHeight * fontSize * 1.5
       const visualRows = Math.max(1, Math.round(height / (fontSize * 1.5)));
 
-      // Add equal rows to gutter
       for (let v = 0; v < visualRows; v++) {
         const div = document.createElement('div');
         div.className =
@@ -81,6 +73,27 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
   useEffect(() => {
     computeWrappedRows();
   }, [code, computeWrappedRows]);
+  
+  // Ensure measure div has same width as textarea for correct wrapping calculation
+  useEffect(() => {
+    const ta = textareaRef.current;
+    const measure = measureRef.current;
+    if (!ta || !measure) return;
+
+    const observer = new ResizeObserver(() => {
+        measure.style.width = `${ta.clientWidth}px`;
+        computeWrappedRows();
+    });
+
+    observer.observe(ta);
+    
+    // Initial sync
+    measure.style.width = `${ta.clientWidth}px`;
+    computeWrappedRows();
+
+    return () => observer.disconnect();
+  }, [computeWrappedRows]);
+
 
   /** -------------------------------------------------------------------
    *  Scroll sync: textarea → overlay + gutter
@@ -161,8 +174,8 @@ export const OverlayCodeEditor: React.FC<OverlayEditorProps> = ({
         {/* Hidden measuring mirror */}
         <div
           ref={measureRef}
-          className="absolute invisible pointer-events-none w-[calc(100%-3rem)] px-3 py-2"
-          style={textStyle}
+          className="absolute invisible pointer-events-none"
+          style={{...textStyle, paddingLeft: '0.75rem', paddingRight: '0.75rem' }}
         />
       </div>
     </div>
