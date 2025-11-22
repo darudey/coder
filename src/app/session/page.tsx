@@ -1,56 +1,39 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Compiler } from '@/components/codeweave/compiler';
 import { GridEditor } from '@/components/codeweave/grid-editor';
 import { FloatingDebugger } from '@/components/codeweave/floating-debugger';
-
-// Example timeline (replace with your interpreter output)
-const exampleTimeline = [
-  {
-    step: 0,
-    line: 0,
-    variables: { a: 1, b: 2 },
-    heap: { arr: [1, 2] },
-    stack: ["main"],
-    output: []
-  },
-  {
-    step: 1,
-    line: 1,
-    variables: { a: 1, b: 3 },
-    heap: { arr: [1, 2, 3] },
-    stack: ["main"],
-    output: []
-  },
-  {
-    step: 2,
-    line: 2,
-    variables: { a: 5, b: 3 },
-    heap: { arr: [1, 2, 3, 5] },
-    stack: ["main"],
-    output: ["print: 5"]
-  },
-  {
-    step: 3,
-    line: 3,
-    variables: { a: 5, b: 3 },
-    heap: { arr: [1, 2, 3, 5] },
-    stack: ["main"],
-    output: ["print: 5", "3"]
-  }
-];
+import { generateTimeline } from '@/lib/javascript-interpreter';
 
 
 export default function SessionPage() {
   const [showDebugger, setShowDebugger] = useState(false);
+  const [code, setCode] = useState(`function factorial(n) {
+  if (n === 0) {
+    return 1;
+  }
+  return n * factorial(n - 1);
+}
+
+const result = factorial(3);
+console.log(result);`);
   const [activeLine, setActiveLine] = useState(0);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const timeline = exampleTimeline;
+  const timeline = useMemo(() => {
+    try {
+      return generateTimeline(code);
+    } catch (e) {
+      console.error(e);
+      // Return a minimal timeline to prevent crashing
+      return [{ step: 0, line: 0, variables: {}, heap: {}, stack: [], output: [`Error: ${e}`] }];
+    }
+  }, [code]);
+
   const currentState = timeline[currentStep];
 
   // STEP CONTROL
@@ -94,10 +77,18 @@ export default function SessionPage() {
       setActiveLine(currentState.line);
     }
   }, [currentState]);
+  
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode);
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
 
   return (
     <div className="bg-background min-h-screen">
       <Compiler 
+        initialCode={code}
+        onCodeChange={handleCodeChange}
         EditorComponent={GridEditor} 
         onToggleDebugger={() => setShowDebugger(s => !s)}
         activeLine={activeLine}
