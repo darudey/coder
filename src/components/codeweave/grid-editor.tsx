@@ -15,6 +15,38 @@ interface GridEditorProps {
   onRun?: () => void;
 }
 
+// A memoized component for a single square to optimize rendering and stabilize event handlers.
+const GridSquare = React.memo(function GridSquare({
+    char,
+    isCursor,
+    isEndOfLine,
+    onClick,
+}: {
+    char: string | null;
+    isCursor: boolean;
+    isEndOfLine: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <div
+            onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+            }}
+            className={cn(
+                "relative w-[1ch] h-[1.5em] flex items-center justify-center",
+                isCursor ? "bg-blue-200 dark:bg-blue-800" : "hover:bg-gray-200 dark:hover:bg-gray-700"
+            )}
+        >
+            {char === ' ' ? '\u00A0' : char}
+            {isCursor && (
+                <div className="absolute left-0 top-0 h-full w-0.5 bg-blue-500 animate-pulse" />
+            )}
+        </div>
+    );
+});
+
+
 const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) => {
     const { settings } = useSettings();
     const editorRef = useRef<HTMLDivElement>(null);
@@ -27,10 +59,10 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
         hiddenTextareaRef.current?.focus();
     };
 
-    const handleCharClick = (row: number, col: number) => {
+    const handleCharClick = useCallback((row: number, col: number) => {
         setCursor({ row, col });
         hiddenTextareaRef.current?.focus();
-    }
+    }, []);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         e.preventDefault();
@@ -108,7 +140,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
     };
 
     useEffect(() => {
-        // Ensure cursor is within bounds after code change, allowing cursor at end of line
+        // Ensure cursor is within bounds after code change
         const currentLines = code.split('\n');
         let newRow = Math.min(cursor.row, currentLines.length - 1);
         if (newRow < 0) newRow = 0;
@@ -140,37 +172,21 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
                     </div>
                     <div className="flex">
                         {line.split('').map((char, colIndex) => (
-                            <div 
+                           <GridSquare
                                 key={colIndex}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCharClick(rowIndex, colIndex);
-                                }}
-                                className={cn(
-                                    "relative w-[1ch] h-[1.5em] flex items-center justify-center border border-transparent",
-                                    rowIndex === cursor.row && colIndex === cursor.col && "bg-blue-200 dark:bg-blue-800"
-                                )}
-                            >
-                                {char === ' ' ? '\u00A0' : char}
-                                {rowIndex === cursor.row && colIndex === cursor.col && (
-                                    <div className="absolute left-0 top-0 h-full w-0.5 bg-blue-500 animate-pulse" />
-                                )}
-                            </div>
+                                char={char}
+                                isCursor={rowIndex === cursor.row && colIndex === cursor.col}
+                                isEndOfLine={false}
+                                onClick={() => handleCharClick(rowIndex, colIndex)}
+                           />
                         ))}
-                         <div // Placeholder for cursor at end of line
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleCharClick(rowIndex, line.length);
-                            }}
-                            className={cn(
-                                "relative w-[1ch] h-[1.5em] flex items-center justify-center border border-transparent",
-                                rowIndex === cursor.row && line.length === cursor.col && "bg-blue-200 dark:bg-blue-800"
-                            )}
-                        >
-                             {rowIndex === cursor.row && line.length === cursor.col && (
-                                <div className="absolute left-0 top-0 h-full w-0.5 bg-blue-500 animate-pulse" />
-                            )}
-                        </div>
+                         <GridSquare
+                            key={line.length}
+                            char={null}
+                            isCursor={rowIndex === cursor.row && line.length === cursor.col}
+                            isEndOfLine={true}
+                            onClick={() => handleCharClick(rowIndex, line.length)}
+                         />
                     </div>
                 </div>
             ))}
