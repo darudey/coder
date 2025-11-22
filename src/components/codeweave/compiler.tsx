@@ -14,7 +14,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
-import { Copy, Grab, X, GripHorizontal, Play } from 'lucide-react';
+import { Copy, Grab, X, GripHorizontal, Play, Zap } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
@@ -41,6 +41,8 @@ interface CompilerProps {
   hideHeader?: boolean;
   onCodeChange?: (code: string) => void;
   EditorComponent?: React.FC<any>;
+  onToggleDebugger?: () => void;
+  activeLine?: number;
 }
 
 export interface CompilerRef {
@@ -80,7 +82,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange, EditorComponent = CodeEditor }, ref) => {
+const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange, EditorComponent = CodeEditor, onToggleDebugger, activeLine }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
@@ -492,6 +494,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
             activeFile={activeFile} 
             hasActiveFile={!!activeFile}
             variant={variant}
+            onToggleDebugger={onToggleDebugger}
           />
         )}
         {variant === 'default' && (
@@ -515,6 +518,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
                 onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
                 hasActiveFile={!!activeFile}
                 onRun={handleRun}
+                activeLine={activeLine}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">

@@ -40,6 +40,7 @@ interface HeaderProps {
   variant?: 'default' | 'minimal' | 'page';
   children?: React.ReactNode;
   actions?: React.ReactNode;
+  onToggleDebugger?: () => void;
 }
 
 const NavItems = () => {
@@ -164,7 +165,8 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   hasActiveFile,
   variant = 'default',
   children,
-  actions
+  actions,
+  onToggleDebugger,
 }) => {
   const { settings, setSettings, toggleTheme } = useSettings();
 
@@ -255,6 +257,12 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
         <div className={cn("flex items-center justify-between py-2 px-2 gap-2")}>
           <RunButton />
            <div className="flex items-center gap-1">
+              {onToggleDebugger && (
+                <Button variant="outline" size="icon" onClick={onToggleDebugger} className="h-8 w-8">
+                    <Zap className="w-4 h-4" />
+                    <span className="sr-only">Debug</span>
+                </Button>
+              )}
               <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
@@ -302,6 +310,12 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           <RunButton />
           <div className="flex items-center gap-1">
+              {onToggleDebugger && (
+                <Button variant="outline" size="icon" onClick={onToggleDebugger} className="h-8 w-8">
+                    <Zap className="w-4 h-4" />
+                    <span className="sr-only">Debug</span>
+                </Button>
+              )}
               <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
