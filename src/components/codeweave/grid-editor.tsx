@@ -139,20 +139,6 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
         setCursor({ row, col });
     };
 
-    useEffect(() => {
-        // Ensure cursor is within bounds after code change
-        const currentLines = code.split('\n');
-        let newRow = Math.min(cursor.row, currentLines.length - 1);
-        if (newRow < 0) newRow = 0;
-        
-        let newCol = Math.min(cursor.col, currentLines[newRow].length);
-        if (newCol < 0) newCol = 0;
-        
-        if (newRow !== cursor.row || newCol !== cursor.col) {
-            setCursor({ row: newRow, col: newCol });
-        }
-    }, [code, cursor]);
-
     // Ensure textarea is focused on mount
     useEffect(() => {
         hiddenTextareaRef.current?.focus();
@@ -173,7 +159,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
                     <div className="flex">
                         {line.split('').map((char, colIndex) => (
                            <GridSquare
-                                key={colIndex}
+                                key={`${rowIndex}-${colIndex}`}
                                 char={char}
                                 isCursor={rowIndex === cursor.row && colIndex === cursor.col}
                                 isEndOfLine={false}
@@ -181,7 +167,7 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
                            />
                         ))}
                          <GridSquare
-                            key={line.length}
+                            key={`${rowIndex}-${line.length}`}
                             char={null}
                             isCursor={rowIndex === cursor.row && line.length === cursor.col}
                             isEndOfLine={true}
@@ -196,13 +182,10 @@ const MemoizedGridEditor: React.FC<GridEditorProps> = ({ code, onCodeChange }) =
                 className="absolute opacity-0 w-0 h-0"
                 value={code} // Keep textarea value in sync for accessibility
                 onChange={() => {}} // onChange is handled by onKeyDown
-                onFocus={() => {
-                    // Ensure cursor state is valid on focus
-                    const currentLines = code.split('\n');
-                    const newRow = Math.min(cursor.row, currentLines.length - 1);
-                    const newCol = Math.min(cursor.col, currentLines[newRow].length);
-                    setCursor({ row: newRow, col: newCol });
-                }}
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="off"
+                spellCheck="false"
             />
         </div>
     );
