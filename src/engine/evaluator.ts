@@ -1,3 +1,4 @@
+
 // src/engine/evaluator.ts
 
 import type { LexicalEnvironment } from "./environment";
@@ -135,8 +136,8 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
       return evalIf(node, ctx);
     case "BlockStatement": {
       const newEnv = ctx.env.extend("Block");
-      const innerCtx = { ...ctx, env: newEnv };
       ctx.logger.setCurrentEnv(newEnv);
+      const innerCtx = { ...ctx, env: newEnv };
       const result = evaluateBlockBody(node.body, innerCtx);
       ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
       return result;
@@ -379,7 +380,7 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
   // The actual implementation of the function when it's called
   const functionImplementation = function(thisArg: any, args: any[]) {
       const funcName = node.id?.name || (node.parent?.id?.name) || "Function";
-      const fnEnv = new LexEnv(funcName, new EnvironmentRecord(), this.__env);
+      const fnEnv = new LexEnv(funcName, 'function', new EnvironmentRecord(), this.__env);
 
       let callThisValue = thisArg;
       if (node.type === "ArrowFunctionExpression") {

@@ -1,3 +1,4 @@
+
 // src/engine/interpreter.ts
 
 import * as esprima from "esprima-next";
@@ -14,7 +15,7 @@ export class Interpreter {
 
   constructor(private code: string) {
     this.globalEnv = LexicalEnvironment.newGlobal();
-    const scriptEnv = this.globalEnv.extend("Script");
+    const scriptEnv = this.globalEnv.extend("Script", "script");
     this.currentEnv = scriptEnv;
 
     this.logger = new TimelineLogger(

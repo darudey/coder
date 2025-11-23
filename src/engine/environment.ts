@@ -1,3 +1,4 @@
+
 // src/engine/environment.ts
 
 export type BindingKind = "var" | "let" | "const" | "function" | "class";
@@ -64,19 +65,22 @@ export class EnvironmentRecord {
   }
 }
 
+export type EnvironmentType = 'global' | 'script' | 'function' | 'block';
+
 export class LexicalEnvironment {
   constructor(
     public name: string,
+    public kind: EnvironmentType,
     public record: EnvironmentRecord,
     public outer: LexicalEnvironment | null
   ) {}
 
   static newGlobal(): LexicalEnvironment {
-    return new LexicalEnvironment("Global", new EnvironmentRecord(), null);
+    return new LexicalEnvironment("Global", 'global', new EnvironmentRecord(), null);
   }
 
-  extend(name: string): LexicalEnvironment {
-    return new LexicalEnvironment(name, new EnvironmentRecord(), this);
+  extend(name: string, kind: EnvironmentType = 'block'): LexicalEnvironment {
+    return new LexicalEnvironment(name, kind, new EnvironmentRecord(), this);
   }
 
   hasBinding(name: string): boolean {
@@ -118,8 +122,13 @@ export class LexicalEnvironment {
     let i = 0;
     while (env) {
       const snapshot = env.record.snapshot();
-      if (Object.keys(snapshot).length > 0) {
-        let name = env.name;
+      let name = env.name;
+      
+      const isBlock = name.toLowerCase().includes('block') || name.toLowerCase().includes('loop');
+      if (isBlock && result['Block']) {
+        // Don't overwrite existing block, just merge
+        result['Block'] = { ...snapshot, ...result['Block'] };
+      } else if (name && Object.keys(snapshot).length > 0) {
         // Avoid duplicate names like "Block", "Block", "Block"
         if(result[name]) {
             name = `${name} ${i}`;
