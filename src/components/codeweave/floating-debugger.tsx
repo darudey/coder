@@ -17,7 +17,8 @@ const DraggablePanel: React.FC<{
     onClose: () => void;
     initialPosition: { top: number, left: number };
     initialSize: { width: number, height: number };
-}> = ({ title, children, onClose, initialPosition, initialSize }) => {
+    headerControls?: React.ReactNode;
+}> = ({ title, children, onClose, initialPosition, initialSize, headerControls }) => {
     const [position, setPosition] = useState(initialPosition);
     const [isDragging, setIsDragging] = useState(false);
     const dragStartPos = useRef({ x: 0, y: 0 });
@@ -143,17 +144,22 @@ const DraggablePanel: React.FC<{
                 onTouchStart={(e) => handleResizeTouchStart(e, 'width-left')}
             />
             <CardHeader 
-                className="flex flex-row items-center justify-between p-2 border-b cursor-grab"
-                onMouseDown={handleMouseDown}
-                onTouchStart={handleTouchStart}
+                className="flex flex-row items-center justify-between p-2 border-b"
             >
-                <div className="flex items-center gap-2">
+                <div 
+                  className="flex items-center gap-2 cursor-grab"
+                  onMouseDown={handleMouseDown}
+                  onTouchStart={handleTouchStart}
+                >
                     <Grab className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-semibold text-sm">{title}</span>
                 </div>
-                <span className="font-semibold text-sm">{title}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-                    <X className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                    {headerControls}
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+                        <X className="w-4 h-4" />
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="p-0 flex-grow overflow-hidden">
                 <ScrollArea className="h-full">
@@ -316,6 +322,28 @@ export const FloatingDebugger = ({
 
   if (!state) return null;
 
+  const headerControls = (
+      <>
+        <div className="flex gap-1">
+            <Button size="icon" className="h-7 w-7" variant="ghost" onClick={prevStep}><SkipBack className="w-4 h-4" /></Button>
+            <Button size="icon" className="h-7 w-7" variant="ghost" onClick={nextStep}><SkipForward className="w-4 h-4" /></Button>
+            {!isPlaying ? (
+                <Button size="icon" className="h-7 w-7" variant="ghost" onClick={play}>
+                    <Play className="w-4 h-4" />
+                </Button>
+            ) : (
+                <Button size="icon" className="h-7 w-7" variant="ghost" onClick={pause}>
+                    <Pause className="w-4 h-4" />
+                </Button>
+            )}
+            <Button size="icon" className="h-7 w-7" variant="ghost" onClick={reset}><RefreshCw className="w-4 h-4" /></Button>
+        </div>
+        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowExecutionFlow(s => !s)}>
+            <Activity className="w-4 h-4"/>
+        </Button>
+      </>
+  );
+
   return (
     <>
         <DraggablePanel
@@ -323,34 +351,13 @@ export const FloatingDebugger = ({
             onClose={onClose}
             initialPosition={{ top: 80, left: window.innerWidth - 400 }}
             initialSize={{ width: 350, height: 500 }}
+            headerControls={headerControls}
         >
             <div className="p-2 space-y-3">
-                <div className="flex gap-1">
-                    <Button size="icon" className="h-7 w-7" variant="outline" onClick={prevStep}><SkipBack className="w-4 h-4" /></Button>
-                    <Button size="icon" className="h-7 w-7" variant="outline" onClick={nextStep}><SkipForward className="w-4 h-4" /></Button>
-                        {!isPlaying ? (
-                        <Button size="icon" className="h-7 w-7" variant="outline" onClick={play}>
-                            <Play className="w-4 h-4" />
-                        </Button>
-                    ) : (
-                        <Button size="icon" className="h-7 w-7" variant="outline" onClick={pause}>
-                            <Pause className="w-4 h-4" />
-                        </Button>
-                    )}
-                    <Button size="icon" className="h-7 w-7" variant="outline" onClick={reset}><RefreshCw className="w-4 h-4" /></Button>
-                </div>
-                
-                <Button size="sm" variant="secondary" className="w-full h-7 text-xs" onClick={() => setShowExecutionFlow(s => !s)}>
-                    <Activity className="w-3 h-3 mr-2"/>
-                    Execution Flow
-                </Button>
-               
                 <div className="text-xs font-mono"><b>Step:</b> {state.step} | <b>Line:</b> {state.line + 1}</div>
-                
                 <ExpressionPanel evals={state.expressionEval} />
                 <ScopePanel scopes={state.variables} />
                 <CallStackPanel stack={state.stack} />
-
                 <details className="pt-4">
                     <summary className="text-xs cursor-pointer text-muted-foreground">Raw State</summary>
                     <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
