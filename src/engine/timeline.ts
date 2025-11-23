@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -8,6 +9,10 @@ export interface TimelineEntry {
   heap: Record<string, any>;
   stack: string[];
   output: string[];
+}
+
+function isUserFunction(value: any) {
+    return value && typeof value === "object" && value.__isFunctionObject === true;
 }
 
 export class TimelineLogger {
@@ -23,11 +28,17 @@ export class TimelineLogger {
 
     const serializedVars = JSON.parse(
       JSON.stringify(rawVars, (key, value) => {
-        if (typeof value === "function") return "[Function]";
-        // Later, we can add more complex serialization for our custom FunctionValue if needed
-        if (typeof value === 'object' && value !== null && value.__isFunctionValue) {
-          return "[Function]";
+        // Hide user-defined functions
+        if (isUserFunction(value)) return '[Function]';
+
+        // Hide real functions (console.log etc.)
+        if (typeof value === 'function') return '[NativeFunction]';
+
+        // Prevent circular structures and internal properties
+        if (key === '__env' || key === '__body' || key === '__params' || key === '__proto__' || key === 'outer' || key === 'record') {
+            return undefined;
         }
+
         return value;
       })
     );

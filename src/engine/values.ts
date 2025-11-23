@@ -1,3 +1,4 @@
+
 // src/engine/values.ts
 
 import type { LexicalEnvironment } from "./environment";
@@ -8,6 +9,7 @@ export interface JSObject {
 }
 
 export interface FunctionValue extends JSObject {
+  __isFunctionObject?: boolean;
   __env: LexicalEnvironment;
   __params: any[];
   __body: any; // AST node (FunctionBody / BlockStatement)
@@ -27,6 +29,7 @@ export function createFunction(
   impl?: (thisArg: any, args: any[]) => any
 ): FunctionValue {
   const fn: FunctionValue = {
+    __isFunctionObject: true,
     __env: env,
     __params: params,
     __body: body,
