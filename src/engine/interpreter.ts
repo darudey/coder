@@ -19,7 +19,8 @@ export class Interpreter {
 
     this.logger = new TimelineLogger(
       () => this.currentEnv,
-      () => this.stack
+      () => this.stack,
+      this.code
     );
 
     this.setupGlobalBindings();
@@ -43,7 +44,8 @@ export class Interpreter {
   run(): TimelineEntry[] {
     try {
       const ast = esprima.parseScript(this.code, {
-        loc: true
+        loc: true,
+        range: true,
       });
 
       evaluateProgram(ast as any, {

@@ -18,6 +18,7 @@ export interface EvalContext {
   thisValue: any;
   logger: TimelineLogger;
   stack: string[];
+  safe?: boolean;
 }
 
 // A special object to signal a return statement has been executed.
@@ -104,6 +105,13 @@ function logIfRealStatement(node: any, ctx: EvalContext) {
       ctx.logger.log(node.loc.start.line - 1);
     }
   }
+
+function safeEvaluate(node: any, ctx: EvalContext) {
+    return evaluateExpression(node, {
+      ...ctx,
+      safe: true,
+    });
+}
   
 
 /**
@@ -168,7 +176,8 @@ function evalVariableDeclaration(node: any, ctx: EvalContext) {
 }
 
 function evalIf(node: any, ctx: EvalContext) {
-  const test = evaluateExpression(node.test, ctx);
+  const test = safeEvaluate(node.test, ctx);
+  ctx.logger.addExpressionEval(node.test, test);
   if (test) {
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
@@ -192,7 +201,9 @@ function evalFor(node: any, ctx: EvalContext) {
   let result: any;
   while (true) {
     if (node.test) {
-      const test = evaluateExpression(node.test, loopCtx);
+      logIfRealStatement(node.test, loopCtx);
+      const test = safeEvaluate(node.test, loopCtx);
+      ctx.logger.addExpressionEval(node.test, test);
       if (!test) break;
     }
 
@@ -218,7 +229,9 @@ function evalWhile(node: any, ctx: EvalContext) {
   
   let result: any;
   while (true) {
-    const test = evaluateExpression(node.test, loopCtx);
+    logIfRealStatement(node.test, loopCtx);
+    const test = safeEvaluate(node.test, loopCtx);
+    ctx.logger.addExpressionEval(node.test, test);
     if (!test) break;
     const res = evaluateStatement(node.body, loopCtx);
     if (isReturnSignal(res)) {
@@ -247,6 +260,12 @@ function evalClassDeclaration(node: any, ctx: EvalContext) {
  */
 function evaluateExpression(node: any, ctx: EvalContext): any {
   if (!node) return;
+
+  if (ctx.safe) {
+    if (node.type === "AssignmentExpression") return undefined;
+    if (node.type === "UpdateExpression") return ctx.env.get(node.argument.name);
+    if (node.type === "CallExpression") return "[Side Effect]";
+  }
 
   switch (node.type) {
     case "Identifier":
@@ -397,7 +416,11 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
       
       innerCtx.stack.pop();
       logger.setCurrentEnv(this.__env); // Restore outer env
-      return result;
+      
+      if (isReturnSignal(result)) {
+        return result.value;
+      }
+      return (this.__body.type !== 'BlockStatement') ? result : undefined;
   };
 
   const fn = createFunction(env, params, body, functionImplementation);
@@ -440,7 +463,7 @@ function evalCallExpression(node: any, ctx: EvalContext): any {
     }
     // If the body was an expression, the result is its value.
     // If the body was a block, and no return was hit, the result is undefined.
-    return (fn.__body.type !== 'BlockStatement') ? result : undefined;
+    return result;
   }
 
   throw new Error("Call of non-function value");
@@ -500,12 +523,13 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
     
     const funcName = node.id?.name || "<constructor>";
     ctx.stack.push(funcName);
+    const logger = fn.__ctx.logger;
     logger.setCurrentEnv(fn.__env);
 
     const result = fn.call(instance, args);
 
     ctx.stack.pop();
-    ctx.logger.setCurrentEnv(ctx.env);
+    logger.setCurrentEnv(ctx.env);
     
     if (isReturnSignal(result)) {
         if(typeof result.value === 'object' && result.value !== null) {

@@ -1,4 +1,3 @@
-
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -9,6 +8,7 @@ export interface TimelineEntry {
   heap: Record<string, any>;
   stack: string[];
   output: string[];
+  expressionEval?: Record<string, any>;
 }
 
 function isUserFunction(value: any) {
@@ -20,7 +20,7 @@ export class TimelineLogger {
   private step = 0;
   private output: string[] = [];
 
-  constructor(private getEnvSnapshot: () => LexicalEnvironment, private getStack: () => string[]) {}
+  constructor(private getEnvSnapshot: () => LexicalEnvironment, private getStack: () => string[], private code: string) {}
   
   setCurrentEnv(env: LexicalEnvironment) {
     this.getEnvSnapshot = () => env;
@@ -57,6 +57,16 @@ export class TimelineLogger {
     };
 
     this.entries.push(entry);
+  }
+
+  addExpressionEval(expr: any, value: any) {
+    const last = this.entries[this.entries.length - 1];
+    if (!last || !expr.loc) return;
+  
+    const exprString = this.code.substring(expr.range[0], expr.range[1]);
+  
+    if (!last.expressionEval) last.expressionEval = {};
+    last.expressionEval[exprString] = value;
   }
 
   logOutput(...args: any[]) {
