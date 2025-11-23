@@ -85,13 +85,26 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 }
 
 /**
- * Logs the current execution state to the timeline.
+ * Logs the current execution state to the timeline if the node is a meaningful statement.
  */
-function logNode(node: any, ctx: EvalContext) {
-  if (node && node.loc) {
-    ctx.logger.log(node.loc.start.line - 1);
+function logIfRealStatement(node: any, ctx: EvalContext) {
+    const validStatements = new Set([
+      "VariableDeclaration",
+      "ExpressionStatement",
+      "IfStatement",
+      "ForStatement",
+      "WhileStatement",
+      "ReturnStatement",
+      "BlockStatement",
+      "FunctionDeclaration",
+      "ClassDeclaration"
+    ]);
+  
+    if (node && node.loc && validStatements.has(node.type)) {
+      ctx.logger.log(node.loc.start.line - 1);
+    }
   }
-}
+  
 
 /**
  * Evaluates a single statement node from the AST.
@@ -99,7 +112,7 @@ function logNode(node: any, ctx: EvalContext) {
 function evaluateStatement(node: any, ctx: EvalContext): any {
   if (!node) return;
 
-  logNode(node, ctx);
+  logIfRealStatement(node, ctx);
 
   switch (node.type) {
     case "VariableDeclaration":
@@ -213,8 +226,6 @@ function evalClassDeclaration(node: any, ctx: EvalContext) {
  */
 function evaluateExpression(node: any, ctx: EvalContext): any {
   if (!node) return;
-
-  logNode(node, ctx);
 
   switch (node.type) {
     case "Identifier":
