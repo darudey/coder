@@ -135,7 +135,7 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
     case "IfStatement":
       return evalIf(node, ctx);
     case "BlockStatement": {
-      const newEnv = ctx.env.extend("Block");
+      const newEnv = ctx.env.extend("block");
       ctx.logger.setCurrentEnv(newEnv);
       const innerCtx = { ...ctx, env: newEnv };
       const result = evaluateBlockBody(node.body, innerCtx);
@@ -187,7 +187,7 @@ function evalIf(node: any, ctx: EvalContext) {
 }
 
 function evalFor(node: any, ctx: EvalContext) {
-  const loopEnv = ctx.env.extend("For Loop");
+  const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
   ctx.logger.setCurrentEnv(loopEnv);
 
@@ -224,9 +224,9 @@ function evalFor(node: any, ctx: EvalContext) {
 }
 
 function evalWhile(node: any, ctx: EvalContext) {
-  const loopEnv = ctx.env.extend("While Loop");
+  const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
-  ctx.logger.setCurrentEnv(loopEnv);
+  ctx.logger.setCurrentEnv(loopCtx);
   
   let result: any;
   while (true) {
@@ -542,3 +542,5 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
 
   return baseCtor;
 }
+
+    
