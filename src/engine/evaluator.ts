@@ -127,6 +127,11 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
     case "VariableDeclaration":
       return evalVariableDeclaration(node, ctx);
     case "ExpressionStatement":
+      // simple human message: "we are evaluating this whole expression"
+      if (node.expression.range) {
+        // we can't access source here, but expressionEval + line number will carry enough info
+        ctx.logger.addFlow("Evaluating expression statement");
+      }
       return evaluateExpression(node.expression, ctx);
     case "ReturnStatement": {
       const val = node.argument ? evaluateExpression(node.argument, ctx) : undefined;
@@ -193,13 +198,8 @@ function evalIf(node: any, ctx: EvalContext) {
   const test = safeEvaluate(node.test, ctx);
   ctx.logger.addExpressionEval(node.test, test);
   ctx.logger.addExpressionContext(node.test, "If Condition");
-  ctx.logger.addFlow(
-    test
-      ? "If condition TRUE → executing THEN branch"
-      : (node.alternate
-         ? "If condition FALSE → executing ELSE branch"
-         : "If condition FALSE → skipping block")
-  );
+  ctx.logger.addFlow("IF CHECK:");
+  ctx.logger.addFlow(`Result: ${test ? "TRUE → taking THEN branch" : "FALSE → taking ELSE / skipping"}`);
 
   if (test) {
     return evaluateStatement(node.consequent, ctx);
@@ -211,9 +211,11 @@ function evalIf(node: any, ctx: EvalContext) {
 function evalFor(node: any, ctx: EvalContext) {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+  ctx.logger.setCurrentEnv(loopEnv);
 
+  // INIT
   if (node.init) {
-    ctx.logger.setCurrentEnv(loopEnv);
+    ctx.logger.addFlow("FOR LOOP INIT:");
     if (node.init.type === "VariableDeclaration") {
       evalVariableDeclaration(node.init, loopCtx);
     } else {
@@ -221,19 +223,23 @@ function evalFor(node: any, ctx: EvalContext) {
     }
   }
 
+  let iteration = 0;
   let result: any;
+
   while (true) {
-    ctx.logger.setCurrentEnv(loopEnv); // Set env for each iteration
+    iteration++;
+    ctx.logger.setCurrentEnv(loopEnv);
+
+    // TEST
     if (node.test) {
       logIfRealStatement(node.test, loopCtx);
       const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
-      ctx.logger.addFlow(
-        test
-          ? "For condition true → executing loop body"
-          : "For condition false → exiting loop"
-      );
+
+      ctx.logger.addFlow(`FOR LOOP CHECK (iteration #${iteration})`);
+      ctx.logger.addFlow(`Result: ${test ? "TRUE → enter loop body" : "FALSE → exit loop"}`);
+
       if (!test) break;
     }
 
@@ -243,44 +249,49 @@ function evalFor(node: any, ctx: EvalContext) {
       break;
     }
 
+    // UPDATE
     if (node.update) {
-      const argName = node.update.argument.name;
-      const before = loopCtx.env.get(argName);
+      ctx.logger.addFlow("FOR LOOP UPDATE:");
       evaluateExpression(node.update, loopCtx);
-      const after = loopCtx.env.get(argName);
-      ctx.logger.addExpressionContext(node.update, "For Loop Update");
-      ctx.logger.addFlow(`For update: ${argName} changed from ${before} to ${after}`);
     }
   }
 
-  ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
+  ctx.logger.setCurrentEnv(ctx.env);
   return result;
 }
 
 function evalWhile(node: any, ctx: EvalContext) {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
-  
+
   let result: any;
+  let iteration = 0;
+
   while (true) {
-    ctx.logger.setCurrentEnv(loopEnv); // Set env for each iteration
+    iteration++;
+    ctx.logger.setCurrentEnv(loopEnv);
+
+    // log condition as a real statement
     logIfRealStatement(node.test, loopCtx);
     const test = safeEvaluate(node.test, loopCtx);
+
     ctx.logger.addExpressionEval(node.test, test);
     ctx.logger.addExpressionContext(node.test, "While Loop Condition");
-    ctx.logger.addFlow(
-      test
-        ? "While condition is true → executing loop body"
-        : "While condition is false → breaking loop"
-    );
+
+    ctx.logger.addFlow("WHILE LOOP CHECK:");
+    ctx.logger.addFlow(`Iteration #${iteration}`);
+    ctx.logger.addFlow(`Result: ${test ? "TRUE → continue loop" : "FALSE → exit loop"}`);
+
     if (!test) break;
+
     const res = evaluateStatement(node.body, loopCtx);
     if (isReturnSignal(res)) {
       result = res;
       break;
-    };
+    }
   }
-  ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
+
+  ctx.logger.setCurrentEnv(ctx.env);
   return result;
 }
 
