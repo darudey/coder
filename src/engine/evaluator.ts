@@ -392,6 +392,7 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
           result = evaluateExpression(this.__body, innerCtx);
       } else {
           // A regular function with a block body
+          hoistProgram(this.__body, fnEnv);
           result = evaluateBlockBody(this.__body.body, innerCtx);
       }
       
