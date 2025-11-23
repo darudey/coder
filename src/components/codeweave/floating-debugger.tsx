@@ -6,35 +6,191 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardContent } from "../ui/card";
-import { Grab, X, GripHorizontal, Play, SkipBack, SkipForward, Pause, RefreshCw } from "lucide-react";
+import { Grab, X, GripHorizontal, Play, SkipBack, SkipForward, Pause, RefreshCw, Activity, Bot } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
-import { DotLoader } from "./dot-loader";
+import type { TimelineEntry } from "@/engine/timeline";
 
-const NextStepPanel = ({ message }: { message?: string }) => {
-    if (!message) return null;
+
+const DraggablePanel: React.FC<{
+    title: string;
+    children: React.ReactNode;
+    onClose: () => void;
+    initialPosition: { top: number, left: number };
+    initialSize: { width: number, height: number };
+}> = ({ title, children, onClose, initialPosition, initialSize }) => {
+    const [position, setPosition] = useState(initialPosition);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartPos = useRef({ x: 0, y: 0 });
+    const elementStartPos = useRef({ top: 0, left: 0 });
     
-    // Split message into explanation and code part
-    const [explanation, code] = message.split('→');
+    const [resizeMode, setResizeMode] = useState<'height' | 'width-left' | 'width-right' | null>(null);
+    const [panelSize, setPanelSize] = useState(initialSize);
+    const resizeStartPos = useRef({ x: 0, y: 0, width: 0, height: 0, left: 0 });
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
+        dragStartPos.current = { x: e.clientX, y: e.clientY };
+        elementStartPos.current = { top: position.top, left: position.left };
+    };
+
+    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
+        const touch = e.touches[0];
+        dragStartPos.current = { x: touch.clientX, y: touch.clientY };
+        elementStartPos.current = { top: position.top, left: position.left };
+    };
+
+    const handleMouseMove = useCallback((e: MouseEvent | TouchEvent) => {
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+        if (resizeMode) {
+            if (resizeMode === 'height') {
+                const deltaY = clientY - resizeStartPos.current.y;
+                const newHeight = resizeStartPos.current.height + deltaY;
+                setPanelSize(s => ({ ...s, height: Math.max(150, Math.min(newHeight, window.innerHeight - 50)) }));
+            } else if (resizeMode === 'width-left') {
+                const deltaX = clientX - resizeStartPos.current.x;
+                const newWidth = resizeStartPos.current.width - deltaX;
+                if (newWidth > 250) {
+                    setPanelSize(s => ({ ...s, width: newWidth }));
+                    setPosition(p => ({ ...p, left: resizeStartPos.current.left + deltaX }));
+                }
+            } else if (resizeMode === 'width-right') {
+                const deltaX = clientX - resizeStartPos.current.x;
+                const newWidth = resizeStartPos.current.width + deltaX;
+                setPanelSize(s => ({ ...s, width: Math.max(250, newWidth) }));
+            }
+        } else if (isDragging) {
+            const deltaX = clientX - dragStartPos.current.x;
+            const deltaY = clientY - dragStartPos.current.y;
+            setPosition({
+                top: elementStartPos.current.top + deltaY,
+                left: elementStartPos.current.left + deltaX,
+            });
+        }
+    }, [isDragging, resizeMode]);
+
+    const handleMouseUp = useCallback(() => {
+        setIsDragging(false);
+        setResizeMode(null);
+    }, []);
+    
+    const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>, mode: 'height' | 'width-left' | 'width-right') => {
+        e.preventDefault();
+        e.stopPropagation();
+        setResizeMode(mode);
+        resizeStartPos.current = { 
+            x: e.clientX, 
+            y: e.clientY, 
+            width: panelSize.width, 
+            height: panelSize.height,
+            left: position.left
+        };
+    };
+
+    const handleResizeTouchStart = (e: React.TouchEvent<HTMLDivElement>, mode: 'height' | 'width-left' | 'width-right') => {
+        e.preventDefault();
+        e.stopPropagation();
+        setResizeMode(mode);
+        const touch = e.touches[0];
+        resizeStartPos.current = { 
+            x: touch.clientX, 
+            y: touch.clientY, 
+            width: panelSize.width, 
+            height: panelSize.height,
+            left: position.left
+        };
+    };
+
+    useEffect(() => {
+        if (isDragging || resizeMode) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            document.addEventListener('touchmove', handleMouseMove);
+            document.addEventListener('touchend', handleMouseUp);
+        } else {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('touchmove', handleMouseMove);
+            document.removeEventListener('touchend', handleMouseUp);
+        }
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('touchmove', handleMouseMove);
+            document.removeEventListener('touchend', handleMouseUp);
+        };
+    }, [isDragging, resizeMode, handleMouseMove, handleMouseUp]);
+
 
     return (
-        <div className="mt-2 rounded-md border border-blue-500/40 bg-blue-500/10 p-2">
-            <div className="text-[10px] uppercase text-blue-300 tracking-wide">
-                Next Step
+        <Card 
+            className="fixed flex flex-col shadow-2xl z-50"
+            style={{ 
+              top: position.top, 
+              left: position.left, 
+              cursor: isDragging ? 'grabbing' : 'default', 
+              width: `${panelSize.width}px`,
+              height: `${panelSize.height}px` 
+            }}
+        >
+            <div
+                className="absolute left-0 top-0 h-full w-2 cursor-ew-resize"
+                onMouseDown={(e) => handleResizeMouseDown(e, 'width-left')}
+                onTouchStart={(e) => handleResizeTouchStart(e, 'width-left')}
+            />
+            <CardHeader 
+                className="flex flex-row items-center justify-between p-2 border-b cursor-grab"
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+            >
+                <div className="flex items-center gap-2">
+                    <Grab className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <span className="font-semibold text-sm">{title}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+                    <X className="w-4 h-4" />
+                </Button>
+            </CardHeader>
+            <CardContent className="p-0 flex-grow overflow-hidden">
+                <ScrollArea className="h-full">
+                    {children}
+                </ScrollArea>
+            </CardContent>
+            <div 
+                className="w-full h-2 cursor-ns-resize flex items-center justify-center bg-muted/50"
+                onMouseDown={(e) => handleResizeMouseDown(e, 'height')}
+                onTouchStart={(e) => handleResizeTouchStart(e, 'height')}
+            >
+                <GripHorizontal className="w-4 h-4 text-muted-foreground/50" />
             </div>
-            <div className="text-xs text-blue-200 mt-1">
-                {explanation}
-                {code && (
-                    <code className="mt-1 block rounded bg-black/30 p-1 font-mono text-blue-100">
-                        → {code.trim()}
-                    </code>
-                )}
+            <div
+                className="absolute right-0 top-0 h-full w-2 cursor-ew-resize"
+                onMouseDown={(e) => handleResizeMouseDown(e, 'width-right')}
+                onTouchStart={(e) => handleResizeTouchStart(e, 'width-right')}
+            />
+        </Card>
+    );
+};
+
+
+const NextStepPanel: React.FC<{ message?: string }> = ({ message }) => {
+    if (!message) return null;
+    
+    return (
+        <div className="p-3">
+            <div className="text-xs text-muted-foreground mt-1">
+                {message}
             </div>
         </div>
     );
 };
 
 
-const ExpressionPanel = ({ evals }: { evals?: Record<string, any> }) => {
+const ExpressionPanel: React.FC<{ evals?: Record<string, any> }> = ({ evals }) => {
     if (!evals || Object.keys(evals).length === 0) return null;
   
     return (
@@ -123,18 +279,15 @@ const CallStackPanel = ({ stack }: { stack?: string[] }) => {
     );
 };
 
-const FlowPanel = ({ flow }: { flow?: string[] }) => {
+const FlowPanel: React.FC<{ flow?: string[] }> = ({ flow }) => {
     if (!flow || flow.length === 0) return null;
     return (
-      <div className="bg-purple-500/10 p-2 rounded-md space-y-1">
-        <div className="text-xs font-semibold text-purple-800 dark:text-purple-300 px-2">Control Flow</div>
-        <div className="text-xs space-y-1 p-2">
-            {flow.map((message, index) => (
-                <div key={index} className="font-mono text-purple-700 dark:text-purple-400">
-                    <span className="mr-1">›</span>{message}
-                </div>
-            ))}
-        </div>
+      <div className="p-3">
+        {flow.map((message, index) => (
+            <div key={index} className="font-mono text-xs text-muted-foreground">
+                <span className="mr-1 text-purple-400">›</span>{message}
+            </div>
+        ))}
       </div>
     );
   };
@@ -150,7 +303,7 @@ export const FloatingDebugger = ({
   isPlaying,
   onClose,
 }: {
-  state: any;
+  state: TimelineEntry;
   nextStep: () => void;
   prevStep: () => void;
   play: () => void;
@@ -159,193 +312,85 @@ export const FloatingDebugger = ({
   isPlaying: boolean;
   onClose: () => void;
 }) => {
-  const [position, setPosition] = React.useState({ top: 80, left: window.innerWidth / 2 + 100 });
-  const [isDragging, setIsDragging] = React.useState(false);
-  const dragStartPos = React.useRef({ x: 0, y: 0 });
-  const elementStartPos = React.useRef({ top: 0, left: 0 });
-  
-  const [resizeMode, setResizeMode] = React.useState<'height' | 'width-left' | 'width-right' | null>(null);
-  const [panelSize, setPanelSize] = React.useState({ width: Math.max(350, window.innerWidth / 4), height: 500 });
-  const resizeStartPos = React.useRef({ x: 0, y: 0, width: 0, height: 0, left: 0 });
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-    dragStartPos.current = { x: e.clientX, y: e.clientY };
-    elementStartPos.current = { top: position.top, left: position.left };
-  };
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-    const touch = e.touches[0];
-    dragStartPos.current = { x: touch.clientX, y: touch.clientY };
-    elementStartPos.current = { top: position.top, left: position.left };
-};
-
-  const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    if (resizeMode) {
-      if (resizeMode === 'height') {
-        const deltaY = clientY - resizeStartPos.current.y;
-        const newHeight = resizeStartPos.current.height + deltaY;
-        setPanelSize(s => ({ ...s, height: Math.max(200, Math.min(newHeight, window.innerHeight - 50)) }));
-      } else if (resizeMode === 'width-left') {
-          const deltaX = clientX - resizeStartPos.current.x;
-          const newWidth = resizeStartPos.current.width - deltaX;
-          if (newWidth > 300) {
-            setPanelSize(s => ({...s, width: newWidth}));
-            setPosition(p => ({...p, left: resizeStartPos.current.left + deltaX}));
-          }
-      } else if (resizeMode === 'width-right') {
-          const deltaX = clientX - resizeStartPos.current.x;
-          const newWidth = resizeStartPos.current.width + deltaX;
-          setPanelSize(s => ({...s, width: Math.max(300, newWidth)}));
-      }
-    } else if (isDragging) {
-        const deltaX = clientX - dragStartPos.current.x;
-        const deltaY = clientY - dragStartPos.current.y;
-        setPosition({
-          top: elementStartPos.current.top + deltaY,
-          left: elementStartPos.current.left + deltaX,
-        });
-    }
-  }, [isDragging, resizeMode]);
-
-  const handleMouseUp = React.useCallback(() => {
-    setIsDragging(false);
-    setResizeMode(null);
-  }, []);
-
-  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>, mode: 'height' | 'width-left' | 'width-right') => {
-    e.preventDefault();
-    e.stopPropagation();
-    setResizeMode(mode);
-    resizeStartPos.current = { 
-      x: e.clientX, 
-      y: e.clientY, 
-      width: panelSize.width, 
-      height: panelSize.height,
-      left: position.left
-    };
-  };
-
-    const handleResizeTouchStart = (e: React.TouchEvent<HTMLDivElement>, mode: 'height' | 'width-left' | 'width-right') => {
-    e.preventDefault();
-    e.stopPropagation();
-    setResizeMode(mode);
-    const touch = e.touches[0];
-    resizeStartPos.current = { 
-      x: touch.clientX, 
-      y: touch.clientY, 
-      width: panelSize.width, 
-      height: panelSize.height,
-      left: position.left
-    };
-  };
-
-
-  React.useEffect(() => {
-    if (isDragging || resizeMode) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.addEventListener('touchmove', handleMouseMove);
-      document.addEventListener('touchend', handleMouseUp);
-    } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleMouseMove);
-      document.removeEventListener('touchend', handleMouseUp);
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleMouseMove);
-      document.removeEventListener('touchend', handleMouseUp);
-    };
-  }, [isDragging, resizeMode, handleMouseMove, handleMouseUp]);
-
+  const [showFlowPanel, setShowFlowPanel] = useState(false);
+  const [showNextStepPanel, setShowNextStepPanel] = useState(false);
 
   if (!state) return null;
 
   return (
-    <Card 
-        className="fixed flex flex-col shadow-2xl z-40"
-        style={{ 
-          top: position.top, 
-          left: position.left, 
-          cursor: isDragging ? 'grabbing' : 'default', 
-          width: `${panelSize.width}px`,
-          height: `${panelSize.height}px` 
-        }}
-    >
-        <div
-            className="absolute left-0 top-0 h-full w-2 cursor-ew-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, 'width-left')}
-            onTouchStart={(e) => handleResizeTouchStart(e, 'width-left')}
-        />
-        <CardHeader 
-            className="flex flex-row items-center justify-between p-2 border-b cursor-grab"
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
+    <>
+        <DraggablePanel
+            title="Debugger"
+            onClose={onClose}
+            initialPosition={{ top: 80, left: window.innerWidth - 400 }}
+            initialSize={{ width: 350, height: 500 }}
         >
-            <div className="flex items-center gap-2">
-                <Grab className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <span className="font-semibold text-sm">Debugger</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-                <X className="w-4 h-4" />
-            </Button>
-        </CardHeader>
-        <CardContent className="p-0 flex-grow overflow-hidden">
-            <ScrollArea className="h-full">
-                <div className="p-2 space-y-3">
-                    <div className="flex gap-1">
-                        <Button size="icon" className="h-7 w-7" variant="outline" onClick={prevStep}><SkipBack className="w-4 h-4" /></Button>
-                        <Button size="icon" className="h-7 w-7" variant="outline" onClick={nextStep}><SkipForward className="w-4 h-4" /></Button>
-                         {!isPlaying ? (
-                            <Button size="icon" className="h-7 w-7" variant="outline" onClick={play}>
-                                <Play className="w-4 h-4" />
-                            </Button>
-                        ) : (
-                            <Button size="icon" className="h-7 w-7" variant="outline" onClick={pause}>
-                                <Pause className="w-4 h-4" />
-                            </Button>
-                        )}
-                        <Button size="icon" className="h-7 w-7" variant="outline" onClick={reset}><RefreshCw className="w-4 h-4" /></Button>
-                    </div>
-
-                    <div className="text-xs font-mono"><b>Step:</b> {state.step} | <b>Line:</b> {state.line + 1}</div>
-                    
-                    <ExpressionPanel evals={state.expressionEval} />
-                    <FlowPanel flow={state.controlFlow} />
-                    <NextStepPanel message={state.nextStep} />
-                    <ScopePanel scopes={state.variables} />
-                    <CallStackPanel stack={state.stack} />
-
-                    <details className="pt-4">
-                        <summary className="text-xs cursor-pointer text-muted-foreground">Raw State</summary>
-                        <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
-                        {JSON.stringify(state, null, 2)}
-                        </pre>
-                    </details>
+            <div className="p-2 space-y-3">
+                <div className="flex gap-1">
+                    <Button size="icon" className="h-7 w-7" variant="outline" onClick={prevStep}><SkipBack className="w-4 h-4" /></Button>
+                    <Button size="icon" className="h-7 w-7" variant="outline" onClick={nextStep}><SkipForward className="w-4 h-4" /></Button>
+                        {!isPlaying ? (
+                        <Button size="icon" className="h-7 w-7" variant="outline" onClick={play}>
+                            <Play className="w-4 h-4" />
+                        </Button>
+                    ) : (
+                        <Button size="icon" className="h-7 w-7" variant="outline" onClick={pause}>
+                            <Pause className="w-4 h-4" />
+                        </Button>
+                    )}
+                    <Button size="icon" className="h-7 w-7" variant="outline" onClick={reset}><RefreshCw className="w-4 h-4" /></Button>
                 </div>
-            </ScrollArea>
-        </CardContent>
-        <div 
-            className="w-full h-2 cursor-ns-resize flex items-center justify-center bg-muted/50"
-            onMouseDown={(e) => handleResizeMouseDown(e, 'height')}
-            onTouchStart={(e) => handleResizeTouchStart(e, 'height')}
-        >
-            <GripHorizontal className="w-4 h-4 text-muted-foreground/50" />
-        </div>
-        <div
-            className="absolute right-0 top-0 h-full w-2 cursor-ew-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, 'width-right')}
-            onTouchStart={(e) => handleResizeTouchStart(e, 'width-right')}
-        />
-    </Card>
+
+                <div className="flex gap-2">
+                    <Button size="sm" variant="secondary" className="w-full h-7 text-xs" onClick={() => setShowFlowPanel(s => !s)}>
+                        <Activity className="w-3 h-3 mr-2"/>
+                        Control Flow
+                    </Button>
+                     <Button size="sm" variant="secondary" className="w-full h-7 text-xs" onClick={() => setShowNextStepPanel(s => !s)}>
+                        <Bot className="w-3 h-3 mr-2"/>
+                        Next Step AI
+                    </Button>
+                </div>
+
+
+                <div className="text-xs font-mono"><b>Step:</b> {state.step} | <b>Line:</b> {state.line + 1}</div>
+                
+                <ExpressionPanel evals={state.expressionEval} />
+                <ScopePanel scopes={state.variables} />
+                <CallStackPanel stack={state.stack} />
+
+                <details className="pt-4">
+                    <summary className="text-xs cursor-pointer text-muted-foreground">Raw State</summary>
+                    <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
+                    {JSON.stringify(state, null, 2)}
+                    </pre>
+                </details>
+            </div>
+        </DraggablePanel>
+
+        {showFlowPanel && (
+            <DraggablePanel
+                title="Control Flow"
+                onClose={() => setShowFlowPanel(false)}
+                initialPosition={{ top: 100, left: window.innerWidth - 800 }}
+                initialSize={{ width: 350, height: 250 }}
+            >
+                <FlowPanel flow={state.controlFlow} />
+            </DraggablePanel>
+        )}
+
+        {showNextStepPanel && (
+            <DraggablePanel
+                title="Next Step"
+                onClose={() => setShowNextStepPanel(false)}
+                initialPosition={{ top: 400, left: window.innerWidth - 800 }}
+                initialSize={{ width: 350, height: 200 }}
+            >
+                <NextStepPanel message={state.nextStep} />
+            </DraggablePanel>
+        )}
+    </>
   );
 };
+
+    
