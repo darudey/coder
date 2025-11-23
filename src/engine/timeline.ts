@@ -9,7 +9,11 @@ export interface TimelineEntry {
   heap: Record<string, any>;
   stack: string[];
   output: string[];
-  expressionEval?: Record<string, any>;
+  expressionEval?: Record<string, {
+    result: any;
+    breakdown: string[];
+    context?: string;
+  }>;
 }
 
 function isUserFunction(value: any) {
@@ -132,6 +136,19 @@ export class TimelineLogger {
       result: value,
       breakdown
     };
+  }
+
+  addExpressionContext(expr: any, context: string) {
+    const last = this.entries[this.entries.length - 1];
+    if (!last || !expr.range) return;
+
+    const exprString = this.code.substring(expr.range[0], expr.range[1]);
+
+    if (!last.expressionEval) last.expressionEval = {};
+    if (!last.expressionEval[exprString])
+      last.expressionEval[exprString] = { result: undefined, breakdown: [] };
+
+    last.expressionEval[exprString].context = context;
   }
 
   logOutput(...args: any[]) {

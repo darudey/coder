@@ -15,6 +15,11 @@ const ExpressionPanel = ({ evals }: { evals?: Record<string, any> }) => {
     
           {Object.entries(evals).map(([expr, info]) => (
             <div key={expr} className="p-2 border rounded bg-background shadow-sm text-xs">
+              {info.context && (
+                  <div className="text-xs text-blue-500 font-semibold mb-1">
+                    {info.context}
+                  </div>
+              )}
               <div className="font-mono font-semibold">
                 {expr}
               </div>

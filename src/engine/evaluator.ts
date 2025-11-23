@@ -188,6 +188,7 @@ function evalVariableDeclaration(node: any, ctx: EvalContext) {
 function evalIf(node: any, ctx: EvalContext) {
   const test = safeEvaluate(node.test, ctx);
   ctx.logger.addExpressionEval(node.test, test);
+  ctx.logger.addExpressionContext(node.test, "If Condition");
   if (test) {
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
@@ -215,6 +216,7 @@ function evalFor(node: any, ctx: EvalContext) {
       logIfRealStatement(node.test, loopCtx);
       const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
+      ctx.logger.addExpressionContext(node.test, "For Loop Condition");
       if (!test) break;
     }
 
@@ -226,6 +228,7 @@ function evalFor(node: any, ctx: EvalContext) {
 
     if (node.update) {
       evaluateExpression(node.update, loopCtx);
+      ctx.logger.addExpressionContext(node.update, "For Loop Update");
     }
   }
 
@@ -243,6 +246,7 @@ function evalWhile(node: any, ctx: EvalContext) {
     logIfRealStatement(node.test, loopCtx);
     const test = safeEvaluate(node.test, loopCtx);
     ctx.logger.addExpressionEval(node.test, test);
+    ctx.logger.addExpressionContext(node.test, "While Loop Condition");
     if (!test) break;
     const res = evaluateStatement(node.body, loopCtx);
     if (isReturnSignal(res)) {
