@@ -189,9 +189,9 @@ function evalIf(node: any, ctx: EvalContext) {
 function evalFor(node: any, ctx: EvalContext) {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
-  ctx.logger.setCurrentEnv(loopEnv);
 
   if (node.init) {
+    ctx.logger.setCurrentEnv(loopEnv);
     if (node.init.type === "VariableDeclaration") {
       evalVariableDeclaration(node.init, loopCtx);
     } else {
@@ -201,6 +201,7 @@ function evalFor(node: any, ctx: EvalContext) {
 
   let result: any;
   while (true) {
+    ctx.logger.setCurrentEnv(loopEnv); // Set env for each iteration
     if (node.test) {
       logIfRealStatement(node.test, loopCtx);
       const test = safeEvaluate(node.test, loopCtx);
@@ -226,10 +227,10 @@ function evalFor(node: any, ctx: EvalContext) {
 function evalWhile(node: any, ctx: EvalContext) {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
-  ctx.logger.setCurrentEnv(loopCtx);
   
   let result: any;
   while (true) {
+    ctx.logger.setCurrentEnv(loopEnv); // Set env for each iteration
     logIfRealStatement(node.test, loopCtx);
     const test = safeEvaluate(node.test, loopCtx);
     ctx.logger.addExpressionEval(node.test, test);
