@@ -36,7 +36,6 @@ console.log(result);`);
   }, [code]);
 
   const currentState = timeline[currentStep];
-  const nextState = timeline[currentStep + 1] ?? null;
 
   // STEP CONTROL
   const nextStep = useCallback(() => {
@@ -98,13 +97,13 @@ console.log(result);`);
       {showDebugger && (
         <FloatingDebugger
           state={currentState}
-          nextState={nextState}
           nextStep={nextStep}
           prevStep={prevStep}
           play={play}
           pause={pause}
           reset={reset}
           isPlaying={isPlaying}
+          onClose={() => setShowDebugger(false)}
         />
       )}
     </div>
