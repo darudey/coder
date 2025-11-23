@@ -1,4 +1,3 @@
-
 // src/engine/interpreter.ts
 
 import * as esprima from "esprima-next";
@@ -15,7 +14,8 @@ export class Interpreter {
 
   constructor(private code: string) {
     this.globalEnv = LexicalEnvironment.newGlobal();
-    this.currentEnv = this.globalEnv;
+    const scriptEnv = this.globalEnv.extend("Script");
+    this.currentEnv = scriptEnv;
 
     this.logger = new TimelineLogger(
       () => this.currentEnv,
@@ -47,7 +47,7 @@ export class Interpreter {
       });
 
       evaluateProgram(ast as any, {
-        env: this.globalEnv,
+        env: this.currentEnv,
         thisValue: undefined,
         logger: this.logger,
         stack: this.stack

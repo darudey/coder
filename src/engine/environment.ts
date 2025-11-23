@@ -66,16 +66,17 @@ export class EnvironmentRecord {
 
 export class LexicalEnvironment {
   constructor(
+    public name: string,
     public record: EnvironmentRecord,
     public outer: LexicalEnvironment | null
   ) {}
 
   static newGlobal(): LexicalEnvironment {
-    return new LexicalEnvironment(new EnvironmentRecord(), null);
+    return new LexicalEnvironment("Global", new EnvironmentRecord(), null);
   }
 
-  extend(): LexicalEnvironment {
-    return new LexicalEnvironment(new EnvironmentRecord(), this);
+  extend(name: string): LexicalEnvironment {
+    return new LexicalEnvironment(name, new EnvironmentRecord(), this);
   }
 
   hasBinding(name: string): boolean {
@@ -114,9 +115,19 @@ export class LexicalEnvironment {
   snapshotChain(): Record<string, any> {
     const result: Record<string, any> = {};
     let env: LexicalEnvironment | null = this;
+    let i = 0;
     while (env) {
-      Object.assign(result, env.record.snapshot());
+      const snapshot = env.record.snapshot();
+      if (Object.keys(snapshot).length > 0) {
+        let name = env.name;
+        // Avoid duplicate names like "Block", "Block", "Block"
+        if(result[name]) {
+            name = `${name} ${i}`;
+        }
+        result[name] = snapshot;
+      }
       env = env.outer;
+      i++;
     }
     return result;
   }

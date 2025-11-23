@@ -1,4 +1,3 @@
-
 // src/engine/evaluator.ts
 
 import type { LexicalEnvironment } from "./environment";
@@ -127,7 +126,7 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
     case "IfStatement":
       return evalIf(node, ctx);
     case "BlockStatement": {
-      const newEnv = ctx.env.extend();
+      const newEnv = ctx.env.extend("Block");
       const innerCtx = { ...ctx, env: newEnv };
       ctx.logger.setCurrentEnv(newEnv);
       const result = evaluateBlockBody(node.body, innerCtx);
@@ -178,7 +177,7 @@ function evalIf(node: any, ctx: EvalContext) {
 }
 
 function evalFor(node: any, ctx: EvalContext) {
-  const loopEnv = ctx.env.extend();
+  const loopEnv = ctx.env.extend("Block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
   ctx.logger.setCurrentEnv(loopEnv);
 
@@ -213,7 +212,7 @@ function evalFor(node: any, ctx: EvalContext) {
 }
 
 function evalWhile(node: any, ctx: EvalContext) {
-  const loopEnv = ctx.env.extend();
+  const loopEnv = ctx.env.extend("Block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
   ctx.logger.setCurrentEnv(loopEnv);
   
@@ -360,8 +359,8 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
 
   // The actual implementation of the function when it's called
   const functionImplementation = function(thisArg: any, args: any[]) {
-      const fnEnvRecord = new EnvironmentRecord();
-      const fnEnv = new LexEnv(fnEnvRecord, this.__env);
+      const funcName = node.id?.name || (node.parent?.id?.name) || "Function";
+      const fnEnv = new LexEnv(funcName, new EnvironmentRecord(), this.__env);
 
       let callThisValue = thisArg;
       if (node.type === "ArrowFunctionExpression") {
@@ -370,7 +369,7 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
 
       this.__params.forEach((param: any, index: number) => {
         const name = param.name;
-        fnEnvRecord.createMutableBinding(name, "var", args[index], true);
+        fnEnv.record.createMutableBinding(name, "var", args[index], true);
       });
       
       const logger = (this as any).__ctx.logger;
@@ -383,8 +382,8 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
         stack: (this as any).__ctx.stack,
       };
 
-      const funcName = node.id?.name || (node.parent?.id?.name) || "<anonymous>";
-      innerCtx.stack.push(funcName);
+      const stackName = node.id?.name || (node.parent?.id?.name) || "<anonymous>";
+      innerCtx.stack.push(stackName);
 
       let result;
       // An arrow function with an expression body, e.g. `() => 1`
@@ -501,7 +500,7 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
     
     const funcName = node.id?.name || "<constructor>";
     ctx.stack.push(funcName);
-    ctx.logger.setCurrentEnv(fn.__env);
+    logger.setCurrentEnv(fn.__env);
 
     const result = fn.call(instance, args);
 

@@ -4,7 +4,7 @@
 import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 
-const ScopePanel = ({ scopes }: { scopes: Record<string, any> }) => {
+const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
     if (!scopes) return null;
     return (
         <div className="bg-muted/50 p-2 rounded-md space-y-1">
@@ -38,7 +38,7 @@ const ScopePanel = ({ scopes }: { scopes: Record<string, any> }) => {
       );
 }
 
-const CallStackPanel = ({ stack }: { stack: string[] }) => {
+const CallStackPanel = ({ stack }: { stack?: string[] }) => {
     if (!stack) return null;
     return (
       <div className="bg-muted/50 p-2 rounded-md space-y-1">
