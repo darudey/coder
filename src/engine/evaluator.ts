@@ -140,7 +140,8 @@ function safeEvaluate(node: any, ctx: EvalContext) {
 function sourceOf(node: any, code: string) {
     if (!node || !node.range) return '';
     const source = code.substring(node.range[0], node.range[1]);
-    return source;
+    // Don't truncate, show the full line/statement
+    return source.split('\n')[0];
 }
   
 

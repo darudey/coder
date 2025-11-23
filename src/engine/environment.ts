@@ -1,4 +1,3 @@
-
 // src/engine/environment.ts
 
 export type BindingKind = "var" | "let" | "const" | "function" | "class";
