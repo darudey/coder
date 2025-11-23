@@ -40,7 +40,7 @@ const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
               </summary>
     
               <div className="pl-3 text-xs space-y-1 mt-1">
-                {Object.entries(vars).map(([key, value]) => (
+                {Object.entries(vars as any).map(([key, value]) => (
                   <div key={key} className="flex justify-between font-mono text-muted-foreground">
                     <span className="truncate" title={key}>{key}:</span>
                     <span className="text-foreground">
