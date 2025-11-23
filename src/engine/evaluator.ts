@@ -9,7 +9,8 @@ import {
   setPrototype,
   FunctionValue,
   getProperty,
-  setProperty
+  setProperty,
+  isUserFunction,
 } from "./values";
 
 export interface EvalContext {
@@ -322,41 +323,42 @@ function evalMemberTarget(node: any, ctx: EvalContext) {
 
 function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
   const params = node.params ?? [];
-  const body = node.body.type === "BlockStatement" ? node.body : { type: "BlockStatement", body: [ { type: "ReturnStatement", argument: node.body } ] };
+  const body = node.body; // Can be a BlockStatement or an Expression
 
   // The actual implementation of the function when it's called
   const functionImplementation = function(thisArg: any, args: any[]) {
-      // 'this' refers to the FunctionValue object itself
-      // The captured env is on `this.__env`
       const fnEnvRecord = new EnvironmentRecord();
       const fnEnv = new LexEnv(fnEnvRecord, this.__env);
 
-      // Bind 'this' for arrow functions vs regular functions
       let callThisValue = thisArg;
       if (node.type === "ArrowFunctionExpression") {
-          // Arrow functions inherit 'this' from their captured environment context
           callThisValue = this.__env.get('this');
       }
 
-      // bind params
       this.__params.forEach((param: any, index: number) => {
         const name = param.name;
         fnEnvRecord.createMutableBinding(name, "var", args[index], true);
       });
 
-      // The context for the function's execution
       const innerCtx: EvalContext = {
         env: fnEnv,
         thisValue: callThisValue,
-        logger: (this as any).__ctx.logger, // context is attached by evalCallExpression
+        logger: (this as any).__ctx.logger,
         stack: (this as any).__ctx.stack,
       };
 
       const funcName = node.id?.name || (node.parent?.id?.name) || "<anonymous>";
       innerCtx.stack.push(funcName);
 
-      const result = evaluateBlockBody(this.__body.body, innerCtx);
-
+      let result;
+      // An arrow function with an expression body, e.g. `() => 1`
+      if (this.__body.type !== 'BlockStatement') {
+          result = evaluateExpression(this.__body, innerCtx);
+      } else {
+          // A regular function with a block body
+          result = evaluateBlockBody(this.__body.body, innerCtx);
+      }
+      
       innerCtx.stack.pop();
       return result;
   };
@@ -372,39 +374,36 @@ function evalCallExpression(node: any, ctx: EvalContext): any {
   let thisArg: any;
 
   if (node.callee.type === "MemberExpression") {
-    // For calls like `obj.method()`, `this` is `obj`
     const { object } = evalMemberTarget(node.callee, ctx);
     thisArg = object;
   } else {
-    // For calls like `myFunc()`, `this` is the global object or undefined in strict mode
     thisArg = ctx.thisValue ?? undefined; 
   }
 
-  // Handle built-in functions (like console.log)
   if (calleeVal && calleeVal.__builtin === "console.log") {
     ctx.logger.logOutput(...args);
     return undefined;
   }
 
-  // Handle native JS functions (like Math.pow)
   if (typeof calleeVal === "function" && !calleeVal.hasOwnProperty('__isFunctionValue')) {
     return calleeVal.apply(thisArg, args);
   }
   
-  // Handle our custom FunctionValue
-  if (calleeVal && typeof calleeVal.call === "function") {
+  if (isUserFunction(calleeVal)) {
     const fn: any = calleeVal;
     
-    // Attach the runtime context to the function object just before the call
-    if (!fn.__ctx) fn.__ctx = ctx;
+    if (!fn.__ctx) {
+        fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
+    }
 
     const result = fn.call(thisArg, args);
     
-    // Un-wrap a return signal if we get one
     if (isReturnSignal(result)) {
         return result.value;
     }
-    return result; // Undefined for functions without an explicit return
+    // If the body was an expression, the result is its value.
+    // If the body was a block, and no return was hit, the result is undefined.
+    return (fn.__body.type !== 'BlockStatement') ? result : undefined;
   }
 
   throw new Error("Call of non-function value");
@@ -414,12 +413,10 @@ function evalNewExpression(node: any, ctx: EvalContext): any {
   const ctor = evaluateExpression(node.callee, ctx);
   const args = node.arguments.map((arg: any) => evaluateExpression(arg, ctx));
 
-  // Handle our custom class constructors
   if (ctor && typeof ctor.construct === "function") {
     return ctor.construct(args);
   }
 
-  // Handle native JS constructors
   if (typeof ctor === "function") {
     const instance = createObject((ctor as any).prototype || Object.prototype);
     const res = ctor.apply(instance, args);
@@ -445,7 +442,6 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
 
   const proto = createObject(Object.prototype as any);
   
-  // Attach methods to the prototype
   for (const el of classBody.body) {
     if (el.type === "MethodDefinition" && el.kind !== "constructor") {
       const methodName = el.key.name;
@@ -457,13 +453,13 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
   (baseCtor as any).prototype = proto;
   (baseCtor as any).__isClassConstructor = true;
 
-  // Add the special 'construct' behavior for the `new` operator
   (baseCtor as any).construct = (args: any[]) => {
     const instance = createObject(proto);
     const fn: any = baseCtor;
 
-    // Attach runtime context for the call
-    if (!fn.__ctx) fn.__ctx = ctx;
+    if (!fn.__ctx) {
+        fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
+    }
     
     const funcName = node.id?.name || "<constructor>";
     ctx.stack.push(funcName);
@@ -474,10 +470,10 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
     
     if (isReturnSignal(result)) {
         if(typeof result.value === 'object' && result.value !== null) {
-            return result.value; // if ctor returns an object, use that
+            return result.value;
         }
     }
-    return instance; // otherwise, use the created instance
+    return instance;
   };
 
   return baseCtor;
