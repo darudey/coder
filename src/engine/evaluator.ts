@@ -135,12 +135,21 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
     case "IfStatement":
       return evalIf(node, ctx);
     case "BlockStatement": {
-      const newEnv = ctx.env.extend("block");
-      ctx.logger.setCurrentEnv(newEnv);
-      const innerCtx = { ...ctx, env: newEnv };
-      const result = evaluateBlockBody(node.body, innerCtx);
-      ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
-      return result;
+        const shouldCreateBlock = ctx.env.kind !== "block" && ctx.env.kind !== "function";
+        const newEnv = shouldCreateBlock ? ctx.env.extend("block") : ctx.env;
+        const innerCtx = { ...ctx, env: newEnv };
+        
+        if (shouldCreateBlock) {
+          ctx.logger.setCurrentEnv(newEnv);
+        }
+        
+        const result = evaluateBlockBody(node.body, innerCtx);
+        
+        if (shouldCreateBlock) {
+          ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
+        }
+        
+        return result;
     }
     case "ForStatement":
       return evalFor(node, ctx);
@@ -543,5 +552,3 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
 
   return baseCtor;
 }
-
-    
