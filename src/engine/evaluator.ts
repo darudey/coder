@@ -156,18 +156,33 @@ function evaluateStatement(node: any, ctx: EvalContext & { nextStatement?: any }
     case "VariableDeclaration":
       result = evalVariableDeclaration(node, ctx);
       break;
-    case "ExpressionStatement":
+    case "ExpressionStatement": {
       // simple human message: "we are evaluating this whole expression"
       if (node.expression.range) {
         // we can't access source here, but expressionEval + line number will carry enough info
         ctx.logger.addFlow("Evaluating expression statement");
       }
       result = evaluateExpression(node.expression, ctx);
+      // 🔥 REQUIRED: Guarantee next-step for standalone expressions
+      if (!ctx.logger.hasNext()) {
+        if (ctx.nextStatement) {
+          ctx.logger.setNext(
+            ctx.nextStatement.loc.start.line - 1,
+            `Next → ${sourceOf(ctx.nextStatement, ctx.logger.getCode())}`
+          );
+        } else {
+          ctx.logger.setNext(null, "End of block");
+        }
+      }
       break;
+    }
     case "ReturnStatement": {
       const val = node.argument ? evaluateExpression(node.argument, ctx) : undefined;
       ctx.logger.addFlow(`Return encountered → value: ${JSON.stringify(val)}`);
-      ctx.logger.setNext(null, "Function returns → execution ends");
+      ctx.logger.setNext(
+        null,
+        "Return → function finishes and control goes back to caller"
+      );
       result = makeReturn(val);
       break;
     }
@@ -584,6 +599,17 @@ function evalCallExpression(node: any, ctx: EvalContext): any {
   if (isUserFunction(calleeVal)) {
     const fn: any = calleeVal;
     
+    // 🔥 Add next-step: entering function body
+    if (!ctx.logger.hasNext()) {
+      const fnNode = fn.__body || fn.__node;
+      if (fnNode && fnNode.loc) {
+        ctx.logger.setNext(
+          fnNode.loc.start.line - 1,
+          `Enter function → ${node.callee.name || "anonymous"}()`
+        );
+      }
+    }
+
     if (!fn.__ctx) {
         fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
     }
