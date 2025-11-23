@@ -60,14 +60,77 @@ export class TimelineLogger {
     this.entries.push(entry);
   }
 
+  private safeValue(name: string): any {
+    try {
+      const env = this.getEnvSnapshot();
+      return env.get(name);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private applyOperator(l: any, r: any, op: string): any {
+    switch (op) {
+      case '+': return l + r;
+      case '-': return l - r;
+      case '*': return l * r;
+      case '/': return l / r;
+      case '%': return l % r;
+      case '==': return l == r;
+      case '===': return l === r;
+      case '<': return l < r;
+      case '>': return l > r;
+      case '<=': return l <= r;
+      case '>=': return l >= r;
+      default:
+        return undefined;
+    }
+  }
+  
+  private buildExpressionBreakdown(expr: any): string[] {
+    const lines: string[] = [];
+  
+    const walk = (node: any): any => {
+      switch (node.type) {
+        case 'Identifier':
+          lines.push(`${node.name} = ${this.safeValue(node.name)}`);
+          return this.safeValue(node.name);
+  
+        case 'Literal':
+          lines.push(`Literal ${node.value}`);
+          return node.value;
+  
+        case 'BinaryExpression': {
+          const left = walk(node.left);
+          const right = walk(node.right);
+          const result = this.applyOperator(left, right, node.operator);
+          lines.push(`${left} ${node.operator} ${right} = ${result}`);
+          return result;
+        }
+  
+        default:
+          return undefined;
+      }
+    };
+  
+    walk(expr);
+    return lines;
+  }
+
   addExpressionEval(expr: any, value: any) {
     const last = this.entries[this.entries.length - 1];
     if (!last || !expr.range) return;
-  
+    
     const exprString = this.code.substring(expr.range[0], expr.range[1]);
   
     if (!last.expressionEval) last.expressionEval = {};
-    last.expressionEval[exprString] = value;
+  
+    const breakdown = this.buildExpressionBreakdown(expr);
+  
+    last.expressionEval[exprString] = {
+      result: value,
+      breakdown
+    };
   }
 
   logOutput(...args: any[]) {

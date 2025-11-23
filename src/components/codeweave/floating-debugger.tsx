@@ -6,22 +6,27 @@ import { cn } from "@/lib/utils";
 
 const ExpressionPanel = ({ evals }: { evals?: Record<string, any> }) => {
     if (!evals || Object.keys(evals).length === 0) return null;
+  
     return (
-        <div className="bg-muted/50 p-2 rounded-md space-y-1">
-          <div className="text-xs font-semibold text-muted-foreground px-2">Expression Evaluation</div>
-          <div className="pl-3 text-xs space-y-1 mt-1">
-            {Object.entries(evals).map(([key, value]) => (
-              <div key={key} className="flex justify-between font-mono text-muted-foreground">
-                <span className="truncate" title={key}>{key}:</span>
-                <span className="text-foreground">
-                  {String(value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-}
+      <div className="bg-muted/50 p-2 rounded-md space-y-2">
+        <div className="text-xs font-semibold text-muted-foreground px-2">Expression Evaluation</div>
+  
+        {Object.entries(evals).map(([expression, data]) => (
+          <details key={expression} open className="border border-border/50 rounded p-1 text-xs">
+            <summary className="cursor-pointer list-none font-mono flex justify-between">
+              <span className="truncate" title={expression}>{expression}:</span>
+              <span className="font-semibold text-foreground pl-2">{String(data.result)}</span>
+            </summary>
+            <div className="pl-3 mt-1 space-y-0.5 text-muted-foreground/80 font-mono border-t border-border/50 pt-1">
+              {data.breakdown?.map((line: string, i: number) => (
+                <div key={i}>{line}</div>
+              ))}
+            </div>
+          </details>
+        ))}
+      </div>
+    );
+  };
 
 const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
     if (!scopes || Object.keys(scopes).length === 0) return null;
