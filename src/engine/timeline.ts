@@ -18,7 +18,10 @@ export interface TimelineEntry {
   output: string[];
   expressionEval?: Record<string, ExpressionInfo>;
   controlFlow?: string[];
-  nextStep?: string;
+  nextStep?: {
+    line: number | null;
+    message: string;
+  };
 }
 
 function isUserFunction(value: any) {
@@ -80,11 +83,11 @@ export class TimelineLogger {
     this.entries.push(entry);
   }
 
-  // ---------- NEXT STEP PREDICTION ----------
-  addNextStep(message: string) {
+  setNext(line: number | null, message: string) {
     const last = this.entries[this.entries.length - 1];
     if (!last) return;
-    last.nextStep = message;
+
+    last.nextStep = { line, message };
   }
 
   // ---------- CONTROL FLOW NARRATION ----------

@@ -183,13 +183,14 @@ const DraggablePanel: React.FC<{
 };
 
 
-const NextStepPanel: React.FC<{ message?: string }> = ({ message }) => {
-    if (!message) return null;
+const NextStepPanel: React.FC<{ nextStep?: TimelineEntry['nextStep'] }> = ({ nextStep }) => {
+    if (!nextStep) return null;
     
     return (
         <div className="p-3">
             <div className="text-xs text-muted-foreground mt-1">
-                {message}
+                {nextStep.message}
+                {nextStep.line !== null && ` (line ${nextStep.line + 1})`}
             </div>
         </div>
     );
@@ -285,15 +286,25 @@ const CallStackPanel = ({ stack }: { stack?: string[] }) => {
     );
 };
 
-const FlowPanel: React.FC<{ flow?: string[] }> = ({ flow }) => {
-    if (!flow || flow.length === 0) return null;
+const FlowPanel: React.FC<{ flow?: string[], nextStep?: TimelineEntry['nextStep'] }> = ({ flow, nextStep }) => {
     return (
-      <div className="p-3">
-        {flow.map((message, index) => (
-            <div key={index} className="font-mono text-xs text-muted-foreground">
-                <span className="mr-1 text-purple-400">›</span>{message}
+      <div className="p-3 space-y-3">
+         {flow && flow.length > 0 && (
+             <div>
+                <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1">Control Flow</h3>
+                {flow.map((message, index) => (
+                    <div key={index} className="font-mono text-xs text-muted-foreground">
+                        <span className="mr-1 text-purple-400">›</span>{message}
+                    </div>
+                ))}
+             </div>
+         )}
+        {nextStep && (
+            <div className="border-t pt-2">
+               <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1">Next Step</h3>
+               <NextStepPanel nextStep={nextStep} />
             </div>
-        ))}
+        )}
       </div>
     );
   };
@@ -374,22 +385,9 @@ export const FloatingDebugger = ({
                 initialPosition={{ top: 100, left: window.innerWidth - 800 }}
                 initialSize={{ width: 350, height: 300 }}
             >
-              <div className="p-2 space-y-3">
-                <div>
-                  <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1">Control Flow</h3>
-                  <FlowPanel flow={state.controlFlow} />
-                </div>
-                <div className="border-t pt-2">
-                   <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1">Next Step</h3>
-                   <NextStepPanel message={state.nextStep} />
-                </div>
-              </div>
+              <FlowPanel flow={state.controlFlow} nextStep={state.nextStep} />
             </DraggablePanel>
         )}
     </>
   );
 };
-
-    
-
-    

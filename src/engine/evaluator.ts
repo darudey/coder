@@ -165,6 +165,7 @@ function evaluateStatement(node: any, ctx: EvalContext & { nextStatement?: any }
     case "ReturnStatement": {
       const val = node.argument ? evaluateExpression(node.argument, ctx) : undefined;
       ctx.logger.addFlow(`Return encountered → value: ${JSON.stringify(val)}`);
+      ctx.logger.setNext(null, "Function returns → execution ends");
       return makeReturn(val);
     }
     case "IfStatement":
@@ -199,6 +200,7 @@ function evaluateStatement(node: any, ctx: EvalContext & { nextStatement?: any }
       return evalClassDeclaration(node, ctx);
     case "BreakStatement":
       ctx.logger.addFlow(`Break encountered`);
+      // The calling loop needs to handle setting the next step
       return makeBreak();
     default:
       // Unhandled statements can be skipped or throw
@@ -234,22 +236,13 @@ function evalIf(node: any, ctx: EvalContext & { nextStatement?: any }) {
   ctx.logger.addFlow(`Result: ${test ? "TRUE → taking THEN branch" : "FALSE → taking ELSE / skipping"}`);
 
   if (test) {
-    ctx.logger.addNextStep(
-        `Run the inside statement: ${sourceOf(node.consequent, ctx.logger.getCode())}`
-    );
+    ctx.logger.setNext(node.consequent.loc.start.line - 1, "THEN branch will execute next");
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
-    ctx.logger.addNextStep(
-        `Skip if-block → continue to else: ${sourceOf(node.alternate, ctx.logger.getCode())}`
-    );
+    ctx.logger.setNext(node.alternate.loc.start.line - 1, "ELSE branch will execute next");
     return evaluateStatement(node.alternate, ctx);
-  } else {
-    const nextStmt = ctx.nextStatement;
-    if (nextStmt) {
-        ctx.logger.addNextStep(`Skip if-block → continue to: ${sourceOf(nextStmt, ctx.logger.getCode())}`);
-    } else {
-        ctx.logger.addNextStep('Skip if-block → continue to next statement');
-    }
+  } else if (ctx.nextStatement) {
+    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, "Skipping IF, next statement is on line " + ctx.nextStatement.loc.start.line);
   }
 }
 
@@ -286,17 +279,15 @@ function evalFor(node: any, ctx: EvalContext) {
       ctx.logger.addFlow(`Result: ${test ? "TRUE → enter loop body" : "FALSE → exit loop"}`);
 
       if (!test) {
-        ctx.logger.addNextStep('End of loop → move after for-block');
+        ctx.logger.setNext(node.loc.end.line, "Exit FOR loop");
         break;
       }
-      ctx.logger.addNextStep(
-        `Run loop body (iteration #${iteration}) → ${sourceOf(node.body, ctx.logger.getCode())}`
-      );
+      ctx.logger.setNext(node.body.loc.start.line -1, `Start loop iteration #${iteration}`);
     }
 
     const res = evaluateStatement(node.body, loopCtx);
     if (isBreakSignal(res)) {
-        ctx.logger.addNextStep('Break encountered → exit this loop immediately');
+        ctx.logger.setNext(node.loc.end.line, "Break → exit FOR loop");
         break;
     }
     if (isReturnSignal(res)) {
@@ -306,11 +297,10 @@ function evalFor(node: any, ctx: EvalContext) {
 
     // UPDATE
     if (node.update) {
-      ctx.logger.addNextStep(
-        `Run update step → ${sourceOf(node.update, ctx.logger.getCode())}`
-      );
       ctx.logger.addFlow("FOR LOOP UPDATE:");
+      logIfRealStatement(node.update, loopCtx);
       evaluateExpression(node.update, loopCtx);
+      ctx.logger.setNext(node.test.loc.start.line - 1, "Go to loop condition check");
     }
   }
 
@@ -341,25 +331,20 @@ function evalWhile(node: any, ctx: EvalContext) {
     ctx.logger.addFlow(`Result: ${test ? "TRUE → continue loop" : "FALSE → exit loop"}`);
 
     if (!test) {
-        ctx.logger.addNextStep('Exit the loop → continue after it');
+        ctx.logger.setNext(node.loc.end.line, "Exit WHILE loop");
         break;
     }
-    ctx.logger.addNextStep(
-        `Enter loop body → run: ${sourceOf(node.body, ctx.logger.getCode())}`
-    );
+    ctx.logger.setNext(node.body.loc.start.line - 1, "Enter WHILE body");
 
     const res = evaluateStatement(node.body, loopCtx);
      if (isBreakSignal(res)) {
-        ctx.logger.addNextStep('Break encountered → exit this loop immediately');
+        ctx.logger.setNext(node.loc.end.line, "Break → exit WHILE loop");
         break;
     }
     if (isReturnSignal(res)) {
       result = res;
       break;
     }
-    ctx.logger.addNextStep(
-        `Go back to check the loop condition: ${sourceOf(node.test, ctx.logger.getCode())}`
-    );
   }
 
   ctx.logger.setCurrentEnv(ctx.env);
@@ -666,7 +651,3 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
 
   return baseCtor;
 }
-
-    
-
-    
