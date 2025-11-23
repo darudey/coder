@@ -240,9 +240,9 @@ export const FloatingDebugger = ({
 
           <div className="text-xs"><b>Step:</b> {state.step} | <b>Line:</b> {state.line}</div>
           
-          <NextStepPanel message={state.nextStep} />
-          <FlowPanel flow={state.controlFlow} />
           <ExpressionPanel evals={state.expressionEval} />
+          <FlowPanel flow={state.controlFlow} />
+          <NextStepPanel message={state.nextStep} />
           <ScopePanel scopes={state.variables} />
           <CallStackPanel stack={state.stack} />
 
