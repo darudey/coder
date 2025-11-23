@@ -4,8 +4,27 @@
 import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 
+const ExpressionPanel = ({ evals }: { evals?: Record<string, any> }) => {
+    if (!evals || Object.keys(evals).length === 0) return null;
+    return (
+        <div className="bg-muted/50 p-2 rounded-md space-y-1">
+          <div className="text-xs font-semibold text-muted-foreground px-2">Expression Evaluation</div>
+          <div className="pl-3 text-xs space-y-1 mt-1">
+            {Object.entries(evals).map(([key, value]) => (
+              <div key={key} className="flex justify-between font-mono text-muted-foreground">
+                <span className="truncate" title={key}>{key}:</span>
+                <span className="text-foreground">
+                  {String(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+}
+
 const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
-    if (!scopes) return null;
+    if (!scopes || Object.keys(scopes).length === 0) return null;
     return (
         <div className="bg-muted/50 p-2 rounded-md space-y-1">
           <div className="text-xs font-semibold text-muted-foreground px-2">Scope</div>
@@ -23,7 +42,7 @@ const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
               <div className="pl-3 text-xs space-y-1 mt-1">
                 {Object.entries(vars).map(([key, value]) => (
                   <div key={key} className="flex justify-between font-mono text-muted-foreground">
-                    <span>{key}:</span>
+                    <span className="truncate" title={key}>{key}:</span>
                     <span className="text-foreground">
                       {typeof value === "object" && value !== null
                         ? JSON.stringify(value)
@@ -157,7 +176,8 @@ export const FloatingDebugger = ({
           </div>
 
           <div className="text-xs"><b>Step:</b> {state.step} | <b>Line:</b> {state.line}</div>
-
+          
+          <ExpressionPanel evals={state.expressionEval} />
           <ScopePanel scopes={state.variables} />
           <CallStackPanel stack={state.stack} />
 
