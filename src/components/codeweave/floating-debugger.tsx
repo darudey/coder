@@ -8,24 +8,34 @@ const ExpressionPanel = ({ evals }: { evals?: Record<string, any> }) => {
     if (!evals || Object.keys(evals).length === 0) return null;
   
     return (
-      <div className="bg-muted/50 p-2 rounded-md space-y-2">
-        <div className="text-xs font-semibold text-muted-foreground px-2">Expression Evaluation</div>
-  
-        {Object.entries(evals).map(([expression, data]) => (
-          <details key={expression} open className="border border-border/50 rounded p-1 text-xs">
-            <summary className="cursor-pointer list-none font-mono flex justify-between">
-              <span className="truncate" title={expression}>{expression}:</span>
-              <span className="font-semibold text-foreground pl-2">{String(data.result)}</span>
-            </summary>
-            <div className="pl-3 mt-1 space-y-0.5 text-muted-foreground/80 font-mono border-t border-border/50 pt-1">
-              {data.breakdown?.map((line: string, i: number) => (
-                <div key={i}>{line}</div>
-              ))}
+        <div className="p-2 bg-muted/50 rounded-md space-y-3">
+          <div className="text-xs font-semibold text-muted-foreground px-2">
+            Expression Evaluation
+          </div>
+    
+          {Object.entries(evals).map(([expr, info]) => (
+            <div key={expr} className="p-2 border rounded bg-background shadow-sm text-xs">
+              <div className="font-mono font-semibold">
+                {expr}
+              </div>
+    
+              <div className="text-muted-foreground mt-1">
+                Result: <span className="font-semibold text-foreground">{String(info.result)}</span>
+              </div>
+    
+              <div className="mt-2 text-xs font-semibold">
+                Breakdown:
+              </div>
+    
+              <ul className="text-mono mt-1 space-y-1 pl-2">
+                {info.breakdown.map((line: string, idx: number) => (
+                  <li key={idx}>• {line}</li>
+                ))}
+              </ul>
             </div>
-          </details>
-        ))}
-      </div>
-    );
+          ))}
+        </div>
+      );
   };
 
 const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {

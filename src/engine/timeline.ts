@@ -92,19 +92,20 @@ export class TimelineLogger {
   
     const walk = (node: any): any => {
       switch (node.type) {
-        case 'Identifier':
-          lines.push(`${node.name} = ${this.safeValue(node.name)}`);
-          return this.safeValue(node.name);
-  
+        case 'Identifier': {
+          const v = this.safeValue(node.name);
+          lines.push(`${node.name} = ${v} (${typeof v})`);
+          return v;
+        }
         case 'Literal':
-          lines.push(`Literal ${node.value}`);
+          lines.push(`Literal (${typeof node.value}) ${node.value}`);
           return node.value;
   
         case 'BinaryExpression': {
           const left = walk(node.left);
           const right = walk(node.right);
           const result = this.applyOperator(left, right, node.operator);
-          lines.push(`${left} ${node.operator} ${right} = ${result}`);
+          lines.push(`${left} ${node.operator} ${right}  →  ${result}`);
           return result;
         }
   
