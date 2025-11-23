@@ -76,8 +76,14 @@ export function evaluateProgram(ast: any, ctx: EvalContext): any {
  */
 function evaluateBlockBody(body: any[], ctx: EvalContext): any {
   let result: any;
-  for (const stmt of body) {
-    result = evaluateStatement(stmt, ctx);
+  for (let i = 0; i < body.length; i++) {
+    const stmt = body[i];
+    const nextStmt = body[i + 1];
+    
+    // Pass the next statement in the context for better logging
+    const statementCtx = { ...ctx, nextStatement: nextStmt };
+
+    result = evaluateStatement(stmt, statementCtx);
     // If a return statement is executed, stop and propagate the signal up.
     if (isReturnSignal(result)) {
       return result;
@@ -123,7 +129,7 @@ function sourceOf(node: any, code: string) {
 /**
  * Evaluates a single statement node from the AST.
  */
-function evaluateStatement(node: any, ctx: EvalContext): any {
+function evaluateStatement(node: any, ctx: EvalContext & { nextStatement?: any }): any {
   if (!node) return;
 
   logIfRealStatement(node, ctx);
@@ -199,7 +205,7 @@ function evalVariableDeclaration(node: any, ctx: EvalContext) {
     }
 }
 
-function evalIf(node: any, ctx: EvalContext) {
+function evalIf(node: any, ctx: EvalContext & { nextStatement?: any }) {
   const test = safeEvaluate(node.test, ctx);
   ctx.logger.addExpressionEval(node.test, test);
   ctx.logger.addExpressionContext(node.test, "If Condition");
@@ -217,7 +223,12 @@ function evalIf(node: any, ctx: EvalContext) {
     );
     return evaluateStatement(node.alternate, ctx);
   } else {
-    ctx.logger.addNextStep('Skip if-block → continue to next statement');
+    const nextStmt = ctx.nextStatement;
+    if (nextStmt) {
+        ctx.logger.addNextStep(`Skip if-block → continue to: ${sourceOf(nextStmt, ctx.logger.getCode())}`);
+    } else {
+        ctx.logger.addNextStep('Skip if-block → continue to next statement');
+    }
   }
 }
 
@@ -634,3 +645,5 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
 
   return baseCtor;
 }
+
+    
