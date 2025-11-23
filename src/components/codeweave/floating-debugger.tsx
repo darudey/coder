@@ -1,8 +1,33 @@
 
+
 "use client";
 
 import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
+
+const NextStepPanel = ({ message }: { message?: string }) => {
+    if (!message) return null;
+    
+    // Split message into explanation and code part
+    const [explanation, code] = message.split('→');
+
+    return (
+        <div className="mt-2 rounded-md border border-blue-500/40 bg-blue-500/10 p-2">
+            <div className="text-[10px] uppercase text-blue-300 tracking-wide">
+                Next Step
+            </div>
+            <div className="text-xs text-blue-200 mt-1">
+                {explanation}
+                {code && (
+                    <code className="mt-1 block rounded bg-black/30 p-1 font-mono text-blue-100">
+                        → {code.trim()}
+                    </code>
+                )}
+            </div>
+        </div>
+    );
+};
+
 
 const ExpressionPanel = ({ evals }: { evals?: Record<string, any> }) => {
     if (!evals || Object.keys(evals).length === 0) return null;
@@ -112,6 +137,7 @@ const FlowPanel = ({ flow }: { flow?: string[] }) => {
 
 export const FloatingDebugger = ({
   state,
+  nextState,
   nextStep,
   prevStep,
   play,
@@ -120,6 +146,7 @@ export const FloatingDebugger = ({
   isPlaying
 }: {
   state: any;
+  nextState: any;
   nextStep: () => void;
   prevStep: () => void;
   play: () => void;
@@ -213,6 +240,7 @@ export const FloatingDebugger = ({
 
           <div className="text-xs"><b>Step:</b> {state.step} | <b>Line:</b> {state.line}</div>
           
+          <NextStepPanel message={state.nextStep} />
           <FlowPanel flow={state.controlFlow} />
           <ExpressionPanel evals={state.expressionEval} />
           <ScopePanel scopes={state.variables} />

@@ -18,6 +18,7 @@ export interface TimelineEntry {
   output: string[];
   expressionEval?: Record<string, ExpressionInfo>;
   controlFlow?: string[];
+  nextStep?: string;
 }
 
 function isUserFunction(value: any) {
@@ -34,6 +35,10 @@ export class TimelineLogger {
     private getStack: () => string[],
     private code: string
   ) {}
+
+  getCode(): string {
+    return this.code;
+  }
 
   setCurrentEnv(env: LexicalEnvironment) {
     this.getEnvSnapshot = () => env;
@@ -73,6 +78,13 @@ export class TimelineLogger {
     };
 
     this.entries.push(entry);
+  }
+
+  // ---------- NEXT STEP PREDICTION ----------
+  addNextStep(message: string) {
+    const last = this.entries[this.entries.length - 1];
+    if (!last) return;
+    last.nextStep = message;
   }
 
   // ---------- CONTROL FLOW NARRATION ----------

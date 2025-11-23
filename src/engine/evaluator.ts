@@ -113,6 +113,11 @@ function safeEvaluate(node: any, ctx: EvalContext) {
       safe: true,
     });
 }
+
+function sourceOf(node: any, code: string) {
+    if (!node || !node.range) return '';
+    return code.substring(node.range[0], node.range[1]);
+}
   
 
 /**
@@ -202,19 +207,27 @@ function evalIf(node: any, ctx: EvalContext) {
   ctx.logger.addFlow(`Result: ${test ? "TRUE → taking THEN branch" : "FALSE → taking ELSE / skipping"}`);
 
   if (test) {
+    ctx.logger.addNextStep(
+      `Run the inside statement: ${sourceOf(node.consequent, ctx.logger.getCode())}`
+    );
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
+    ctx.logger.addNextStep(
+        `Skip if-block → continue to else: ${sourceOf(node.alternate, ctx.logger.getCode())}`
+    );
     return evaluateStatement(node.alternate, ctx);
+  } else {
+    ctx.logger.addNextStep('Skip if-block → continue to next statement');
   }
 }
 
 function evalFor(node: any, ctx: EvalContext) {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
-  ctx.logger.setCurrentEnv(loopEnv);
 
   // INIT
   if (node.init) {
+    ctx.logger.setCurrentEnv(loopEnv);
     ctx.logger.addFlow("FOR LOOP INIT:");
     if (node.init.type === "VariableDeclaration") {
       evalVariableDeclaration(node.init, loopCtx);
@@ -240,10 +253,20 @@ function evalFor(node: any, ctx: EvalContext) {
       ctx.logger.addFlow(`FOR LOOP CHECK (iteration #${iteration})`);
       ctx.logger.addFlow(`Result: ${test ? "TRUE → enter loop body" : "FALSE → exit loop"}`);
 
-      if (!test) break;
+      if (!test) {
+        ctx.logger.addNextStep('End of loop → move after for-block');
+        break;
+      }
+      ctx.logger.addNextStep(
+        `Run loop body (iteration #${iteration}) → ${sourceOf(node.body, ctx.logger.getCode())}`
+      );
     }
 
     const res = evaluateStatement(node.body, loopCtx);
+    if (res?.__type === "Break") {
+        ctx.logger.addNextStep('Break encountered → exit this loop immediately');
+        break;
+    }
     if (isReturnSignal(res)) {
       result = res;
       break;
@@ -251,6 +274,9 @@ function evalFor(node: any, ctx: EvalContext) {
 
     // UPDATE
     if (node.update) {
+      ctx.logger.addNextStep(
+        `Run update step → ${sourceOf(node.update, ctx.logger.getCode())}`
+      );
       ctx.logger.addFlow("FOR LOOP UPDATE:");
       evaluateExpression(node.update, loopCtx);
     }
@@ -282,13 +308,26 @@ function evalWhile(node: any, ctx: EvalContext) {
     ctx.logger.addFlow(`Iteration #${iteration}`);
     ctx.logger.addFlow(`Result: ${test ? "TRUE → continue loop" : "FALSE → exit loop"}`);
 
-    if (!test) break;
+    if (!test) {
+        ctx.logger.addNextStep('Exit the loop → continue after it');
+        break;
+    }
+    ctx.logger.addNextStep(
+        `Enter loop body → run: ${sourceOf(node.body, ctx.logger.getCode())}`
+    );
 
     const res = evaluateStatement(node.body, loopCtx);
+     if (res?.__type === "Break") {
+        ctx.logger.addNextStep('Break encountered → exit this loop immediately');
+        break;
+    }
     if (isReturnSignal(res)) {
       result = res;
       break;
     }
+    ctx.logger.addNextStep(
+        `Go back to check the loop condition: ${sourceOf(node.test, ctx.logger.getCode())}`
+    );
   }
 
   ctx.logger.setCurrentEnv(ctx.env);
