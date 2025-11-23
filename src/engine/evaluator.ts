@@ -1,3 +1,4 @@
+
 // src/engine/evaluator.ts
 
 import type { LexicalEnvironment } from "./environment";
@@ -128,7 +129,10 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
     case "BlockStatement": {
       const newEnv = ctx.env.extend();
       const innerCtx = { ...ctx, env: newEnv };
-      return evaluateBlockBody(node.body, innerCtx);
+      ctx.logger.setCurrentEnv(newEnv);
+      const result = evaluateBlockBody(node.body, innerCtx);
+      ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
+      return result;
     }
     case "ForStatement":
       return evalFor(node, ctx);
@@ -176,6 +180,7 @@ function evalIf(node: any, ctx: EvalContext) {
 function evalFor(node: any, ctx: EvalContext) {
   const loopEnv = ctx.env.extend();
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+  ctx.logger.setCurrentEnv(loopEnv);
 
   if (node.init) {
     if (node.init.type === "VariableDeclaration") {
@@ -185,6 +190,7 @@ function evalFor(node: any, ctx: EvalContext) {
     }
   }
 
+  let result: any;
   while (true) {
     if (node.test) {
       const test = evaluateExpression(node.test, loopCtx);
@@ -192,21 +198,37 @@ function evalFor(node: any, ctx: EvalContext) {
     }
 
     const res = evaluateStatement(node.body, loopCtx);
-    if (isReturnSignal(res)) return res;
+    if (isReturnSignal(res)) {
+      result = res;
+      break;
+    }
 
     if (node.update) {
       evaluateExpression(node.update, loopCtx);
     }
   }
+
+  ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
+  return result;
 }
 
 function evalWhile(node: any, ctx: EvalContext) {
+  const loopEnv = ctx.env.extend();
+  const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+  ctx.logger.setCurrentEnv(loopEnv);
+  
+  let result: any;
   while (true) {
-    const test = evaluateExpression(node.test, ctx);
+    const test = evaluateExpression(node.test, loopCtx);
     if (!test) break;
-    const res = evaluateStatement(node.body, ctx);
-    if (isReturnSignal(res)) return res;
+    const res = evaluateStatement(node.body, loopCtx);
+    if (isReturnSignal(res)) {
+      result = res;
+      break;
+    };
   }
+  ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
+  return result;
 }
 
 function evalFunctionDeclaration(node: any, ctx: EvalContext) {
@@ -350,11 +372,14 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
         const name = param.name;
         fnEnvRecord.createMutableBinding(name, "var", args[index], true);
       });
+      
+      const logger = (this as any).__ctx.logger;
+      logger.setCurrentEnv(fnEnv);
 
       const innerCtx: EvalContext = {
         env: fnEnv,
         thisValue: callThisValue,
-        logger: (this as any).__ctx.logger,
+        logger: logger,
         stack: (this as any).__ctx.stack,
       };
 
@@ -371,6 +396,7 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
       }
       
       innerCtx.stack.pop();
+      logger.setCurrentEnv(this.__env); // Restore outer env
       return result;
   };
 
@@ -474,10 +500,12 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
     
     const funcName = node.id?.name || "<constructor>";
     ctx.stack.push(funcName);
+    ctx.logger.setCurrentEnv(fn.__env);
 
     const result = fn.call(instance, args);
 
     ctx.stack.pop();
+    ctx.logger.setCurrentEnv(ctx.env);
     
     if (isReturnSignal(result)) {
         if(typeof result.value === 'object' && result.value !== null) {

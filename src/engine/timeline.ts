@@ -21,6 +21,10 @@ export class TimelineLogger {
   private output: string[] = [];
 
   constructor(private getEnvSnapshot: () => LexicalEnvironment, private getStack: () => string[]) {}
+  
+  setCurrentEnv(env: LexicalEnvironment) {
+    this.getEnvSnapshot = () => env;
+  }
 
   log(line: number) {
     const env = this.getEnvSnapshot();
