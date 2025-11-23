@@ -1,4 +1,3 @@
-
 // src/engine/values.ts
 
 import type { LexicalEnvironment } from "./environment";
@@ -16,6 +15,10 @@ export interface FunctionValue extends JSObject {
   __isClassConstructor?: boolean;
   call: (thisArg: any, args: any[]) => any;
   construct?: (args: any[]) => any;
+}
+
+export function isUserFunction(value: any): value is FunctionValue {
+  return value && typeof value === 'object' && value.__isFunctionObject === true;
 }
 
 export function createObject(proto: JSObject | null = null): JSObject {
