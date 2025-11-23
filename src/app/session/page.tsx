@@ -5,7 +5,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Compiler } from '@/components/codeweave/compiler';
 import { GridEditor } from '@/components/codeweave/grid-editor';
 import { FloatingDebugger } from '@/components/codeweave/floating-debugger';
-import { generateTimeline } from '@/lib/javascript-interpreter';
+import { generateTimeline } from '@/engine/interpreter';
 
 
 export default function SessionPage() {
@@ -27,10 +27,10 @@ console.log(result);`);
   const timeline = useMemo(() => {
     try {
       return generateTimeline(code);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       // Return a minimal timeline to prevent crashing
-      return [{ step: 0, line: 0, variables: {}, heap: {}, stack: [], output: [`Error: ${e}`] }];
+      return [{ step: 0, line: 0, variables: {}, heap: {}, stack: [], output: [`Error: ${e.message}`] }];
     }
   }, [code]);
 
