@@ -1,4 +1,3 @@
-
 // src/engine/evaluator.ts
 
 import type { LexicalEnvironment } from "./environment";
@@ -152,24 +151,29 @@ function evaluateStatement(node: any, ctx: EvalContext & { nextStatement?: any }
 
   logIfRealStatement(node, ctx);
 
+  let result;
   switch (node.type) {
     case "VariableDeclaration":
-      return evalVariableDeclaration(node, ctx);
+      result = evalVariableDeclaration(node, ctx);
+      break;
     case "ExpressionStatement":
       // simple human message: "we are evaluating this whole expression"
       if (node.expression.range) {
         // we can't access source here, but expressionEval + line number will carry enough info
         ctx.logger.addFlow("Evaluating expression statement");
       }
-      return evaluateExpression(node.expression, ctx);
+      result = evaluateExpression(node.expression, ctx);
+      break;
     case "ReturnStatement": {
       const val = node.argument ? evaluateExpression(node.argument, ctx) : undefined;
       ctx.logger.addFlow(`Return encountered → value: ${JSON.stringify(val)}`);
       ctx.logger.setNext(null, "Function returns → execution ends");
-      return makeReturn(val);
+      result = makeReturn(val);
+      break;
     }
     case "IfStatement":
-      return evalIf(node, ctx);
+      result = evalIf(node, ctx);
+      break;
     case "BlockStatement": {
         const shouldCreateBlock = ctx.env.kind !== "block" && ctx.env.kind !== "function";
         const newEnv = shouldCreateBlock ? ctx.env.extend("block") : ctx.env;
@@ -181,32 +185,50 @@ function evaluateStatement(node: any, ctx: EvalContext & { nextStatement?: any }
           ctx.logger.addFlow("Entering new block scope");
         }
         
-        const result = evaluateBlockBody(node.body, innerCtx);
+        result = evaluateBlockBody(node.body, innerCtx);
         
         if (shouldCreateBlock) {
           ctx.logger.addFlow("Exiting block scope");
           ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
         }
-        
-        return result;
+        break;
     }
     case "ForStatement":
-      return evalFor(node, ctx);
+      result = evalFor(node, ctx);
+      break;
     case "WhileStatement":
-      return evalWhile(node, ctx);
+      result = evalWhile(node, ctx);
+      break;
     case "FunctionDeclaration":
-      return evalFunctionDeclaration(node, ctx);
+      result = evalFunctionDeclaration(node, ctx);
+      break;
     case "ClassDeclaration":
-      return evalClassDeclaration(node, ctx);
+      result = evalClassDeclaration(node, ctx);
+      break;
     case "BreakStatement":
       ctx.logger.addFlow(`Break encountered`);
       // The calling loop needs to handle setting the next step
-      return makeBreak();
+      result = makeBreak();
+      break;
     default:
       // Unhandled statements can be skipped or throw
       // console.warn("Unsupported statement:", node.type);
       return;
   }
+  
+    // (GLOBAL FALLBACK NEXT-STEP CALCULATION)
+    if (!ctx.logger.hasNext()) {
+        if (ctx.nextStatement) {
+            ctx.logger.setNext(
+                ctx.nextStatement.loc.start.line - 1,
+                `Next sequential statement: ${sourceOf(ctx.nextStatement, ctx.logger.getCode())}`
+            );
+        } else {
+            ctx.logger.setNext(null, "End of block");
+        }
+    }
+
+    return result;
 }
 
 /**
@@ -236,13 +258,13 @@ function evalIf(node: any, ctx: EvalContext & { nextStatement?: any }) {
   ctx.logger.addFlow(`Result: ${test ? "TRUE → taking THEN branch" : "FALSE → taking ELSE / skipping"}`);
 
   if (test) {
-    ctx.logger.setNext(node.consequent.loc.start.line - 1, "Condition is TRUE → continue to: " + sourceOf(node.consequent, ctx.logger.getCode()));
+    ctx.logger.setNext(node.consequent.loc.start.line - 1, `Condition is TRUE → continue to: ${sourceOf(node.consequent, ctx.logger.getCode())}`);
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
-    ctx.logger.setNext(node.alternate.loc.start.line - 1, "Condition is FALSE → continue to ELSE branch: " + sourceOf(node.alternate, ctx.logger.getCode()));
+    ctx.logger.setNext(node.alternate.loc.start.line - 1, `Condition is FALSE → continue to ELSE branch: ${sourceOf(node.alternate, ctx.logger.getCode())}`);
     return evaluateStatement(node.alternate, ctx);
   } else if (ctx.nextStatement) {
-    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, "Skipping IF, next statement is: " + sourceOf(ctx.nextStatement, ctx.logger.getCode()));
+    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Skip if-block → continue to: ${sourceOf(ctx.nextStatement, ctx.logger.getCode())}`);
   }
 }
 

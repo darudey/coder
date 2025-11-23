@@ -1,4 +1,3 @@
-
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -88,6 +87,11 @@ export class TimelineLogger {
     if (!last) return;
 
     last.nextStep = { line, message };
+  }
+
+  hasNext(): boolean {
+    const last = this.entries[this.entries.length - 1];
+    return !!last?.nextStep;
   }
 
   // ---------- CONTROL FLOW NARRATION ----------
