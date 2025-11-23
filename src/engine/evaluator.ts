@@ -236,13 +236,13 @@ function evalIf(node: any, ctx: EvalContext & { nextStatement?: any }) {
   ctx.logger.addFlow(`Result: ${test ? "TRUE → taking THEN branch" : "FALSE → taking ELSE / skipping"}`);
 
   if (test) {
-    ctx.logger.setNext(node.consequent.loc.start.line - 1, "THEN branch will execute next");
+    ctx.logger.setNext(node.consequent.loc.start.line - 1, "Condition is TRUE → continue to: " + sourceOf(node.consequent, ctx.logger.getCode()));
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
-    ctx.logger.setNext(node.alternate.loc.start.line - 1, "ELSE branch will execute next");
+    ctx.logger.setNext(node.alternate.loc.start.line - 1, "Condition is FALSE → continue to ELSE branch: " + sourceOf(node.alternate, ctx.logger.getCode()));
     return evaluateStatement(node.alternate, ctx);
   } else if (ctx.nextStatement) {
-    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, "Skipping IF, next statement is on line " + ctx.nextStatement.loc.start.line);
+    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, "Skipping IF, next statement is: " + sourceOf(ctx.nextStatement, ctx.logger.getCode()));
   }
 }
 
