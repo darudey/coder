@@ -139,7 +139,9 @@ function safeEvaluate(node: any, ctx: EvalContext) {
 
 function sourceOf(node: any, code: string) {
     if (!node || !node.range) return '';
-    return code.substring(node.range[0], node.range[1]);
+    const source = code.substring(node.range[0], node.range[1]);
+    // Return just the first line for brevity
+    return source.split('\n')[0];
 }
   
 
@@ -279,7 +281,7 @@ function evalIf(node: any, ctx: EvalContext & { nextStatement?: any }) {
     ctx.logger.setNext(node.alternate.loc.start.line - 1, `Condition is FALSE → continue to ELSE branch: ${sourceOf(node.alternate, ctx.logger.getCode())}`);
     return evaluateStatement(node.alternate, ctx);
   } else if (ctx.nextStatement) {
-    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Skip if-block → continue to: ${sourceOf(ctx.nextStatement, ctx.logger.getCode())}`);
+    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Skipping IF, next statement is on line ${ctx.nextStatement.loc.start.line}: ${sourceOf(ctx.nextStatement, ctx.logger.getCode())}`);
   }
 }
 
@@ -571,6 +573,8 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
   };
 
   const fn = createFunction(env, params, body, functionImplementation);
+  // Store the original AST node on the function value for later reference
+  (fn as any).__node = node;
   return fn;
 }
 
@@ -605,7 +609,7 @@ function evalCallExpression(node: any, ctx: EvalContext): any {
       if (fnNode && fnNode.loc) {
         ctx.logger.setNext(
           fnNode.loc.start.line - 1,
-          `Enter function → ${node.callee.name || "anonymous"}()`
+          `Enter function → ${sourceOf(fnNode, ctx.logger.getCode())}`
         );
       }
     }
