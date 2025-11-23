@@ -186,7 +186,7 @@ function evalIf(node: any, ctx: EvalContext) {
 }
 
 function evalFor(node: any, ctx: EvalContext) {
-  const loopEnv = ctx.env.extend("Block");
+  const loopEnv = ctx.env.extend("For Loop");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
   ctx.logger.setCurrentEnv(loopEnv);
 
@@ -223,7 +223,7 @@ function evalFor(node: any, ctx: EvalContext) {
 }
 
 function evalWhile(node: any, ctx: EvalContext) {
-  const loopEnv = ctx.env.extend("Block");
+  const loopEnv = ctx.env.extend("While Loop");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
   ctx.logger.setCurrentEnv(loopEnv);
   

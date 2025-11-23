@@ -61,7 +61,7 @@ export class TimelineLogger {
 
   addExpressionEval(expr: any, value: any) {
     const last = this.entries[this.entries.length - 1];
-    if (!last || !expr.loc) return;
+    if (!last || !expr.range) return;
   
     const exprString = this.code.substring(expr.range[0], expr.range[1]);
   
