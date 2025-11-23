@@ -312,8 +312,7 @@ export const FloatingDebugger = ({
   isPlaying: boolean;
   onClose: () => void;
 }) => {
-  const [showFlowPanel, setShowFlowPanel] = useState(false);
-  const [showNextStepPanel, setShowNextStepPanel] = useState(false);
+  const [showExecutionFlow, setShowExecutionFlow] = useState(false);
 
   if (!state) return null;
 
@@ -340,19 +339,12 @@ export const FloatingDebugger = ({
                     )}
                     <Button size="icon" className="h-7 w-7" variant="outline" onClick={reset}><RefreshCw className="w-4 h-4" /></Button>
                 </div>
-
-                <div className="flex gap-2">
-                    <Button size="sm" variant="secondary" className="w-full h-7 text-xs" onClick={() => setShowFlowPanel(s => !s)}>
-                        <Activity className="w-3 h-3 mr-2"/>
-                        Control Flow
-                    </Button>
-                     <Button size="sm" variant="secondary" className="w-full h-7 text-xs" onClick={() => setShowNextStepPanel(s => !s)}>
-                        <Bot className="w-3 h-3 mr-2"/>
-                        Next Step AI
-                    </Button>
-                </div>
-
-
+                
+                <Button size="sm" variant="secondary" className="w-full h-7 text-xs" onClick={() => setShowExecutionFlow(s => !s)}>
+                    <Activity className="w-3 h-3 mr-2"/>
+                    Execution Flow
+                </Button>
+               
                 <div className="text-xs font-mono"><b>Step:</b> {state.step} | <b>Line:</b> {state.line + 1}</div>
                 
                 <ExpressionPanel evals={state.expressionEval} />
@@ -368,29 +360,29 @@ export const FloatingDebugger = ({
             </div>
         </DraggablePanel>
 
-        {showFlowPanel && (
+        {showExecutionFlow && (
             <DraggablePanel
-                title="Control Flow"
-                onClose={() => setShowFlowPanel(false)}
+                title="Execution Flow"
+                onClose={() => setShowExecutionFlow(false)}
                 initialPosition={{ top: 100, left: window.innerWidth - 800 }}
-                initialSize={{ width: 350, height: 250 }}
+                initialSize={{ width: 350, height: 300 }}
             >
-                <FlowPanel flow={state.controlFlow} />
-            </DraggablePanel>
-        )}
-
-        {showNextStepPanel && (
-            <DraggablePanel
-                title="Next Step"
-                onClose={() => setShowNextStepPanel(false)}
-                initialPosition={{ top: 400, left: window.innerWidth - 800 }}
-                initialSize={{ width: 350, height: 200 }}
-            >
-                <NextStepPanel message={state.nextStep} />
+              <div className="p-2 space-y-3">
+                <div>
+                  <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1">Control Flow</h3>
+                  <FlowPanel flow={state.controlFlow} />
+                </div>
+                <div className="border-t pt-2">
+                   <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1">Next Step</h3>
+                   <NextStepPanel message={state.nextStep} />
+                </div>
+              </div>
             </DraggablePanel>
         )}
     </>
   );
 };
+
+    
 
     
