@@ -27,13 +27,23 @@ interface ReturnSignal {
   __type: "Return";
   value: any;
 }
+interface BreakSignal {
+  __type: "Break";
+}
 
 function makeReturn(value: any): ReturnSignal {
   return { __type: "Return", value };
 }
+function makeBreak(): BreakSignal {
+    return { __type: "Break" };
+}
 
 function isReturnSignal(val: any): val is ReturnSignal {
   return val && val.__type === "Return";
+}
+
+function isBreakSignal(val: any): val is BreakSignal {
+    return val && val.__type === "Break";
 }
 
 /**
@@ -78,14 +88,21 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
   let result: any;
   for (let i = 0; i < body.length; i++) {
     const stmt = body[i];
-    const nextStmt = body[i + 1];
     
-    // Pass the next statement in the context for better logging
+    // Find next *meaningful* statement for logging
+    let nextStmt: any = null;
+    for (let j = i + 1; j < body.length; j++) {
+        if (body[j] && body[j].type !== 'EmptyStatement' && body[j].type !== 'DebuggerStatement') {
+            nextStmt = body[j];
+            break;
+        }
+    }
+
     const statementCtx = { ...ctx, nextStatement: nextStmt };
 
     result = evaluateStatement(stmt, statementCtx);
     // If a return statement is executed, stop and propagate the signal up.
-    if (isReturnSignal(result)) {
+    if (isReturnSignal(result) || isBreakSignal(result)) {
       return result;
     }
   }
@@ -105,7 +122,8 @@ function logIfRealStatement(node: any, ctx: EvalContext) {
       "ReturnStatement",
       "BlockStatement",
       "FunctionDeclaration",
-      "ClassDeclaration"
+      "ClassDeclaration",
+      "BreakStatement"
     ]);
   
     if (node && node.loc && validStatements.has(node.type)) {
@@ -179,6 +197,9 @@ function evaluateStatement(node: any, ctx: EvalContext & { nextStatement?: any }
       return evalFunctionDeclaration(node, ctx);
     case "ClassDeclaration":
       return evalClassDeclaration(node, ctx);
+    case "BreakStatement":
+      ctx.logger.addFlow(`Break encountered`);
+      return makeBreak();
     default:
       // Unhandled statements can be skipped or throw
       // console.warn("Unsupported statement:", node.type);
@@ -214,7 +235,7 @@ function evalIf(node: any, ctx: EvalContext & { nextStatement?: any }) {
 
   if (test) {
     ctx.logger.addNextStep(
-      `Run the inside statement: ${sourceOf(node.consequent, ctx.logger.getCode())}`
+        `Run the inside statement: ${sourceOf(node.consequent, ctx.logger.getCode())}`
     );
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
@@ -274,7 +295,7 @@ function evalFor(node: any, ctx: EvalContext) {
     }
 
     const res = evaluateStatement(node.body, loopCtx);
-    if (res?.__type === "Break") {
+    if (isBreakSignal(res)) {
         ctx.logger.addNextStep('Break encountered → exit this loop immediately');
         break;
     }
@@ -328,7 +349,7 @@ function evalWhile(node: any, ctx: EvalContext) {
     );
 
     const res = evaluateStatement(node.body, loopCtx);
-     if (res?.__type === "Break") {
+     if (isBreakSignal(res)) {
         ctx.logger.addNextStep('Break encountered → exit this loop immediately');
         break;
     }
@@ -645,5 +666,7 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
 
   return baseCtor;
 }
+
+    
 
     
