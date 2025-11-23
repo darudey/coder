@@ -4,6 +4,57 @@
 import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 
+const ScopePanel = ({ scopes }: { scopes: Record<string, any> }) => {
+    if (!scopes) return null;
+    return (
+        <div className="bg-muted/50 p-2 rounded-md space-y-1">
+          <div className="text-xs font-semibold text-muted-foreground px-2">Scope</div>
+    
+          {Object.entries(scopes).map(([scopeName, vars]) => (
+            <details
+              key={scopeName}
+              open
+              className="border border-border/50 rounded p-1"
+            >
+              <summary className="cursor-pointer text-xs font-medium list-none">
+                <span className="pl-1">{scopeName}</span>
+              </summary>
+    
+              <div className="pl-3 text-xs space-y-1 mt-1">
+                {Object.entries(vars).map(([key, value]) => (
+                  <div key={key} className="flex justify-between font-mono text-muted-foreground">
+                    <span>{key}:</span>
+                    <span className="text-foreground">
+                      {typeof value === "object" && value !== null
+                        ? JSON.stringify(value)
+                        : String(value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+      );
+}
+
+const CallStackPanel = ({ stack }: { stack: string[] }) => {
+    if (!stack) return null;
+    return (
+      <div className="bg-muted/50 p-2 rounded-md space-y-1">
+        <div className="text-xs font-semibold text-muted-foreground px-2">Call Stack</div>
+        <div className="text-xs space-y-1 p-2">
+            {stack.length > 0 ? stack.map((frame, index) => (
+                <div key={index} className="font-mono text-foreground">{frame}</div>
+            )) : (
+                <div className="text-muted-foreground italic">(empty)</div>
+            )}
+        </div>
+      </div>
+    );
+};
+
+
 export const FloatingDebugger = ({
   state,
   nextStep,
@@ -79,7 +130,7 @@ export const FloatingDebugger = ({
       </button>
 
       {!collapsed && (
-        <div className="mt-2 space-y-2 text-sm">
+        <div className="mt-2 space-y-4 text-sm">
           {/* Controls */}
           <div className="flex gap-2 text-xs mb-2">
             <button className="px-2 py-1 bg-primary/20 rounded" onClick={prevStep}>
@@ -105,36 +156,17 @@ export const FloatingDebugger = ({
             </button>
           </div>
 
-          <div><b>Step:</b> {state.step}</div>
-          <div><b>Line:</b> {state.line}</div>
+          <div className="text-xs"><b>Step:</b> {state.step} | <b>Line:</b> {state.line}</div>
 
-          <div>
-            <b>Variables:</b>
-            <pre className="text-xs bg-muted p-2 rounded">
-              {JSON.stringify(state.variables, null, 2)}
-            </pre>
-          </div>
+          <ScopePanel scopes={state.variables} />
+          <CallStackPanel stack={state.stack} />
 
-          <div>
-            <b>Heap:</b>
-            <pre className="text-xs bg-muted p-2 rounded">
-              {JSON.stringify(state.heap, null, 2)}
+          <details className="pt-4">
+            <summary className="text-xs cursor-pointer text-muted-foreground">Raw State</summary>
+            <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
+              {JSON.stringify(state, null, 2)}
             </pre>
-          </div>
-
-          <div>
-            <b>Call Stack:</b>
-            <pre className="text-xs bg-muted p-2 rounded">
-              {JSON.stringify(state.stack, null, 2)}
-            </pre>
-          </div>
-
-          <div>
-            <b>Output:</b>
-            <pre className="text-xs bg-muted p-2 rounded">
-              {(state.output ?? []).join("\n")}
-            </pre>
-          </div>
+          </details>
         </div>
       )}
     </div>
