@@ -93,6 +93,22 @@ const CallStackPanel = ({ stack }: { stack?: string[] }) => {
     );
 };
 
+const FlowPanel = ({ flow }: { flow?: string[] }) => {
+    if (!flow || flow.length === 0) return null;
+    return (
+      <div className="bg-purple-500/10 p-2 rounded-md space-y-1">
+        <div className="text-xs font-semibold text-purple-800 dark:text-purple-300 px-2">Control Flow</div>
+        <div className="text-xs space-y-1 p-2">
+            {flow.map((message, index) => (
+                <div key={index} className="font-mono text-purple-700 dark:text-purple-400">
+                    <span className="mr-1">›</span>{message}
+                </div>
+            ))}
+        </div>
+      </div>
+    );
+  };
+
 
 export const FloatingDebugger = ({
   state,
@@ -197,6 +213,7 @@ export const FloatingDebugger = ({
 
           <div className="text-xs"><b>Step:</b> {state.step} | <b>Line:</b> {state.line}</div>
           
+          <FlowPanel flow={state.flow} />
           <ExpressionPanel evals={state.expressionEval} />
           <ScopePanel scopes={state.variables} />
           <CallStackPanel stack={state.stack} />

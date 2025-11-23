@@ -130,6 +130,7 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
       return evaluateExpression(node.expression, ctx);
     case "ReturnStatement": {
       const val = node.argument ? evaluateExpression(node.argument, ctx) : undefined;
+      ctx.logger.addFlow(`Return encountered → value: ${JSON.stringify(val)}`);
       return makeReturn(val);
     }
     case "IfStatement":
@@ -137,15 +138,18 @@ function evaluateStatement(node: any, ctx: EvalContext): any {
     case "BlockStatement": {
         const shouldCreateBlock = ctx.env.kind !== "block" && ctx.env.kind !== "function";
         const newEnv = shouldCreateBlock ? ctx.env.extend("block") : ctx.env;
+        
         const innerCtx = { ...ctx, env: newEnv };
         
         if (shouldCreateBlock) {
           ctx.logger.setCurrentEnv(newEnv);
+          ctx.logger.addFlow("Entering new block scope");
         }
         
         const result = evaluateBlockBody(node.body, innerCtx);
         
         if (shouldCreateBlock) {
+          ctx.logger.addFlow("Exiting block scope");
           ctx.logger.setCurrentEnv(ctx.env); // Restore parent env
         }
         
@@ -189,6 +193,14 @@ function evalIf(node: any, ctx: EvalContext) {
   const test = safeEvaluate(node.test, ctx);
   ctx.logger.addExpressionEval(node.test, test);
   ctx.logger.addExpressionContext(node.test, "If Condition");
+  ctx.logger.addFlow(
+    test
+      ? "If condition TRUE → executing THEN branch"
+      : (node.alternate
+         ? "If condition FALSE → executing ELSE branch"
+         : "If condition FALSE → skipping block")
+  );
+
   if (test) {
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
@@ -217,6 +229,11 @@ function evalFor(node: any, ctx: EvalContext) {
       const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
+      ctx.logger.addFlow(
+        test
+          ? "For condition true → executing loop body"
+          : "For condition false → exiting loop"
+      );
       if (!test) break;
     }
 
@@ -227,8 +244,12 @@ function evalFor(node: any, ctx: EvalContext) {
     }
 
     if (node.update) {
+      const argName = node.update.argument.name;
+      const before = loopCtx.env.get(argName);
       evaluateExpression(node.update, loopCtx);
+      const after = loopCtx.env.get(argName);
       ctx.logger.addExpressionContext(node.update, "For Loop Update");
+      ctx.logger.addFlow(`For update: ${argName} changed from ${before} to ${after}`);
     }
   }
 
@@ -247,6 +268,11 @@ function evalWhile(node: any, ctx: EvalContext) {
     const test = safeEvaluate(node.test, loopCtx);
     ctx.logger.addExpressionEval(node.test, test);
     ctx.logger.addExpressionContext(node.test, "While Loop Condition");
+    ctx.logger.addFlow(
+      test
+        ? "While condition is true → executing loop body"
+        : "While condition is false → breaking loop"
+    );
     if (!test) break;
     const res = evaluateStatement(node.body, loopCtx);
     if (isReturnSignal(res)) {
@@ -408,6 +434,7 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
       
       const logger = (this as any).__ctx.logger;
       logger.setCurrentEnv(fnEnv);
+      logger.addFlow(`Entering function ${funcName}`);
 
       const innerCtx: EvalContext = {
         env: fnEnv,
@@ -430,6 +457,7 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
       }
       
       innerCtx.stack.pop();
+      logger.addFlow(`Returning from function ${funcName}`);
       logger.setCurrentEnv(this.__env); // Restore outer env
       
       if (isReturnSignal(result)) {

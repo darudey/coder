@@ -14,6 +14,7 @@ export interface TimelineEntry {
     breakdown: string[];
     context?: string;
   }>;
+  flow?: string[];
 }
 
 function isUserFunction(value: any) {
@@ -149,6 +150,14 @@ export class TimelineLogger {
       last.expressionEval[exprString] = { result: undefined, breakdown: [] };
 
     last.expressionEval[exprString].context = context;
+  }
+
+  addFlow(message: string) {
+    const last = this.entries[this.entries.length - 1];
+    if (!last) return;
+  
+    if (!last.flow) last.flow = [];
+    last.flow.push(message);
   }
 
   logOutput(...args: any[]) {
