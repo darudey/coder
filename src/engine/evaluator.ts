@@ -31,6 +31,167 @@ export interface EvalContext {
   labels?: Record<string, any>; // labelled targets (for future use / debugging)
 }
 
+// ---------- PATTERN HELPERS (Destructuring) ----------
+
+function assignToLValue(node: any, value: any, ctx: EvalContext) {
+  // Simple identifier or member: used for assignment patterns
+  if (node.type === "Identifier") {
+    ctx.env.set(node.name, value);
+  } else if (node.type === "MemberExpression") {
+    const { object, property } = evalMemberTarget(node, ctx);
+    setProperty(object, property, value);
+  } else {
+    throw new Error("Unsupported assignment target in pattern");
+  }
+}
+
+/**
+ * Handles destructuring in declarations: let/const/var
+ * `pattern` can be Identifier, ObjectPattern, ArrayPattern.
+ */
+function bindPattern(
+  pattern: any,
+  value: any,
+  ctx: EvalContext,
+  kind: "var" | "let" | "const"
+) {
+  if (!pattern) return;
+
+  switch (pattern.type) {
+    case "Identifier": {
+      const name = pattern.name;
+      if (kind === "var") {
+        ctx.env.set(name, value);
+      } else {
+        ctx.env.record.createMutableBinding(name, kind, value, true);
+      }
+      break;
+    }
+
+    case "ObjectPattern": {
+      const obj = value ?? {};
+      for (const prop of pattern.properties) {
+        if (prop.type === "Property") {
+          const key =
+            prop.key.type === "Identifier"
+              ? prop.key.name
+              : evaluateExpression(prop.key, ctx);
+          const subValue = (obj as any)[key];
+          bindPattern(prop.value, subValue, ctx, kind);
+        } else if (prop.type === "RestElement") {
+          // { a, ...rest } = obj
+          const restObj: any = {};
+          const usedKeys = new Set(
+            pattern.properties
+              .filter((p: any) => p.type === "Property")
+              .map((p: any) =>
+                p.key.type === "Identifier" ? p.key.name : null
+              )
+              .filter(Boolean)
+          );
+          for (const k of Object.keys(obj)) {
+            if (!usedKeys.has(k)) restObj[k] = (obj as any)[k];
+          }
+          bindPattern(prop.argument, restObj, ctx, kind);
+        }
+      }
+      break;
+    }
+
+    case "ArrayPattern": {
+      const arr = Array.isArray(value) ? value : [];
+      let idx = 0;
+      for (const element of pattern.elements) {
+        if (!element) {
+          idx++;
+          continue;
+        }
+        if (element.type === "RestElement") {
+          const rest = arr.slice(idx);
+          bindPattern(element.argument, rest, ctx, kind);
+          break;
+        } else {
+          bindPattern(element, arr[idx], ctx, kind);
+          idx++;
+        }
+      }
+      break;
+    }
+
+    default:
+      throw new Error(`Unsupported binding pattern: ${pattern.type}`);
+  }
+}
+
+/**
+ * Handles destructuring in assignment expressions:
+ *   ({ a, b } = obj), ([x, ...rest] = arr)
+ */
+function assignPattern(pattern: any, value: any, ctx: EvalContext) {
+  if (!pattern) return;
+
+  switch (pattern.type) {
+    case "Identifier":
+    case "MemberExpression": {
+      assignToLValue(pattern, value, ctx);
+      break;
+    }
+
+    case "ObjectPattern": {
+      const obj = value ?? {};
+      for (const prop of pattern.properties) {
+        if (prop.type === "Property") {
+          const key =
+            prop.key.type === "Identifier"
+              ? prop.key.name
+              : evaluateExpression(prop.key, ctx);
+          const subValue = (obj as any)[key];
+          assignPattern(prop.value, subValue, ctx);
+        } else if (prop.type === "RestElement") {
+          const restObj: any = {};
+          const usedKeys = new Set(
+            pattern.properties
+              .filter((p: any) => p.type === "Property")
+              .map((p: any) =>
+                p.key.type === "Identifier" ? p.key.name : null
+              )
+              .filter(Boolean)
+          );
+          for (const k of Object.keys(obj)) {
+            if (!usedKeys.has(k)) restObj[k] = (obj as any)[k];
+          }
+          assignPattern(prop.argument, restObj, ctx);
+        }
+      }
+      break;
+    }
+
+    case "ArrayPattern": {
+      const arr = Array.isArray(value) ? value : [];
+      let idx = 0;
+      for (const element of pattern.elements) {
+        if (!element) {
+          idx++;
+          continue;
+        }
+        if (element.type === "RestElement") {
+          const rest = arr.slice(idx);
+          assignPattern(element.argument, rest, ctx);
+          break;
+        } else {
+          assignPattern(element, arr[idx], ctx);
+          idx++;
+        }
+      }
+      break;
+    }
+
+    default:
+      throw new Error(`Unsupported assignment pattern: ${pattern.type}`);
+  }
+}
+
+
 function getFirstMeaningfulStatement(block: any): any | null {
     if (!block || block.type !== "BlockStatement") return null;
     for (const stmt of block.body) {
@@ -40,13 +201,6 @@ function getFirstMeaningfulStatement(block: any): any | null {
       }
     }
     return null;
-}
-
-function firstLineOf(node: any, code: string): string {
-    if (!node || !node.range) return "";
-    let s = code.substring(node.range[0], node.range[1]).trim();
-    if (s.length > 80) s = s.slice(0, 77) + "...";
-    return s;
 }
 
 function displayHeader(node: any, code: string): string {
@@ -73,6 +227,14 @@ function displayHeader(node: any, code: string): string {
       default:
         return firstLineOf(node, code);
     }
+}
+
+function firstLineOf(node: any, code: string): string {
+  if (!node || !node.range) return "";
+  const start = node.range[0];
+  const eol = code.indexOf("\n", start);
+  if (eol === -1) return code.substring(start).trim();
+  return code.substring(start, eol).trim();
 }
 
 // ---------- CONTROL SIGNALS ----------
@@ -181,6 +343,7 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 }
 
 // ---------- LOG HELPERS ----------
+
 function logIfRealStatement(node: any, ctx: EvalContext) {
   const validStatements = new Set([
     "VariableDeclaration",
@@ -220,6 +383,14 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
     case "VariableDeclaration":
       result = evalVariableDeclaration(node, ctx);
       break;
+    
+    case "ForInStatement":
+      result = evalForIn(node, ctx);
+      break;
+
+    case "ForOfStatement":
+      result = evalForOf(node, ctx);
+      break;
 
     case "ExpressionStatement":
       if (node.expression?.range) ctx.logger.addFlow("Evaluating expression statement");
@@ -249,10 +420,10 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
         ctx.logger.addFlow("Entering new block scope");
         const first = getFirstMeaningfulStatement(node);
         if (first) {
-            ctx.logger.setNext(
-                first.loc.start.line - 1,
-                `Next Step → ${displayHeader(first, ctx.logger.getCode())}`
-            );
+          ctx.logger.setNext(
+            first.loc.start.line - 1,
+            "Next Step → " + displayHeader(first, ctx.logger.getCode())
+          );
         }
       }
 
@@ -369,13 +540,9 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
 function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
   for (const decl of node.declarations) {
-    const name = decl.id.name;
+    const pattern = decl.id;
     const value = decl.init ? evaluateExpression(decl.init, ctx) : undefined;
-    if (kind === "var") {
-      ctx.env.set(name, value);
-    } else {
-      ctx.env.record.createMutableBinding(name, kind, value, true);
-    }
+    bindPattern(pattern, value, ctx, kind);
   }
 }
 
@@ -389,15 +556,15 @@ function evalIf(node: any, ctx: EvalContext) {
 
   if (test) {
     const target = node.consequent;
-    const first = target.type === "BlockStatement"
-        ? getFirstMeaningfulStatement(target)
-        : target;
-    
+    const first = target.type === "BlockStatement" 
+      ? getFirstMeaningfulStatement(target)
+      : target;
+
     if (first) {
-        ctx.logger.setNext(
-            first.loc.start.line - 1,
-            "Next Step → " + displayHeader(first, ctx.logger.getCode())
-        );
+      ctx.logger.setNext(
+        first.loc.start.line - 1,
+        "Next Step → " + displayHeader(first, ctx.logger.getCode())
+      );
     }
 
     if (target.type === "BlockStatement") {
@@ -413,8 +580,8 @@ function evalIf(node: any, ctx: EvalContext) {
   } else if (node.alternate) {
     const target = node.alternate;
     const first = target.type === "BlockStatement"
-        ? getFirstMeaningfulStatement(target)
-        : target;
+      ? getFirstMeaningfulStatement(target)
+      : target;
     
     if (first) {
         ctx.logger.setNext(
@@ -590,6 +757,149 @@ function evalWhile(node: any, ctx: EvalContext) {
   return result;
 }
 
+// ---------- FOR-IN ----------
+function evalForIn(node: any, ctx: EvalContext) {
+  const loopEnv = ctx.env.extend("block");
+  const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+
+  const rhs = evaluateExpression(node.right, loopCtx) ?? {};
+  const keys = Object.keys(rhs);
+  let result: any;
+
+  ctx.logger.setCurrentEnv(loopEnv);
+  ctx.logger.addFlow("FOR-IN INIT");
+
+  for (let idx = 0; idx < keys.length; idx++) {
+    const key = keys[idx];
+
+    // Bind/assign left
+    if (node.left.type === "VariableDeclaration") {
+      evalVariableDeclaration(
+        { ...node.left, declarations: [{ id: node.left.declarations[0].id, init: { type: "Literal", value: key } }] },
+        loopCtx
+      );
+    } else {
+      assignPattern(node.left, key, loopCtx);
+    }
+
+    // Next step → body
+    const first = node.body.type === "BlockStatement"
+      ? getFirstMeaningfulStatement(node.body)
+      : node.body;
+    if (first) {
+      ctx.logger.setNext(
+        first.loc.start.line - 1,
+        "Next Step → " + displayHeader(first, ctx.logger.getCode())
+      );
+    }
+
+    const res =
+      node.body.type === "BlockStatement"
+        ? evaluateBlockBody(node.body.body, loopCtx)
+        : evaluateStatement(node.body, loopCtx);
+
+    if (isBreakSignal(res)) {
+      if (!res.label) {
+        ctx.logger.setNext(
+          node.loc.end.line,
+          `Break → exit FOR-IN loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+        );
+        break;
+      } else {
+        return res;
+      }
+    }
+    if (isContinueSignal(res)) {
+      if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
+        return res;
+      }
+      continue;
+    }
+    if (isReturnSignal(res) || isThrowSignal(res)) {
+      result = res;
+      break;
+    }
+  }
+
+  ctx.logger.setCurrentEnv(ctx.env);
+  return result;
+}
+
+// ---------- FOR-OF ----------
+function evalForOf(node: any, ctx: EvalContext) {
+  const loopEnv = ctx.env.extend("block");
+  const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+
+  const rhs = evaluateExpression(node.right, loopCtx);
+  const iterable = rhs ?? [];
+  let result: any;
+
+  ctx.logger.setCurrentEnv(loopEnv);
+  ctx.logger.addFlow("FOR-OF INIT");
+
+  // Basic iterable assumption (Array or something with Symbol.iterator)
+  const values =
+    typeof (iterable as any)[Symbol.iterator] === "function"
+      ? Array.from(iterable as any)
+      : [];
+
+  for (let idx = 0; idx < values.length; idx++) {
+    const value = values[idx];
+
+    // Bind/assign left
+    if (node.left.type === "VariableDeclaration") {
+      evalVariableDeclaration(
+        { ...node.left, declarations: [{ id: node.left.declarations[0].id, init: { type: "Literal", value } }] },
+        loopCtx
+      );
+    } else {
+      assignPattern(node.left, value, loopCtx);
+    }
+
+    // Next step → body
+    const first = node.body.type === "BlockStatement"
+      ? getFirstMeaningfulStatement(node.body)
+      : node.body;
+    if (first) {
+      ctx.logger.setNext(
+        first.loc.start.line - 1,
+        "Next Step → " + displayHeader(first, ctx.logger.getCode())
+      );
+    }
+
+    const res =
+      node.body.type === "BlockStatement"
+        ? evaluateBlockBody(node.body.body, loopCtx)
+        : evaluateStatement(node.body, loopCtx);
+
+    if (isBreakSignal(res)) {
+      if (!res.label) {
+        ctx.logger.setNext(
+          node.loc.end.line,
+          `Break → exit FOR-OF loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+        );
+        break;
+      } else {
+        return res;
+      }
+    }
+    if (isContinueSignal(res)) {
+      if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
+        return res;
+      }
+      continue;
+    }
+    if (isReturnSignal(res) || isThrowSignal(res)) {
+      result = res;
+      break;
+    }
+  }
+
+  ctx.logger.setCurrentEnv(ctx.env);
+  return result;
+}
+
+
 // ---------- SWITCH ----------
 function evalSwitch(node: any, ctx: EvalContext) {
   const disc = evaluateExpression(node.discriminant, ctx);
@@ -723,6 +1033,39 @@ function evaluateExpression(node: any, ctx: EvalContext): any {
 
     case "Literal":
       return node.value;
+      
+    case "UnaryExpression": {
+      const arg = evaluateExpression(node.argument, ctx);
+      switch (node.operator) {
+        case "!": return !arg;
+        case "+": return +arg;
+        case "-": return -arg;
+        case "typeof":
+          if (node.argument.type === "Identifier" && !ctx.env.hasBinding(node.argument.name)) {
+            return "undefined";
+          }
+          return typeof arg;
+        case "void": return void arg;
+        case "delete":
+          if (node.argument.type === "MemberExpression") {
+            const { object, property } = evalMemberTarget(node.argument, ctx);
+            return delete (object as any)[property];
+          }
+          // delete of non-member (like local) is always false in strict mode,
+          // but this is a teaching engine → keep it simple:
+          return false;
+        default:
+          throw new Error(`Unsupported unary operator: ${node.operator}`);
+      }
+    }
+    
+    case "ConditionalExpression": {
+      const test = evaluateExpression(node.test, ctx);
+      if (test) {
+        return evaluateExpression(node.consequent, ctx);
+      }
+      return evaluateExpression(node.alternate, ctx);
+    }
 
     case "BinaryExpression": {
       const left = evaluateExpression(node.left, ctx);
@@ -741,6 +1084,8 @@ function evaluateExpression(node: any, ctx: EvalContext): any {
         case "<": return left < right;
         case ">=": return left >= right;
         case "<=": return left <= right;
+        case "in": return left in right;
+        case "instanceof": return left instanceof right;
         default:
           throw new Error(`Unsupported binary operator: ${node.operator}`);
       }
@@ -757,15 +1102,14 @@ function evaluateExpression(node: any, ctx: EvalContext): any {
     }
 
     case "AssignmentExpression": {
-      if (node.left.type === "Identifier") {
-        const value = evaluateExpression(node.right, ctx);
-        ctx.env.set(node.left.name, value);
-        return value;
-      }
-      if (node.left.type === "MemberExpression") {
-        const { object, property } = evalMemberTarget(node.left, ctx);
-        const value = evaluateExpression(node.right, ctx);
-        setProperty(object, property, value);
+      const value = evaluateExpression(node.right, ctx);
+      if (
+        node.left.type === "Identifier" ||
+        node.left.type === "MemberExpression" ||
+        node.left.type === "ObjectPattern" ||
+        node.left.type === "ArrayPattern"
+      ) {
+        assignPattern(node.left, value, ctx);
         return value;
       }
       throw new Error("Unsupported assignment target");
