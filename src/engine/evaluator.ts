@@ -32,7 +32,7 @@ import { evalLabeledStatement } from "./statements/evalLabeled";
 import { evalSwitchStatement } from "./statements/evalSwitch";
 import { evalTryStatement } from "./statements/evalTry";
 import { evalForIn } from "./statements/evalForIn";
-import { evalForOfStatement } from "./statements/evalForOf";
+import { evalForOf } from "./statements/evalForOf";
 
 // Import the single, central expression evaluator
 import { evaluateExpression } from "./expressions";
@@ -145,7 +145,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
       break;
 
     case "ForOfStatement":
-      result = evalForOfStatement(node, ctx);
+      result = evalForOf(node, ctx);
       break;
 
     case "ThrowStatement":
