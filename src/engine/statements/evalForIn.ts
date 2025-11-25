@@ -1,6 +1,7 @@
 // src/engine/statements/evalForIn.ts
 import type { EvalContext } from '../types';
-import { evaluateBlockBody, evaluateStatement, evaluateExpression } from '../evaluator';
+import { evaluateBlockBody, evaluateStatement } from '../evaluator';
+import { evaluateExpression } from '../expressions';
 import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from '../signals';
 import { getFirstMeaningfulStatement, displayHeader } from '../next-step';
 import { evalVariableDeclaration } from './evalDeclarations';
