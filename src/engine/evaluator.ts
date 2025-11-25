@@ -111,38 +111,48 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 
 // ---------- LOGGING & HELPERS ----------
 
-function firstLineOf(node: any, code: string): string {
-  if (!node || !node.range) return "";
+function displayHeader(node: any, code: string): string {
+  if (!node) return "";
 
-  const [start, end] = node.range;
-  // Take only a small window; no need to inspect whole function
-  let snippet = code.slice(start, Math.min(end, start + 120));
+  switch (node.type) {
+    case "WhileStatement":
+      return `while (${code.substring(node.test.range[0], node.test.range[1])})`;
 
-  // 1) Cut at first newline
-  const newlineIndex = snippet.indexOf("\n");
-  if (newlineIndex !== -1) {
-    snippet = snippet.slice(0, newlineIndex);
+    case "ForStatement": {
+      const init = node.init
+        ? code.substring(node.init.range[0], node.init.range[1])
+        : "";
+      const test = node.test
+        ? code.substring(node.test.range[0], node.test.range[1])
+        : "";
+      const update = node.update
+        ? code.substring(node.update.range[0], node.update.range[1])
+        : "";
+
+      return `for (${init}; ${test}; ${update})`;
+    }
+
+    case "IfStatement":
+      return `if (${code.substring(node.test.range[0], node.test.range[1])})`;
+
+    case "ExpressionStatement":
+      return code.substring(node.expression.range[0], node.expression.range[1]);
+
+    case "VariableDeclaration":
+      return code.substring(node.range[0], node.range[1]).split("\n")[0];
+
+    default:
+      return fallbackSnippet(node, code);
   }
-
-  // 2) Cut at first '{' (keep the brace, because it's part of header)
-  let braceIndex = snippet.indexOf("{");
-  if (braceIndex !== -1) {
-    snippet = snippet.slice(0, braceIndex + 1);
-  }
-
-  // 3) Or cut at first ';' (for simple statements like `let x = 1;`)
-  const semiIndex = snippet.indexOf(";");
-  if (semiIndex !== -1 && (braceIndex === -1 || semiIndex < braceIndex)) {
-    snippet = snippet.slice(0, semiIndex + 1);
-  }
-
-  // 4) Safety: hard limit length
-  if (snippet.length > 80) {
-    snippet = snippet.slice(0, 77) + "...";
-  }
-
-  return snippet.trim();
 }
+
+function fallbackSnippet(node: any, code: string): string {
+  if (!node || !node.range) return "";
+  let s = code.substring(node.range[0], node.range[1]).trim();
+  if (s.length > 80) s = s.slice(0, 77) + "...";
+  return s;
+}
+
 
 function logIfRealStatement(node: any, ctx: EvalContext) {
   const validStatements = new Set([
@@ -253,7 +263,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
     if (ctx.nextStatement) {
       ctx.logger.setNext(
         ctx.nextStatement.loc.start.line - 1,
-        `Next Step → ${firstLineOf(
+        `Next Step → ${displayHeader(
           ctx.nextStatement,
           ctx.logger.getCode()
         )}`
@@ -295,13 +305,13 @@ function evalIf(node: any, ctx: EvalContext) {
   if (test) {
     ctx.logger.setNext(
       node.consequent.loc.start.line - 1,
-      `Condition is TRUE → continue to: ${firstLineOf(node.consequent, ctx.logger.getCode())}`
+      `Condition is TRUE → continue to: ${displayHeader(node.consequent, ctx.logger.getCode())}`
     );
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
     ctx.logger.setNext(
       node.alternate.loc.start.line - 1,
-      `Condition is FALSE → go to ELSE: ${firstLineOf(
+      `Condition is FALSE → go to ELSE: ${displayHeader(
         node.alternate,
         ctx.logger.getCode()
       )}`
@@ -310,7 +320,7 @@ function evalIf(node: any, ctx: EvalContext) {
   } else if (ctx.nextStatement) {
     ctx.logger.setNext(
       ctx.nextStatement.loc.start.line - 1,
-      `Skip IF → continue to: ${firstLineOf(
+      `Skip IF → continue to: ${displayHeader(
         ctx.nextStatement,
         ctx.logger.getCode()
       )}`
@@ -355,7 +365,7 @@ function evalFor(node: any, ctx: EvalContext) {
       if (!test) {
         ctx.logger.setNext(
           node.loc.end.line,
-          `Exit FOR loop → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+          `Exit FOR loop → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
         );
         break;
       }
@@ -369,7 +379,7 @@ function evalFor(node: any, ctx: EvalContext) {
     if (isBreakSignal(res)) {
       ctx.logger.setNext(
         node.loc.end.line, 
-        `Break → exit FOR loop. Next: ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+        `Break → exit FOR loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
       );
       break;
     }
@@ -420,7 +430,7 @@ function evalWhile(node: any, ctx: EvalContext) {
     if (!test) {
       ctx.logger.setNext(
         node.loc.end.line, 
-        `Exit WHILE loop → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+        `Exit WHILE loop → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
       );
       break;
     }
@@ -434,7 +444,7 @@ function evalWhile(node: any, ctx: EvalContext) {
     if (isBreakSignal(res)) {
       ctx.logger.setNext(
         node.loc.end.line, 
-        `Break → exit WHILE loop. Next: ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+        `Break → exit WHILE loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
       );
       break;
     }
