@@ -2,63 +2,60 @@
 
 import type { LexicalEnvironment } from "./environment";
 
-export interface JSObject {
-  [key: string]: any;
-  __proto__?: JSObject | null;
-}
-
-export interface FunctionValue extends JSObject {
-  __isFunctionObject?: boolean;
+export interface FunctionValue {
+  __isFunctionValue: true;
   __env: LexicalEnvironment;
   __params: any[];
-  __body: any; // AST node (FunctionBody / BlockStatement)
+  __body: any;
+  __impl: (this: any, thisArg: any, args: any[]) => any;
+  __ctx?: {
+    logger: any; // TimelineLogger, but avoid circular type dependency
+    stack: string[];
+  };
+  __node?: any;
   __isClassConstructor?: boolean;
-  call: (thisArg: any, args: any[]) => any;
+  prototype?: any;
+  call(thisArg: any, args: any[]): any;
   construct?: (args: any[]) => any;
 }
 
 export function isUserFunction(value: any): value is FunctionValue {
-  return value && typeof value === 'object' && value.__isFunctionObject === true;
-}
-
-export function createObject(proto: JSObject | null = null): JSObject {
-  return { __proto__: proto };
+  return !!value && value.__isFunctionValue === true;
 }
 
 export function createFunction(
   env: LexicalEnvironment,
   params: any[],
   body: any,
-  impl?: (thisArg: any, args: any[]) => any
+  impl: (this: FunctionValue, thisArg: any, args: any[]) => any
 ): FunctionValue {
   const fn: FunctionValue = {
-    __isFunctionObject: true,
+    __isFunctionValue: true,
     __env: env,
     __params: params,
     __body: body,
-    call: impl ?? (() => undefined),
-    __proto__: Function.prototype as any
+    __impl: impl,
+    call(thisArg: any, args: any[]) {
+      return this.__impl.call(this, thisArg, args);
+    },
   };
   return fn;
 }
 
-export function setPrototype(obj: JSObject, proto: JSObject | null) {
-  obj.__proto__ = proto;
+export function createObject(proto: any): any {
+  return Object.create(proto || Object.prototype);
 }
 
-export function getProperty(obj: any, prop: any): any {
+export function setPrototype(obj: any, proto: any) {
+  Object.setPrototypeOf(obj, proto);
+}
+
+export function getProperty(obj: any, key: any): any {
   if (obj == null) return undefined;
-  let cur: any = obj;
-  while (cur) {
-    if (Object.prototype.hasOwnProperty.call(cur, prop)) {
-      return cur[prop];
-    }
-    cur = cur.__proto__;
-  }
-  return undefined;
+  return obj[key];
 }
 
-export function setProperty(obj: any, prop: any, value: any) {
-  if (obj == null) throw new Error("Cannot set property on null/undefined");
-  obj[prop] = value;
+export function setProperty(obj: any, key: any, value: any) {
+  if (obj == null) return;
+  obj[key] = value;
 }
