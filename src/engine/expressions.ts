@@ -6,7 +6,7 @@ import type { EvalContext } from "./types";
 import {
   getProperty,
   setProperty,
-  createUserFunction,
+  createFunction,
   createObject,
   isUserFunction,
 } from "./values";
@@ -289,7 +289,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
     // ──────────────────────────
     case "ArrowFunctionExpression":
     case "FunctionExpression":
-        return createUserFunction(node, ctx.env);
+        return createFunction(node, ctx.env);
         
     case "ThisExpression":
         return ctx.thisValue;

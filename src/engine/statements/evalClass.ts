@@ -1,8 +1,7 @@
-
 // src/engine/statements/evalClass.ts
 
 import type { EvalContext } from "../types";
-import { createUserFunction, createObject, setProperty, type FunctionValue } from "../values";
+import { createFunction, createObject, setProperty, type FunctionValue } from "../values";
 
 export function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
   const className = node.id?.name || 'AnonymousClass';
@@ -19,7 +18,7 @@ export function createClassConstructor(node: any, ctx: EvalContext): FunctionVal
   for(const member of node.body.body) {
       if (member.type === 'MethodDefinition' && member.kind !== 'constructor') {
           const methodName = member.key.name;
-          methods[methodName] = createUserFunction(member.value, ctx.env);
+          methods[methodName] = createFunction(member.value, ctx.env);
       }
   }
 
@@ -32,18 +31,17 @@ export function createClassConstructor(node: any, ctx: EvalContext): FunctionVal
       }
       
       // Call the actual constructor logic
-      const fn = createUserFunction({ params: ctorParams, body: ctorBody }, ctx.env);
+      const fn = createFunction({ params: ctorParams, body: ctorBody }, ctx.env);
       fn.call(instance, args);
 
       return instance;
   }
 
-  const classFn = createUserFunction(
-      ctx.env,
-      ctorParams,
-      ctorBody,
-      constructorFn
+  const classFn = createFunction(
+      {params: ctorParams, body: ctorBody},
+      ctx.env
   );
+  (classFn as any).__impl = constructorFn;
   
   classFn.__isClassConstructor = true;
   classFn.prototype = createObject(Object.prototype);
@@ -53,7 +51,7 @@ export function createClassConstructor(node: any, ctx: EvalContext): FunctionVal
   for(const member of node.body.body) {
     if (member.type === 'MethodDefinition' && member.static) {
       const staticMethodName = member.key.name;
-      setProperty(classFn, staticMethodName, createUserFunction(member.value, ctx.env));
+      setProperty(classFn, staticMethodName, createFunction(member.value, ctx.env));
     }
   }
 

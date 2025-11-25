@@ -1,11 +1,10 @@
-
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
-import { createUserFunction } from "../values";
+import { createFunction } from "../values"; 
 
 export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
   const name = node.id.name;
-  const fn = createUserFunction(node, ctx.env);
+  const fn = createFunction(node, ctx.env);
   ctx.env.record.initializeBinding(name, fn);
 }
