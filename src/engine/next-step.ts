@@ -1,6 +1,6 @@
 // src/engine/next-step.ts
 import type { EvalContext } from './types';
-import { evaluateExpression } from './evaluator';
+import { evaluateExpression } from './expressions';
 
 // ---- AST snippet helpers ----
 export function getFirstMeaningfulStatement(block: any): any | null {
