@@ -1,41 +1,43 @@
+
 // src/engine/evaluator.ts
+
 import type { EvalContext } from './types';
 import { hoistProgram } from './hoist';
+import { logIfRealStatement, displayHeader, getFirstMeaningfulStatement } from './next-step';
 
 // Import statement evaluators
-import { evalIf } from './statements/evalIf';
-import { evalWhile } from './statements/evalWhile';
-import { evalFor } from './statements/evalFor';
-import { evalForIn } from './statements/evalForIn';
-import { evalForOf } from './statements/evalForOf';
-import { evalReturn } from './statements/evalReturn';
-import { evalBlock } from './statements/evalBlock';
-import { evalSwitch } from './statements/evalSwitch';
-import { evalTry } from './statements/evalTry';
-import { evalBreak } from './statements/evalBreak';
-import { evalContinue } from './statements/evalContinue';
-import { evalLabeled } from './statements/evalLabeled';
-import { evalThrow } from './statements/evalThrow';
-import { evalVariableDeclaration, evalFunctionDeclaration, evalClassDeclaration } from './statements/evalDeclarations';
-import { evalExpressionStatement } from './statements/evalExpressionStatement';
-
+import { evalVariableDeclaration } from './statements/evalDeclarations';
+import { evalExpressionStatement } from './statements/evalExpressionStmt';
+import { evalReturnStatement } from './statements/evalReturn';
+import { evalIfStatement } from './statements/evalIf';
+import { evalBlockStatement } from './statements/evalBlock';
+import { evalForStatement } from './statements/evalFor';
+import { evalWhileStatement } from './statements/evalWhile';
+import { evalFunctionDeclaration } from './statements/evalFunction';
+import { evalClassDeclaration } from './statements/evalClass';
+import { evalBreakStatement } from './statements/evalBreak';
+import { evalContinueStatement } from './statements/evalContinue';
+import { evalSwitchStatement } from './statements/evalSwitch';
+import { evalTryStatement } from './statements/evalTry';
+import { evalLabeledStatement } from './statements/evalLabeled';
+import { evalForInStatement } from './statements/evalForIn';
+import { evalForOfStatement } from './statements/evalForOf';
 
 // Import expression evaluators
 import { evalIdentifier } from './expressions/evalIdentifier';
-import { evalBinary } from './expressions/evalBinary';
-import { evalLogical } from './expressions/evalLogical';
-import { evalAssignment } from './expressions/evalAssignment';
-import { evalUpdate } from './expressions/evalUpdate';
-import { evalCall } from './expressions/evalCall';
-import { evalMember } from './expressions/evalMember';
-import { evalNew } from './expressions/evalNew';
-import { evalArray } from './expressions/evalArray';
-import { evalObject } from './expressions/evalObject';
-import { evalUnary } from './expressions/evalUnary';
-import { evalConditional } from './expressions/evalConditional';
+import { evalBinaryExpression } from './expressions/evalBinary';
+import { evalLogicalExpression } from './expressions/evalLogical';
+import { evalAssignmentExpression } from './expressions/evalAssignment';
+import { evalUpdateExpression } from './expressions/evalUpdate';
+import { evalCallExpression } from './expressions/evalCall';
+import { evalMemberExpression } from './expressions/evalMember';
+import { evalNewExpression } from './expressions/evalNew';
+import { evalArrayExpression } from './expressions/evalArray';
+import { evalObjectExpression } from './expressions/evalObject';
+import { evalUnaryExpression } from './expressions/evalUnary';
+import { evalConditionalExpression } from './expressions/evalConditional';
 
-import { isReturnSignal, isBreakSignal, isContinueSignal, isThrowSignal } from './signals';
-import { setNextFromContext, getNextStatement } from './next-step';
+import { isReturnSignal, isBreakSignal, isContinueSignal, isThrowSignal, makeThrow } from './signals';
 
 // Main entry point for the interpreter
 export function evaluateProgram(ast: any, ctx: EvalContext): any {
@@ -62,40 +64,80 @@ export function evaluateBlockBody(body: any[], ctx: EvalContext): any {
   return result;
 }
 
-
 // Acts as a router to the specific statement evaluation functions
 export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (!node) return;
 
-  ctx.logger.log(node.loc.start.line - 1);
+  logIfRealStatement(node, ctx);
 
   let result: any;
+
   switch (node.type) {
-    case 'IfStatement': result = evalIf(node, ctx); break;
-    case 'WhileStatement': result = evalWhile(node, ctx); break;
-    case 'ForStatement': result = evalFor(node, ctx); break;
-    case 'ForInStatement': result = evalForIn(node, ctx); break;
-    case 'ForOfStatement': result = evalForOf(node, ctx); break;
-    case 'ReturnStatement': result = evalReturn(node, ctx); break;
-    case 'SwitchStatement': result = evalSwitch(node, ctx); break;
-    case 'TryStatement': result = evalTry(node, ctx); break;
-    case 'BreakStatement': result = evalBreak(node, ctx); break;
-    case 'ContinueStatement': result = evalContinue(node, ctx); break;
-    case 'LabeledStatement': result = evalLabeled(node, ctx); break;
-    case 'ThrowStatement': result = evalThrow(node, ctx); break;
-    case 'ExpressionStatement': result = evalExpressionStatement(node, ctx); break;
-    case 'BlockStatement': result = evalBlock(node, ctx); break;
-    case 'FunctionDeclaration': result = evalFunctionDeclaration(node, ctx); break;
-    case 'ClassDeclaration': result = evalClassDeclaration(node, ctx); break;
-    case 'VariableDeclaration': result = evalVariableDeclaration(node, ctx); break;
-    case 'EmptyStatement': break; // Do nothing
-    case 'DebuggerStatement': break; // Do nothing
+    case "VariableDeclaration":
+      result = evalVariableDeclaration(node, ctx);
+      break;
+    case "ExpressionStatement":
+      result = evalExpressionStatement(node, ctx);
+      break;
+    case "ReturnStatement":
+      result = evalReturnStatement(node, ctx);
+      break;
+    case "IfStatement":
+      result = evalIfStatement(node, ctx);
+      break;
+    case "BlockStatement":
+      result = evalBlockStatement(node, ctx);
+      break;
+    case "ForStatement":
+      result = evalForStatement(node, ctx);
+      break;
+    case "WhileStatement":
+      result = evalWhileStatement(node, ctx);
+      break;
+    case "FunctionDeclaration":
+      result = evalFunctionDeclaration(node, ctx);
+      break;
+    case "ClassDeclaration":
+      result = evalClassDeclaration(node, ctx);
+      break;
+    case "BreakStatement":
+      result = evalBreakStatement(node, ctx);
+      break;
+    case "ContinueStatement":
+      result = evalContinueStatement(node, ctx);
+      break;
+    case "SwitchStatement":
+      result = evalSwitchStatement(node, ctx);
+      break;
+    case "TryStatement":
+      result = evalTryStatement(node, ctx);
+      break;
+    case "ForInStatement":
+      result = evalForInStatement(node, ctx);
+      break;
+    case "ForOfStatement":
+      result = evalForOfStatement(node, ctx);
+      break;
+    case "LabeledStatement":
+      result = evalLabeledStatement(node, ctx);
+      break;
+    case "ThrowStatement":
+      result = makeThrow(
+        node.argument ? evaluateExpression(node.argument, ctx) : undefined
+      );
+      break;
     default:
-      console.warn(`Unsupported statement type: ${node.type}`);
       return;
   }
   
-  setNextFromContext(ctx);
+  if (!ctx.logger.hasNext()) {
+    if (ctx.nextStatement) {
+      ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
+    } else {
+      ctx.logger.setNext(null, "End of block");
+    }
+  }
+
   return result;
 }
 
@@ -114,21 +156,31 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
     case 'Identifier': return evalIdentifier(node, ctx);
     case 'Literal': return node.value;
     case 'ThisExpression': return ctx.thisValue;
-    case 'BinaryExpression': return evalBinary(node, ctx);
-    case 'LogicalExpression': return evalLogical(node, ctx);
-    case 'AssignmentExpression': return evalAssignment(node, ctx);
-    case 'UpdateExpression': return evalUpdate(node, ctx);
-    case 'CallExpression': return evalCall(node, ctx);
-    case 'MemberExpression': return evalMember(node, ctx);
-    case 'NewExpression': return evalNew(node, ctx);
-    case 'ArrayExpression': return evalArray(node, ctx);
-    case 'ObjectExpression': return evalObject(node, ctx);
-    case 'UnaryExpression': return evalUnary(node, ctx);
-    case 'ConditionalExpression': return evalConditional(node, ctx);
+    case 'BinaryExpression': return evalBinaryExpression(node, ctx);
+    case 'LogicalExpression': return evalLogicalExpression(node, ctx);
+    case 'AssignmentExpression': return evalAssignmentExpression(node, ctx);
+    case 'UpdateExpression': return evalUpdateExpression(node, ctx);
+    case 'CallExpression': return evalCallExpression(node, ctx);
+    case 'MemberExpression': return evalMemberExpression(node, ctx);
+    case 'NewExpression': return evalNewExpression(node, ctx);
+    case 'ArrayExpression': return evalArrayExpression(node, ctx);
+    case 'ObjectExpression': return evalObjectExpression(node, ctx);
+    case 'UnaryExpression': return evalUnaryExpression(node, ctx);
+    case 'ConditionalExpression': return evalConditionalExpression(node, ctx);
     case 'FunctionExpression': return (require('./statements/evalDeclarations')).createUserFunction(node, ctx.env);
     case 'ArrowFunctionExpression': return (require('./statements/evalDeclarations')).createUserFunction(node, ctx.env);
     default:
       console.warn(`Unsupported expression type: ${node.type}`);
       return undefined;
   }
+}
+
+function getNextStatement(body: any[], currentIndex: number): any | null {
+  for (let j = currentIndex + 1; j < body.length; j++) {
+    const candidate = body[j];
+    if (candidate && candidate.type !== "EmptyStatement" && candidate.type !== "DebuggerStatement") {
+      return candidate;
+    }
+  }
+  return null;
 }

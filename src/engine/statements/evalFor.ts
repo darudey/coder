@@ -1,11 +1,13 @@
-// src/engine/statements/evalFor.ts
-import type { EvalContext } from '../types';
-import { evaluateBlockBody, evaluateStatement, evaluateExpression } from '../evaluator';
-import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from '../signals';
-import { evalVariableDeclaration } from './evalDeclarations';
-import { getFirstMeaningfulStatement, displayHeader } from '../next-step';
 
-export function evalFor(node: any, ctx: EvalContext): any {
+// src/engine/statements/evalFor.ts
+
+import type { EvalContext } from "../types";
+import { evaluateExpression, evaluateStatement, evaluateBlockBody } from "../evaluator";
+import { getFirstMeaningfulStatement, displayHeader } from "../next-step";
+import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from "../signals";
+import { evalVariableDeclaration } from "./evalDeclarations";
+
+export function evalForStatement(node: any, ctx: EvalContext): any {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
 
@@ -24,52 +26,72 @@ export function evalFor(node: any, ctx: EvalContext): any {
 
   while (true) {
     iteration++;
-    ctx.logger.setCurrentEnv(loopCtx.env);
+    ctx.logger.setCurrentEnv(loopEnv);
 
     if (node.test) {
       const test = evaluateExpression(node.test, { ...loopCtx, safe: true });
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
       ctx.logger.addFlow(`FOR LOOP CHECK (iteration #${iteration})`);
-      ctx.logger.addFlow(`Result: ${test ? "TRUE → enter loop body" : "FALSE → exit loop"}`);
+      ctx.logger.addFlow(
+        `Result: ${
+          test ? "TRUE → enter loop body" : "FALSE → exit loop"
+        }`
+      );
 
       if (!test) {
-        ctx.logger.setNext(node.loc.end.line, `Exit FOR loop → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
+        ctx.logger.setNext(
+          node.loc.end.line,
+          `Exit FOR loop → ${displayHeader(
+            ctx.nextStatement,
+            ctx.logger.getCode()
+          )}`
+        );
         break;
       }
     }
 
-    const first = node.body.type === "BlockStatement"
+    const first =
+      node.body.type === "BlockStatement"
         ? getFirstMeaningfulStatement(node.body)
         : node.body;
 
     if (first) {
-        ctx.logger.setNext(
-            first.loc.start.line - 1,
-            "Next Step → " + displayHeader(first, ctx.logger.getCode())
-        );
+      ctx.logger.setNext(
+        first.loc.start.line - 1,
+        "Next Step → " + displayHeader(first, ctx.logger.getCode())
+      );
     }
 
     let res;
     if (node.body.type === "BlockStatement") {
-        res = evaluateBlockBody(node.body.body, loopCtx);
+      res = evaluateBlockBody(node.body.body, loopCtx);
     } else {
-        res = evaluateStatement(node.body, loopCtx);
+      res = evaluateStatement(node.body, loopCtx);
     }
 
     if (isBreakSignal(res)) {
       if (!res.label) {
-        ctx.logger.setNext(node.loc.end.line, `Break → exit FOR loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
+        ctx.logger.setNext(
+          node.loc.end.line,
+          `Break → exit FOR loop. Next: ${displayHeader(
+            ctx.nextStatement,
+            ctx.logger.getCode()
+          )}`
+        );
         break;
       } else {
         return res;
       }
     }
+
     if (isContinueSignal(res)) {
       if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
         return res;
       }
+      // fall through → do update then next iteration
     }
+
     if (isReturnSignal(res) || isThrowSignal(res)) {
       result = res;
       break;
@@ -79,7 +101,10 @@ export function evalFor(node: any, ctx: EvalContext): any {
       ctx.logger.addFlow("FOR LOOP UPDATE:");
       evaluateExpression(node.update, loopCtx);
       if (node.test?.loc) {
-        ctx.logger.setNext(node.test.loc.start.line - 1, "Go to loop condition check");
+        ctx.logger.setNext(
+          node.test.loc.start.line - 1,
+          "Go to loop condition check"
+        );
       }
     }
   }
