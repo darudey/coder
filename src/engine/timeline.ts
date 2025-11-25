@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -23,8 +24,8 @@ export interface TimelineEntry {
   };
 }
 
-function isUserFunction(value: any) {
-  return value && typeof value === "object" && value.__isFunctionObject === true;
+function isUserFunctionValue(value: any) {
+  return value && typeof value === "object" && value.__isFunctionValue === true;
 }
 
 export class TimelineLogger {
@@ -35,7 +36,8 @@ export class TimelineLogger {
   constructor(
     private getEnvSnapshot: () => LexicalEnvironment,
     private getStack: () => string[],
-    private code: string
+    private code: string,
+    private maxSteps: number = 5000
   ) {}
 
   getCode(): string {
@@ -47,12 +49,16 @@ export class TimelineLogger {
   }
 
   log(line: number) {
+    if (this.step >= this.maxSteps) {
+      throw new Error("Step limit exceeded");
+    }
+
     const env = this.getEnvSnapshot();
-    const rawVars = env.snapshotChain(); // your existing method
+    const rawVars = env.snapshotChain();
 
     const serializedVars = JSON.parse(
       JSON.stringify(rawVars, (key, value) => {
-        if (isUserFunction(value)) return "[Function]";
+        if (isUserFunctionValue(value)) return "[Function]";
         if (typeof value === "function") return "[NativeFunction]";
 
         if (
@@ -85,7 +91,6 @@ export class TimelineLogger {
   setNext(line: number | null, message: string) {
     const last = this.entries[this.entries.length - 1];
     if (!last) return;
-
     last.nextStep = { line, message };
   }
 
@@ -116,20 +121,34 @@ export class TimelineLogger {
 
   private applyOperator(l: any, r: any, op: string): any {
     switch (op) {
-      case "+": return l + r;
-      case "-": return l - r;
-      case "*": return l * r;
-      case "/": return l / r;
-      case "%": return l % r;
-      case "==": return l == r;
-      case "===": return l === r;
-      case "!=": return l != r;
-      case "!==": return l !== r;
-      case "<": return l < r;
-      case ">": return l > r;
-      case "<=": return l <= r;
-      case ">=": return l >= r;
-      default: return undefined;
+      case "+":
+        return l + r;
+      case "-":
+        return l - r;
+      case "*":
+        return l * r;
+      case "/":
+        return l / r;
+      case "%":
+        return l % r;
+      case "==":
+        return l == r;
+      case "===":
+        return l === r;
+      case "!=":
+        return l != r;
+      case "!==":
+        return l !== r;
+      case "<":
+        return l < r;
+      case ">":
+        return l > r;
+      case "<=":
+        return l <= r;
+      case ">=":
+        return l >= r;
+      default:
+        return undefined;
     }
   }
 
@@ -165,20 +184,32 @@ export class TimelineLogger {
 
   private friendlyText(op: string) {
     switch (op) {
-      case "%": return "finding the remainder";
+      case "%":
+        return "finding the remainder";
       case "==":
-      case "===": return "checking if the two values are equal";
+      case "===":
+        return "checking if the two values are equal";
       case "!=":
-      case "!==": return "checking if the two values are NOT equal";
-      case "<": return "checking if left is less than right";
-      case ">": return "checking if left is greater than right";
-      case "<=": return "checking if left is less than or equal to right";
-      case ">=": return "checking if left is greater than or equal to right";
-      case "+": return "adding the two values";
-      case "-": return "subtracting right from left";
-      case "*": return "multiplying the two values";
-      case "/": return "dividing left by right";
-      default: return `evaluating operator '${op}'`;
+      case "!==":
+        return "checking if the two values are NOT equal";
+      case "<":
+        return "checking if left is less than right";
+      case ">":
+        return "checking if left is greater than right";
+      case "<=":
+        return "checking if left is less than or equal to right";
+      case ">=":
+        return "checking if left is greater than or equal to right";
+      case "+":
+        return "adding the two values";
+      case "-":
+        return "subtracting right from left";
+      case "*":
+        return "multiplying the two values";
+      case "/":
+        return "dividing left by right";
+      default:
+        return `evaluating operator '${op}'`;
     }
   }
 
@@ -188,8 +219,6 @@ export class TimelineLogger {
     }
 
     const op = expr.operator;
-    const opText = this.friendlyText(op);
-
     const leftName =
       expr.left.type === "Identifier"
         ? expr.left.name
@@ -203,14 +232,20 @@ export class TimelineLogger {
     const rightVal = this.safeValue(expr.right.name ?? rightName);
 
     const lines: string[] = [];
-
     const exprString = this.code.substring(expr.range?.[0] ?? 0, expr.range?.[1] ?? 0);
+
     lines.push(`Expression: ${exprString}`);
     if (leftName) lines.push(`${leftName} is ${leftVal}`);
     if (rightName) lines.push(`${rightName} is ${rightVal}`);
 
     if (op === "%") {
-      lines.push(`${leftVal} % ${rightVal} gives remainder ${this.applyOperator(leftVal, rightVal, "%")}`);
+      lines.push(
+        `${leftVal} % ${rightVal} gives remainder ${this.applyOperator(
+          leftVal,
+          rightVal,
+          "%"
+        )}`
+      );
     }
 
     if (["==", "===", "!=", "!=="].includes(op)) {
@@ -224,7 +259,6 @@ export class TimelineLogger {
     }
 
     lines.push(`Final Result: ${result}`);
-
     return lines;
   }
 
