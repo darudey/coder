@@ -114,14 +114,34 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 function firstLineOf(node: any, code: string): string {
   if (!node || !node.range) return "";
 
-  const start = node.range[0];
-  const endOfLine = code.indexOf("\n", start);
+  const [start, end] = node.range;
+  // Take only a small window; no need to inspect whole function
+  let snippet = code.slice(start, Math.min(end, start + 120));
 
-  if (endOfLine === -1) {
-    return code.substring(start).trim();
+  // 1) Cut at first newline
+  const newlineIndex = snippet.indexOf("\n");
+  if (newlineIndex !== -1) {
+    snippet = snippet.slice(0, newlineIndex);
   }
 
-  return code.substring(start, endOfLine).trim();
+  // 2) Cut at first '{' (keep the brace, because it's part of header)
+  let braceIndex = snippet.indexOf("{");
+  if (braceIndex !== -1) {
+    snippet = snippet.slice(0, braceIndex + 1);
+  }
+
+  // 3) Or cut at first ';' (for simple statements like `let x = 1;`)
+  const semiIndex = snippet.indexOf(";");
+  if (semiIndex !== -1 && (braceIndex === -1 || semiIndex < braceIndex)) {
+    snippet = snippet.slice(0, semiIndex + 1);
+  }
+
+  // 4) Safety: hard limit length
+  if (snippet.length > 80) {
+    snippet = snippet.slice(0, 77) + "...";
+  }
+
+  return snippet.trim();
 }
 
 function logIfRealStatement(node: any, ctx: EvalContext) {
