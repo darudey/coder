@@ -1,3 +1,4 @@
+
 // src/engine/evaluator.ts
 // The main dispatcher for the JavaScript engine.
 // It routes statements to their respective handler modules.
@@ -28,7 +29,7 @@ import { evalFunctionDeclaration } from "./statements/evalFunction";
 import { evalClassDeclaration } from "./statements/evalClass";
 import { evalBreakStatement } from "./statements/evalBreak";
 import { evalContinueStatement } from "./statements/evalContinue";
-import { evalLabeledStatement } from "./statements/evalLabeled";
+import { evalLabeled } from "./statements/evalLabeled";
 import { evalSwitchStatement } from "./statements/evalSwitch";
 import { evalTryStatement } from "./statements/evalTry";
 import { evalForIn } from "./statements/evalForIn";
@@ -129,7 +130,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
       break;
 
     case "LabeledStatement":
-      result = evalLabeledStatement(node, ctx);
+      result = evalLabeled(node, ctx);
       break;
 
     case "SwitchStatement":
