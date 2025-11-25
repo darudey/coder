@@ -1,3 +1,4 @@
+
 // src/engine/patterns/evalDestructuring.ts
 import { resolveMember, evaluateExpression } from '../expressions';
 import { setProperty } from '../values';
@@ -12,6 +13,55 @@ function assignToLValue(node: any, value: any, ctx: EvalContext) {
   } else {
     throw new Error("Unsupported assignment target in pattern");
   }
+}
+
+function bindObjectPattern(pattern: any, obj: any, ctx: EvalContext, kind: "var" | "let" | "const") {
+    if (obj == null) obj = {}; // safe fallback for null / undefined
+
+    for (const prop of pattern.properties) {
+        // Rest: {...rest}
+        if (prop.type === "RestElement") {
+            const rest: Record<string, any> = {};
+            const usedKeys = new Set(
+                pattern.properties
+                .filter((p: any) => p.type === "Property")
+                .map((p: any) => p.key?.name)
+                .filter(Boolean)
+            );
+            for (const k of Object.keys(obj)) {
+                if (!usedKeys.has(k)) {
+                    rest[k] = obj[k];
+                }
+            }
+            bindPattern(prop.argument, rest, ctx, kind);
+            continue;
+        }
+
+        // Normal property
+        const key = prop.key.name;
+        const value = obj[key];
+
+        bindPattern(prop.value, value, ctx, kind);
+    }
+}
+
+function bindArrayPattern(pattern: any, arr: any, ctx: EvalContext, kind: "var" | "let" | "const") {
+    if (!Array.isArray(arr)) arr = []; // safe fallback
+
+    for (let i = 0; i < pattern.elements.length; i++) {
+        const element = pattern.elements[i];
+
+        if (!element) continue; // skip holes like [a,,c]
+
+        if (element.type === "RestElement") {
+            const rest = arr.slice(i);
+            bindPattern(element.argument, rest, ctx, kind);
+            return; // Rest element must be last
+        }
+
+        const value = arr[i];
+        bindPattern(element, value, ctx, kind);
+    }
 }
 
 export function bindPattern(
@@ -33,53 +83,38 @@ export function bindPattern(
       break;
     }
 
-    case "ObjectPattern": {
-      const obj = value ?? {};
-      for (const prop of pattern.properties) {
-        if (prop.type === "Property") {
-          const key =
-            prop.key.type === "Identifier"
-              ? prop.key.name
-              : evaluateExpression(prop.key, ctx);
-          const subValue = (obj as any)[key];
-          bindPattern(prop.value, subValue, ctx, kind);
-        } else if (prop.type === "RestElement") {
-          const restObj: any = {};
-          const usedKeys = new Set(
-            pattern.properties
-              .filter((p: any) => p.type === "Property")
-              .map((p: any) =>
-                p.key.type === "Identifier" ? p.key.name : null
-              )
-              .filter(Boolean)
-          );
-          for (const k of Object.keys(obj)) {
-            if (!usedKeys.has(k)) restObj[k] = (obj as any)[k];
-          }
-          bindPattern(prop.argument, restObj, ctx, kind);
+    case "AssignmentPattern": {
+        // pattern.left is the real binding target
+        // pattern.right is the default value expression
+        let finalValue = value;
+
+        // If value is undefined → use default initializer
+        if (finalValue === undefined) {
+            finalValue = evaluateExpression(pattern.right, ctx);
         }
-      }
+
+        return bindPattern(pattern.left, finalValue, ctx, kind);
+    }
+
+    case "ObjectPattern": {
+      bindObjectPattern(pattern, value, ctx, kind);
       break;
     }
 
     case "ArrayPattern": {
-      const arr = Array.isArray(value) ? value : [];
-      let idx = 0;
-      for (const element of pattern.elements) {
-        if (!element) {
-          idx++;
-          continue;
-        }
-        if (element.type === "RestElement") {
-          const rest = arr.slice(idx);
-          bindPattern(element.argument, rest, ctx, kind);
-          break;
-        } else {
-          bindPattern(element, arr[idx], ctx, kind);
-          idx++;
-        }
-      }
+      bindArrayPattern(pattern, value, ctx, kind);
       break;
+    }
+
+    case "RestElement": {
+        // This is handled inside Object/Array pattern binders, but can be a safety net.
+        const restName = pattern.argument.name;
+        if (kind === 'var') {
+            ctx.env.set(restName, value);
+        } else {
+            ctx.env.record.createMutableBinding(restName, kind, value, true);
+        }
+        break;
     }
 
     default:
@@ -96,32 +131,38 @@ export function assignPattern(pattern: any, value: any, ctx: EvalContext) {
       assignToLValue(pattern, value, ctx);
       break;
     }
+    
+    case "AssignmentPattern": {
+        let finalValue = value;
+        if (finalValue === undefined) {
+            finalValue = evaluateExpression(pattern.right, ctx);
+        }
+        return assignPattern(pattern.left, finalValue, ctx);
+    }
 
     case "ObjectPattern": {
       const obj = value ?? {};
       for (const prop of pattern.properties) {
-        if (prop.type === "Property") {
-          const key =
-            prop.key.type === "Identifier"
+        if (prop.type === "RestElement") {
+            const restObj: any = {};
+            const usedKeys = new Set(
+                pattern.properties
+                .filter((p: any) => p.type === "Property")
+                .map((p: any) => p.key?.name)
+                .filter(Boolean)
+            );
+            for (const k of Object.keys(obj)) {
+                if (!usedKeys.has(k)) restObj[k] = (obj as any)[k];
+            }
+            assignPattern(prop.argument, restObj, ctx);
+            continue;
+        }
+
+        const key = prop.key.type === "Identifier"
               ? prop.key.name
               : evaluateExpression(prop.key, ctx);
-          const subValue = (obj as any)[key];
-          assignPattern(prop.value, subValue, ctx);
-        } else if (prop.type === "RestElement") {
-          const restObj: any = {};
-          const usedKeys = new Set(
-            pattern.properties
-              .filter((p: any) => p.type === "Property")
-              .map((p: any) =>
-                p.key.type === "Identifier" ? p.key.name : null
-              )
-              .filter(Boolean)
-          );
-          for (const k of Object.keys(obj)) {
-            if (!usedKeys.has(k)) restObj[k] = (obj as any)[k];
-          }
-          assignPattern(prop.argument, restObj, ctx);
-        }
+        const subValue = (obj as any)[key];
+        assignPattern(prop.value, subValue, ctx);
       }
       break;
     }
