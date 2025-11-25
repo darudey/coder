@@ -109,7 +109,20 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
   return result;
 }
 
-// ---------- LOGGING ----------
+// ---------- LOGGING & HELPERS ----------
+
+function firstLineOf(node: any, code: string): string {
+  if (!node || !node.range) return "";
+
+  const start = node.range[0];
+  const endOfLine = code.indexOf("\n", start);
+
+  if (endOfLine === -1) {
+    return code.substring(start).trim();
+  }
+
+  return code.substring(start, endOfLine).trim();
+}
 
 function logIfRealStatement(node: any, ctx: EvalContext) {
   const validStatements = new Set([
@@ -135,11 +148,6 @@ function safeEvaluate(node: any, ctx: EvalContext) {
     ...ctx,
     safe: true,
   });
-}
-
-function sourceOf(node: any, code: string): string {
-  if (!node || !node.range) return "";
-  return code.substring(node.range[0], node.range[1]).trim();
 }
 
 // ---------- STATEMENT EVALUATION ----------
@@ -225,7 +233,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
     if (ctx.nextStatement) {
       ctx.logger.setNext(
         ctx.nextStatement.loc.start.line - 1,
-        `Next sequential statement: ${sourceOf(
+        `Next Step → ${firstLineOf(
           ctx.nextStatement,
           ctx.logger.getCode()
         )}`
@@ -267,16 +275,13 @@ function evalIf(node: any, ctx: EvalContext) {
   if (test) {
     ctx.logger.setNext(
       node.consequent.loc.start.line - 1,
-      `Condition is TRUE → go to: ${sourceOf(
-        node.consequent,
-        ctx.logger.getCode()
-      )}`
+      `Condition is TRUE → continue to: ${firstLineOf(node.consequent, ctx.logger.getCode())}`
     );
     return evaluateStatement(node.consequent, ctx);
   } else if (node.alternate) {
     ctx.logger.setNext(
       node.alternate.loc.start.line - 1,
-      `Condition is FALSE → go to ELSE: ${sourceOf(
+      `Condition is FALSE → go to ELSE: ${firstLineOf(
         node.alternate,
         ctx.logger.getCode()
       )}`
@@ -285,7 +290,7 @@ function evalIf(node: any, ctx: EvalContext) {
   } else if (ctx.nextStatement) {
     ctx.logger.setNext(
       ctx.nextStatement.loc.start.line - 1,
-      `Skip IF → continue to: ${sourceOf(
+      `Skip IF → continue to: ${firstLineOf(
         ctx.nextStatement,
         ctx.logger.getCode()
       )}`
@@ -328,7 +333,10 @@ function evalFor(node: any, ctx: EvalContext) {
       );
 
       if (!test) {
-        ctx.logger.setNext(node.loc.end.line, "Exit FOR loop");
+        ctx.logger.setNext(
+          node.loc.end.line,
+          `Exit FOR loop → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+        );
         break;
       }
       ctx.logger.setNext(
@@ -339,7 +347,10 @@ function evalFor(node: any, ctx: EvalContext) {
 
     const res = evaluateStatement(node.body, loopCtx);
     if (isBreakSignal(res)) {
-      ctx.logger.setNext(node.loc.end.line, "Break → exit FOR loop");
+      ctx.logger.setNext(
+        node.loc.end.line, 
+        `Break → exit FOR loop. Next: ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+      );
       break;
     }
     if (isReturnSignal(res)) {
@@ -387,7 +398,10 @@ function evalWhile(node: any, ctx: EvalContext) {
     );
 
     if (!test) {
-      ctx.logger.setNext(node.loc.end.line, "Exit WHILE loop");
+      ctx.logger.setNext(
+        node.loc.end.line, 
+        `Exit WHILE loop → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+      );
       break;
     }
 
@@ -398,7 +412,10 @@ function evalWhile(node: any, ctx: EvalContext) {
 
     const res = evaluateStatement(node.body, loopCtx);
     if (isBreakSignal(res)) {
-      ctx.logger.setNext(node.loc.end.line, "Break → exit WHILE loop");
+      ctx.logger.setNext(
+        node.loc.end.line, 
+        `Break → exit WHILE loop. Next: ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`
+      );
       break;
     }
     if (isReturnSignal(res)) {
