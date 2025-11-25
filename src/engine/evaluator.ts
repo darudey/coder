@@ -31,7 +31,7 @@ import { evalContinueStatement } from "./statements/evalContinue";
 import { evalLabeledStatement } from "./statements/evalLabeled";
 import { evalSwitchStatement } from "./statements/evalSwitch";
 import { evalTryStatement } from "./statements/evalTry";
-import { evalForInStatement } from "./statements/evalForIn";
+import { evalForIn } from "./statements/evalForIn";
 import { evalForOfStatement } from "./statements/evalForOf";
 
 // Import the single, central expression evaluator
@@ -141,7 +141,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
       break;
 
     case "ForInStatement":
-      result = evalForInStatement(node, ctx);
+      result = evalForIn(node, ctx);
       break;
 
     case "ForOfStatement":
