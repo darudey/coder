@@ -4,7 +4,7 @@ import { bindPattern } from '../patterns/evalDestructuring';
 import { createClassConstructor } from './evalClass';
 import type { EvalContext } from '../types';
 import { evaluateExpression } from '../expressions';
-import { createUserFunction } from '../values';
+import { createFunction } from '../values';
 
 export function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
@@ -17,7 +17,7 @@ export function evalVariableDeclaration(node: any, ctx: EvalContext) {
 
 export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
   const name = node.id.name;
-  const fn = createUserFunction(node, ctx.env);
+  const fn = createFunction(node, ctx.env);
   ctx.env.record.initializeBinding(name, fn);
 }
 
