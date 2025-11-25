@@ -1,3 +1,4 @@
+
 // src/engine/interpreter.ts
 
 import * as acorn from "acorn";
@@ -44,7 +45,7 @@ export function generateTimeline(
   // Global env
   const globalRecord = new EnvironmentRecord();
   const globalEnv = new LexicalEnvironment("Global", "global", globalRecord, null);
-  const scriptEnv = globalEnv.extend("Script", "script");
+  const scriptEnv = globalEnv.extend("script", "Script");
 
   const stack: string[] = [];
   const logger = new TimelineLogger(
@@ -77,8 +78,9 @@ export function generateTimeline(
   } catch (err: any) {
     // Step limit or other error
     const entries = logger.getTimeline();
-    const lastStep = entries.length > 0 ? entries[entries.length - 1].step + 1 : 0;
-    const lastLine = entries.length > 0 ? entries[entries.length - 1].line : 0;
+    const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+    const lastStep = lastEntry ? lastEntry.step + 1 : 0;
+    const lastLine = lastEntry ? lastEntry.line : 0;
 
     const extra: TimelineEntry = {
       step: lastStep,
@@ -86,7 +88,7 @@ export function generateTimeline(
       variables: globalEnv.snapshotChain(),
       heap: {},
       stack: [...stack],
-      output: [...logger.getOutput()],
+      output: lastEntry ? [...lastEntry.output] : [],
       controlFlow: [],
       expressionEval: {},
       nextStep: {
