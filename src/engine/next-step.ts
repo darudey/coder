@@ -1,6 +1,8 @@
 // src/engine/next-step.ts
 import type { EvalContext } from './types';
+import { evaluateExpression } from './evaluator';
 
+// ---- AST snippet helpers ----
 export function getFirstMeaningfulStatement(block: any): any | null {
   if (!block || block.type !== "BlockStatement") return null;
   for (const stmt of block.body) {
@@ -10,6 +12,13 @@ export function getFirstMeaningfulStatement(block: any): any | null {
     }
   }
   return null;
+}
+
+export function firstLineOf(node: any, code: string): string {
+  if (!node || !node.range) return "";
+  let s = code.substring(node.range[0], node.range[1]).trim();
+  if (s.length > 80) s = s.slice(0, 77) + "...";
+  return s;
 }
 
 export function displayHeader(node: any, code: string): string {
@@ -34,33 +43,36 @@ export function displayHeader(node: any, code: string): string {
       return code.substring(node.range[0], node.range[1]).split("\n")[0];
 
     default:
-      return fallbackSnippet(node, code);
+      return firstLineOf(node, code);
   }
 }
 
-function fallbackSnippet(node: any, code: string): string {
-  if (!node || !node.range) return "";
-  let s = code.substring(node.range[0], node.range[1]).trim();
-  if (s.length > 80) s = s.slice(0, 77) + "...";
-  return s;
+// ---- logging helper for “real statements” ----
+export function logIfRealStatement(node: any, ctx: EvalContext) {
+  const validStatements = new Set([
+    "VariableDeclaration",
+    "ExpressionStatement",
+    "IfStatement",
+    "ForStatement",
+    "WhileStatement",
+    "ReturnStatement",
+    "BlockStatement",
+    "FunctionDeclaration",
+    "ClassDeclaration",
+    "BreakStatement",
+    "ContinueStatement",
+    "SwitchStatement",
+    "TryStatement",
+    "ThrowStatement",
+    "LabeledStatement",
+  ]);
+
+  if (node && node.loc && validStatements.has(node.type)) {
+    ctx.logger.log(node.loc.start.line - 1);
+  }
 }
 
-export function getNextStatement(body: any[], currentIndex: number): any | null {
-  for (let j = currentIndex + 1; j < body.length; j++) {
-    const candidate = body[j];
-    if (candidate && candidate.type !== "EmptyStatement" && candidate.type !== "DebuggerStatement") {
-      return candidate;
-    }
-  }
-  return null;
-}
-
-export function setNextFromContext(ctx: EvalContext) {
-  if (!ctx.logger.hasNext()) {
-    if (ctx.nextStatement) {
-      ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
-    } else {
-      ctx.logger.setNext(null, "End of block");
-    }
-  }
+// ---- safeEvaluate wrapper used for conditions ----
+export function safeEvaluate(node: any, ctx: EvalContext) {
+  return evaluateExpression(node, { ...ctx, safe: true });
 }

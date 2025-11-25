@@ -1,12 +1,11 @@
-
 // src/engine/statements/evalIf.ts
 
 import type { EvalContext } from "../types";
-import { evaluateStatement, evaluateBlockBody, evaluateExpression } from "../evaluator";
-import { getFirstMeaningfulStatement, displayHeader } from "../next-step";
+import { evaluateStatement, evaluateBlockBody } from "../evaluator";
+import { safeEvaluate, getFirstMeaningfulStatement, displayHeader } from "../next-step";
 
 export function evalIfStatement(node: any, ctx: EvalContext): any {
-  const test = evaluateExpression(node.test, { ...ctx, safe: true });
+  const test = safeEvaluate(node.test, ctx);
 
   ctx.logger.addExpressionEval(node.test, test);
   ctx.logger.addExpressionContext(node.test, "If Condition");

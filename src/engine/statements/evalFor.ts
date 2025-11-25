@@ -1,9 +1,8 @@
-
 // src/engine/statements/evalFor.ts
 
 import type { EvalContext } from "../types";
 import { evaluateExpression, evaluateStatement, evaluateBlockBody } from "../evaluator";
-import { getFirstMeaningfulStatement, displayHeader } from "../next-step";
+import { safeEvaluate, getFirstMeaningfulStatement, displayHeader } from "../next-step";
 import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from "../signals";
 import { evalVariableDeclaration } from "./evalDeclarations";
 
@@ -29,7 +28,7 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
     ctx.logger.setCurrentEnv(loopEnv);
 
     if (node.test) {
-      const test = evaluateExpression(node.test, { ...loopCtx, safe: true });
+      const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
       ctx.logger.addFlow(`FOR LOOP CHECK (iteration #${iteration})`);

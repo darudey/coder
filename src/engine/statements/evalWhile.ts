@@ -1,9 +1,8 @@
-
 // src/engine/statements/evalWhile.ts
 
 import type { EvalContext } from "../types";
-import { evaluateStatement, evaluateBlockBody, evaluateExpression } from "../evaluator";
-import { getFirstMeaningfulStatement, displayHeader } from "../next-step";
+import { evaluateStatement, evaluateBlockBody } from "../evaluator";
+import { safeEvaluate, getFirstMeaningfulStatement, displayHeader } from "../next-step";
 import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from "../signals";
 
 export function evalWhileStatement(node: any, ctx: EvalContext): any {
@@ -17,7 +16,7 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
     iteration++;
     ctx.logger.setCurrentEnv(loopEnv);
 
-    const test = evaluateExpression(node.test, { ...loopCtx, safe: true });
+    const test = safeEvaluate(node.test, loopCtx);
     ctx.logger.addExpressionEval(node.test, test);
     ctx.logger.addExpressionContext(node.test, "While Loop Condition");
     ctx.logger.addFlow("WHILE LOOP CHECK:");

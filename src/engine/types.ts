@@ -8,6 +8,10 @@ export interface EvalContext {
   logger: TimelineLogger;
   stack: string[];
   safe?: boolean;
+
+  // used for next-step prediction in a sequence
   nextStatement?: any;
+
+  // for labelled break/continue targets (used by loops / labels)
   labels?: Record<string, any>;
 }
