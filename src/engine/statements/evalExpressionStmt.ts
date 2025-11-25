@@ -1,7 +1,7 @@
 // src/engine/statements/evalExpressionStmt.ts
 
 import type { EvalContext } from "../types";
-import { evaluateExpression } from "../evaluator";
+import { evaluateExpression } from "../expressions";
 
 export function evalExpressionStatement(node: any, ctx: EvalContext): any {
   if (node.expression?.range) {

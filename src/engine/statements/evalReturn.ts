@@ -1,7 +1,7 @@
 // src/engine/statements/evalReturn.ts
 
 import type { EvalContext } from "../types";
-import { evaluateExpression } from "../evaluator";
+import { evaluateExpression } from "../expressions";
 import { makeReturn } from "../signals";
 
 export function evalReturnStatement(node: any, ctx: EvalContext) {

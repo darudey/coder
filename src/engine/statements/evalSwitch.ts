@@ -1,8 +1,9 @@
 // src/engine/statements/evalSwitch.ts
 
 import type { EvalContext } from "../types";
-import { evaluateExpression, evaluateStatement } from "../evaluator";
-import { displayHeader } from "../next-step";
+import { evaluateStatement } from "../evaluator";
+import { evaluateExpression } from "../expressions";
+import { displayHeader } from "../next-step-helpers";
 import { isBreakSignal, isReturnSignal, isContinueSignal, isThrowSignal } from "../signals";
 
 export function evalSwitchStatement(node: any, ctx: EvalContext): any {

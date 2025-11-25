@@ -1,45 +1,42 @@
 // src/engine/evaluator.ts
-import { EnvironmentRecord, LexicalEnvironment as LexEnv } from "./environment";
-import type { TimelineLogger } from "./timeline";
-import { hoistProgram } from "./hoist";
-import { evalVariableDeclaration } from "./statements/evalDeclarations";
+// The main dispatcher for the JavaScript engine.
+// It routes statements to their respective handler modules.
 
 import type { EvalContext } from "./types";
 import {
   makeThrow,
+  isReturnSignal,
+  isBreakSignal,
+  isContinueSignal,
+  isThrowSignal,
 } from "./signals";
 import {
+  displayHeader,
   logIfRealStatement,
-} from "./next-step";
+} from "./next-step-helpers";
+import { hoistProgram } from "./hoist";
 
+// Import statement evaluators
+import { evalVariableDeclaration } from "./statements/evalDeclarations";
 import { evalExpressionStatement } from "./statements/evalExpressionStmt";
-import { evalBlockStatement } from "./statements/evalBlock";
+import { evalReturnStatement } from "./statements/evalReturn";
 import { evalIfStatement } from "./statements/evalIf";
+import { evalBlockStatement } from "./statements/evalBlock";
 import { evalForStatement } from "./statements/evalFor";
 import { evalWhileStatement } from "./statements/evalWhile";
-import { evalReturnStatement } from "./statements/evalReturn";
-import { evalBreakStatement } from "./statements/evalBreak";
-import { evalContinueStatement } from "./statements/evalContinue";
-import { evalSwitchStatement } from "./statements/evalSwitch";
-import { evalTryStatement } from "./statements/evalTry";
 import { evalFunctionDeclaration } from "./statements/evalFunction";
 import { evalClassDeclaration } from "./statements/evalClass";
+import { evalBreakStatement } from "./statements/evalBreak";
+import { evalContinueStatement } from "./statements/evalContinue";
 import { evalLabeledStatement } from "./statements/evalLabeled";
+import { evalSwitchStatement } from "./statements/evalSwitch";
+import { evalTryStatement } from "./statements/evalTry";
 import { evalForInStatement } from "./statements/evalForIn";
 import { evalForOfStatement } from "./statements/evalForOf";
 
-import { evalIdentifier } from './expressions/evalIdentifier';
-import { evalBinaryExpression } from './expressions/evalBinary';
-import { evalLogicalExpression } from './expressions/evalLogical';
-import { evalAssignmentExpression } from './expressions/evalAssignment';
-import { evalUpdateExpression } from './expressions/evalUpdate';
-import { evalCallExpression } from './expressions/evalCall';
-import { evalMemberExpression } from './expressions/evalMember';
-import { evalNewExpression } from './expressions/evalNew';
-import { evalArrayExpression } from './expressions/evalArray';
-import { evalObjectExpression } from './expressions/evalObject';
-import { evalUnaryExpression } from './expressions/evalUnary';
-import { evalConditionalExpression } from './expressions/evalConditional';
+// Import the single, central expression evaluator
+import { evaluateExpression } from "./expressions";
+
 
 // ---------- MAIN ENTRY ----------
 export function evaluateProgram(ast: any, ctx: EvalContext): any {
@@ -49,7 +46,6 @@ export function evaluateProgram(ast: any, ctx: EvalContext): any {
 
 // ---------- BLOCK EVALUATION (sequential statements) ----------
 export function evaluateBlockBody(body: any[], ctx: EvalContext): any {
-  const { isReturnSignal, isBreakSignal, isContinueSignal, isThrowSignal } = require('./signals');
   let result: any;
 
   for (let i = 0; i < body.length; i++) {
@@ -78,7 +74,8 @@ export function evaluateBlockBody(body: any[], ctx: EvalContext): any {
   return result;
 }
 
-// ---------- STATEMENT EVALUATION ----------
+
+// ---------- STATEMENT ROUTER ----------
 export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (!node) return;
 
@@ -166,7 +163,6 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
   // If no specific next-step was set by clause/loop logic, use sequential prediction.
   if (!ctx.logger.hasNext()) {
     if (ctx.nextStatement) {
-      const { displayHeader } = require("./next-step");
       ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
     } else {
       ctx.logger.setNext(null, "End of block");
@@ -174,72 +170,4 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
   }
 
   return result;
-}
-
-
-// ---------- EXPRESSIONS ----------
-export function evaluateExpression(node: any, ctx: EvalContext): any {
-  if (!node) return;
-
-  if (ctx.safe) {
-    if (node.type === "AssignmentExpression") return undefined;
-    if (node.type === "UpdateExpression") {
-      if (node.argument.type === "Identifier") return ctx.env.get(node.argument.name);
-      return undefined;
-    }
-    if (node.type === "CallExpression") return "[Side Effect]";
-  }
-
-  switch (node.type) {
-    case "Identifier":
-      return evalIdentifier(node, ctx);
-
-    case "Literal":
-      return node.value;
-
-    case "BinaryExpression":
-      return evalBinaryExpression(node, ctx);
-
-    case "LogicalExpression":
-      return evalLogicalExpression(node, ctx);
-
-    case "AssignmentExpression":
-      return evalAssignmentExpression(node, ctx);
-
-    case "UpdateExpression":
-      return evalUpdateExpression(node, ctx);
-
-    case "CallExpression":
-      return evalCallExpression(node, ctx);
-
-    case "MemberExpression":
-      return evalMemberExpression(node, ctx);
-      
-    case "ArrowFunctionExpression":
-    case "FunctionExpression":
-      const { createUserFunction } = require("./values");
-      return createUserFunction(node, ctx.env);
-
-    case "NewExpression":
-      return evalNewExpression(node, ctx);
-
-    case "ArrayExpression":
-      return evalArrayExpression(node, ctx);
-
-    case "ObjectExpression":
-      return evalObjectExpression(node, ctx);
-
-    case "ThisExpression":
-      return ctx.thisValue;
-    
-    case "UnaryExpression":
-      return evalUnaryExpression(node, ctx);
-    
-    case "ConditionalExpression":
-      return evalConditionalExpression(node, ctx);
-
-    default:
-      // unsupported expression types return undefined
-      return undefined;
-  }
 }

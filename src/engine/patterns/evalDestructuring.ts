@@ -1,6 +1,5 @@
 // src/engine/patterns/evalDestructuring.ts
-import { evalMemberTarget } from '../expressions/evalMember';
-import { evaluateExpression } from '../evaluator';
+import { resolveMember, evaluateExpression } from '../expressions';
 import { setProperty } from '../values';
 import type { EvalContext } from '../types';
 
@@ -8,8 +7,8 @@ function assignToLValue(node: any, value: any, ctx: EvalContext) {
   if (node.type === "Identifier") {
     ctx.env.set(node.name, value);
   } else if (node.type === "MemberExpression") {
-    const { object, property } = evalMemberTarget(node, ctx);
-    setProperty(object, property, value);
+    const { obj, prop } = resolveMember(node, ctx);
+    setProperty(obj, prop, value);
   } else {
     throw new Error("Unsupported assignment target in pattern");
   }

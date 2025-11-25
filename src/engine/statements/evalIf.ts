@@ -2,7 +2,7 @@
 
 import type { EvalContext } from "../types";
 import { evaluateStatement, evaluateBlockBody } from "../evaluator";
-import { safeEvaluate, getFirstMeaningfulStatement, displayHeader } from "../next-step";
+import { safeEvaluate, getFirstMeaningfulStatement, displayHeader } from "../next-step-helpers";
 
 export function evalIfStatement(node: any, ctx: EvalContext): any {
   const test = safeEvaluate(node.test, ctx);
