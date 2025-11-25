@@ -8,10 +8,28 @@ import { createFunction } from '../values';
 
 export function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
+
   for (const decl of node.declarations) {
     const pattern = decl.id;
-    const value = decl.init ? evaluateExpression(decl.init, ctx) : undefined;
-    bindPattern(pattern, value, ctx, kind);
+    const initValue = decl.init
+      ? evaluateExpression(decl.init, ctx)
+      : undefined;
+
+    if (pattern.type === "Identifier") {
+      // simple
+      if (kind === "var") ctx.env.set(pattern.name, initValue);
+      else ctx.env.record.createMutableBinding(pattern.name, kind, initValue, true);
+      continue;
+    }
+
+    // destructuring
+     if (pattern.type !== "Identifier") {
+        ctx.logger.setNext(
+            pattern.loc.start.line - 1,
+            `Next Step → destructure: ${ctx.logger.getCode().slice(pattern.range[0], pattern.range[1])}`
+        );
+    }
+    bindPattern(pattern, initValue, ctx, kind);
   }
 }
 

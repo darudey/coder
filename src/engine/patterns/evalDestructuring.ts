@@ -1,4 +1,3 @@
-
 // src/engine/patterns/evalDestructuring.ts
 import { resolveMember, evaluateExpression } from '../expressions';
 import { setProperty } from '../values';
