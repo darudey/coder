@@ -20,6 +20,49 @@ export interface EvalContext {
   nextStatement?: any; // used for next-step prediction inside a block
 }
 
+function displayHeader(node: any, code: string): string {
+  if (!node) return "";
+
+  switch (node.type) {
+    case "WhileStatement":
+      return `while (${code.substring(node.test.range[0], node.test.range[1])})`;
+
+    case "ForStatement": {
+      const init = node.init
+        ? code.substring(node.init.range[0], node.init.range[1])
+        : "";
+      const test = node.test
+        ? code.substring(node.test.range[0], node.test.range[1])
+        : "";
+      const update = node.update
+        ? code.substring(node.update.range[0], node.update.range[1])
+        : "";
+
+      return `for (${init}; ${test}; ${update})`;
+    }
+
+    case "IfStatement":
+      return `if (${code.substring(node.test.range[0], node.test.range[1])})`;
+
+    case "ExpressionStatement":
+      return code.substring(node.expression.range[0], node.expression.range[1]);
+
+    case "VariableDeclaration":
+      return code.substring(node.range[0], node.range[1]).split("\n")[0];
+
+    default:
+      return fallbackSnippet(node, code);
+  }
+}
+
+function fallbackSnippet(node: any, code: string): string {
+  if (!node || !node.range) return "";
+  let s = code.substring(node.range[0], node.range[1]).trim();
+  if (s.length > 80) s = s.slice(0, 77) + "...";
+  return s;
+}
+
+
 // Signals for control flow
 interface ReturnSignal {
   __type: "Return";
@@ -110,49 +153,6 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 }
 
 // ---------- LOGGING & HELPERS ----------
-
-function displayHeader(node: any, code: string): string {
-  if (!node) return "";
-
-  switch (node.type) {
-    case "WhileStatement":
-      return `while (${code.substring(node.test.range[0], node.test.range[1])})`;
-
-    case "ForStatement": {
-      const init = node.init
-        ? code.substring(node.init.range[0], node.init.range[1])
-        : "";
-      const test = node.test
-        ? code.substring(node.test.range[0], node.test.range[1])
-        : "";
-      const update = node.update
-        ? code.substring(node.update.range[0], node.update.range[1])
-        : "";
-
-      return `for (${init}; ${test}; ${update})`;
-    }
-
-    case "IfStatement":
-      return `if (${code.substring(node.test.range[0], node.test.range[1])})`;
-
-    case "ExpressionStatement":
-      return code.substring(node.expression.range[0], node.expression.range[1]);
-
-    case "VariableDeclaration":
-      return code.substring(node.range[0], node.range[1]).split("\n")[0];
-
-    default:
-      return fallbackSnippet(node, code);
-  }
-}
-
-function fallbackSnippet(node: any, code: string): string {
-  if (!node || !node.range) return "";
-  let s = code.substring(node.range[0], node.range[1]).trim();
-  if (s.length > 80) s = s.slice(0, 77) + "...";
-  return s;
-}
-
 
 function logIfRealStatement(node: any, ctx: EvalContext) {
   const validStatements = new Set([
@@ -375,7 +375,13 @@ function evalFor(node: any, ctx: EvalContext) {
       );
     }
 
-    const res = evaluateStatement(node.body, loopCtx);
+    let res;
+    if (node.body.type === "BlockStatement") {
+        res = evaluateBlockBody(node.body.body, loopCtx);
+    } else {
+        res = evaluateStatement(node.body, loopCtx);
+    }
+    
     if (isBreakSignal(res)) {
       ctx.logger.setNext(
         node.loc.end.line, 
@@ -440,7 +446,15 @@ function evalWhile(node: any, ctx: EvalContext) {
       "Enter WHILE body"
     );
 
-    const res = evaluateStatement(node.body, loopCtx);
+    let res;
+    if (node.body.type === "BlockStatement") {
+        // evaluate each statement inside the while { ... }
+        res = evaluateBlockBody(node.body.body, loopCtx);
+    } else {
+        // single-line while body
+        res = evaluateStatement(node.body, loopCtx);
+    }
+
     if (isBreakSignal(res)) {
       ctx.logger.setNext(
         node.loc.end.line, 
