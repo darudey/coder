@@ -1,3 +1,4 @@
+
 // src/engine/evaluator.ts
 // Complete evaluator with Next-Step predictor, switch / try-catch / labels support,
 // and robust handling of break / continue / return / throw signals.
@@ -28,6 +29,50 @@ export interface EvalContext {
   safe?: boolean;
   nextStatement?: any; // used for next-step prediction within block sequences
   labels?: Record<string, any>; // labelled targets (for future use / debugging)
+}
+
+function getFirstMeaningfulStatement(block: any): any | null {
+    if (!block || block.type !== "BlockStatement") return null;
+    for (const stmt of block.body) {
+      if (!stmt) continue;
+      if (stmt.type !== "EmptyStatement" && stmt.type !== "DebuggerStatement") {
+        return stmt;
+      }
+    }
+    return null;
+}
+
+function firstLineOf(node: any, code: string): string {
+    if (!node || !node.range) return "";
+    let s = code.substring(node.range[0], node.range[1]).trim();
+    if (s.length > 80) s = s.slice(0, 77) + "...";
+    return s;
+}
+
+function displayHeader(node: any, code: string): string {
+    if (!node) return "";
+  
+    switch (node.type) {
+      case "WhileStatement":
+        return `while (${code.substring(node.test.range[0], node.test.range[1])})`;
+  
+      case "ForStatement": {
+        const endRange = node.body.range[0];
+        return code.substring(node.range[0], endRange).trim();
+      }
+  
+      case "IfStatement":
+        return `if (${code.substring(node.test.range[0], node.test.range[1])})`;
+  
+      case "ExpressionStatement":
+        return code.substring(node.expression.range[0], node.expression.range[1]);
+  
+      case "VariableDeclaration":
+        return code.substring(node.range[0], node.range[1]).split("\n")[0];
+  
+      default:
+        return firstLineOf(node, code);
+    }
 }
 
 // ---------- CONTROL SIGNALS ----------
@@ -136,49 +181,6 @@ function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 }
 
 // ---------- LOG HELPERS ----------
-function firstLineOf(node: any, code: string): string {
-    if (!node || !node.range) return "";
-    const [start, end] = node.range;
-    // Take only a small window; no need to inspect whole function
-    let snippet = code.slice(start, Math.min(end, start + 120));
-
-    // 1) Cut at first newline
-    const newlineIndex = snippet.indexOf("\n");
-    if (newlineIndex !== -1) {
-        snippet = snippet.slice(0, newlineIndex);
-    }
-
-    // 2) Cut at first '{' (keep the brace, because it's part of header)
-    let braceIndex = snippet.indexOf("{");
-    if (braceIndex !== -1) {
-        snippet = snippet.slice(0, braceIndex + 1);
-    }
-
-    // 3) Or cut at first ';' (for simple statements like `let x = 1;`)
-    const semiIndex = snippet.indexOf(";");
-    if (semiIndex !== -1 && (braceIndex === -1 || semiIndex < braceIndex)) {
-        snippet = snippet.slice(0, semiIndex + 1);
-    }
-
-    // 4) Safety: hard limit length
-    if (snippet.length > 80) {
-        snippet = snippet.slice(0, 77) + "...";
-    }
-
-    return snippet.trim();
-}
-
-function getFirstMeaningfulStatement(block: any): any | null {
-  if (!block || block.type !== "BlockStatement") return null;
-  for (const stmt of block.body) {
-    if (!stmt) continue;
-    if (stmt.type !== "EmptyStatement" && stmt.type !== "DebuggerStatement") {
-      return stmt;
-    }
-  }
-  return null;
-}
-
 function logIfRealStatement(node: any, ctx: EvalContext) {
   const validStatements = new Set([
     "VariableDeclaration",
@@ -249,7 +251,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
         if (first) {
             ctx.logger.setNext(
                 first.loc.start.line - 1,
-                "Next Step → " + firstLineOf(first, ctx.logger.getCode())
+                `Next Step → ${displayHeader(first, ctx.logger.getCode())}`
             );
         }
       }
@@ -260,7 +262,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
         ctx.logger.addFlow("Exiting block scope");
         // when leaving block, show next sequential statement
         if (ctx.nextStatement) {
-          ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Exit block → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+          ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Exit block → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
         } else {
           ctx.logger.setNext(null, "Exit block → end of block");
         }
@@ -317,7 +319,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
         ctx.logger.addFlow(`Break matched label ${labelName} → exit labeled block`);
         // set next to following statement after this labeled statement
         if (ctx.nextStatement) {
-          ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `After label ${labelName}: ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+          ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `After label ${labelName}: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
         } else {
           ctx.logger.setNext(null, `After label ${labelName}: end`);
         }
@@ -354,7 +356,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
   // If no specific next-step was set by clause/loop logic, use sequential prediction.
   if (!ctx.logger.hasNext()) {
     if (ctx.nextStatement) {
-      ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Next Step → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+      ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
     } else {
       ctx.logger.setNext(null, "End of block");
     }
@@ -394,20 +396,19 @@ function evalIf(node: any, ctx: EvalContext) {
     if (first) {
         ctx.logger.setNext(
             first.loc.start.line - 1,
-            "Next Step → " + firstLineOf(first, ctx.logger.getCode())
+            "Next Step → " + displayHeader(first, ctx.logger.getCode())
         );
     }
 
-    // execute consequential node carefully: if it's a block, unwrap to sequential statements
     if (target.type === "BlockStatement") {
-      const newEnv = ctx.env.extend("block");
-      const innerCtx: EvalContext = { ...ctx, env: newEnv, nextStatement: ctx.nextStatement };
-      ctx.logger.setCurrentEnv(newEnv);
-      const res = evaluateBlockBody(target.body, innerCtx);
-      ctx.logger.setCurrentEnv(ctx.env);
-      return res;
+        const newEnv = ctx.env.extend("block");
+        const innerCtx: EvalContext = { ...ctx, env: newEnv, nextStatement: ctx.nextStatement };
+        ctx.logger.setCurrentEnv(newEnv);
+        const res = evaluateBlockBody(target.body, innerCtx);
+        ctx.logger.setCurrentEnv(ctx.env);
+        return res;
     } else {
-      return evaluateStatement(target, ctx);
+        return evaluateStatement(target, ctx);
     }
   } else if (node.alternate) {
     const target = node.alternate;
@@ -418,7 +419,7 @@ function evalIf(node: any, ctx: EvalContext) {
     if (first) {
         ctx.logger.setNext(
             first.loc.start.line - 1,
-            "Next Step → " + firstLineOf(first, ctx.logger.getCode())
+            "Next Step → " + displayHeader(first, ctx.logger.getCode())
         );
     }
     
@@ -433,9 +434,8 @@ function evalIf(node: any, ctx: EvalContext) {
       return evaluateStatement(target, ctx);
     }
   } else {
-    // no else; next is the sequential nextStatement
     if (ctx.nextStatement) {
-      ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `If false → continue to ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+      ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `If false → continue to ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
     }
   }
 }
@@ -445,7 +445,6 @@ function evalFor(node: any, ctx: EvalContext) {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
 
-  // init
   if (node.init) {
     ctx.logger.setCurrentEnv(loopEnv);
     ctx.logger.addFlow("FOR LOOP INIT:");
@@ -463,7 +462,6 @@ function evalFor(node: any, ctx: EvalContext) {
     iteration++;
     ctx.logger.setCurrentEnv(loopEnv);
 
-    // test
     if (node.test) {
       logIfRealStatement(node.test, loopCtx);
       const test = safeEvaluate(node.test, loopCtx);
@@ -473,65 +471,51 @@ function evalFor(node: any, ctx: EvalContext) {
       ctx.logger.addFlow(`Result: ${test ? "TRUE → enter loop body" : "FALSE → exit loop"}`);
 
       if (!test) {
-        // exiting loop: next is statement after the for
-        ctx.logger.setNext(node.loc.end.line, `Exit FOR loop → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+        ctx.logger.setNext(node.loc.end.line, `Exit FOR loop → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
         break;
       }
-
-    } else {
-      // for(;;) infinite—still set next to body
     }
 
-     // entering body
     const first = node.body.type === "BlockStatement"
         ? getFirstMeaningfulStatement(node.body)
         : node.body;
+
     if (first) {
         ctx.logger.setNext(
             first.loc.start.line - 1,
-            "Next Step → " + firstLineOf(first, ctx.logger.getCode())
+            "Next Step → " + displayHeader(first, ctx.logger.getCode())
         );
     }
 
-
-    // execute body
-    const res = (node.body.type === "BlockStatement")
-      ? (function() {
-          // evaluate block inside loop scope
-          const innerRes = evaluateBlockBody(node.body.body, loopCtx);
-          return innerRes;
-        })()
-      : evaluateStatement(node.body, loopCtx);
+    let res;
+    if (node.body.type === "BlockStatement") {
+        res = evaluateBlockBody(node.body.body, loopCtx);
+    } else {
+        res = evaluateStatement(node.body, loopCtx);
+    }
 
     if (isBreakSignal(res)) {
-      // break: if labeled or not, decide whether to consume or bubble up
       if (!res.label) {
-        ctx.logger.setNext(node.loc.end.line, `Break → exit FOR loop. Next: ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+        ctx.logger.setNext(node.loc.end.line, `Break → exit FOR loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
         break;
       } else {
-        // labelled break: bubble up (so LabeledStatement can consume)
         return res;
       }
     }
     if (isContinueSignal(res)) {
-      // continue: if labelled and doesn't match this loop, bubble up, else continue to update
       if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
         return res;
       }
-      // else continue with update
-      // proceed to update step immediately
     }
     if (isReturnSignal(res) || isThrowSignal(res)) {
       result = res;
       break;
     }
 
-    // update
     if (node.update) {
       ctx.logger.addFlow("FOR LOOP UPDATE:");
       logIfRealStatement(node.update, loopCtx);
       evaluateExpression(node.update, loopCtx);
-      // after update, next step is test
       if (node.test?.loc) {
         ctx.logger.setNext(node.test.loc.start.line - 1, "Go to loop condition check");
       }
@@ -563,7 +547,7 @@ function evalWhile(node: any, ctx: EvalContext) {
     ctx.logger.addFlow(`Result: ${test ? "TRUE → continue loop" : "FALSE → exit loop"}`);
 
     if (!test) {
-      ctx.logger.setNext(node.loc.end.line, `Exit WHILE loop → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+      ctx.logger.setNext(node.loc.end.line, `Exit WHILE loop → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
       break;
     }
 
@@ -571,17 +555,20 @@ function evalWhile(node: any, ctx: EvalContext) {
     if (first) {
         ctx.logger.setNext(
             first.loc.start.line - 1,
-            "Next Step → " + firstLineOf(first, ctx.logger.getCode())
+            "Next Step → " + displayHeader(first, ctx.logger.getCode())
         );
     }
-
-    const res = (node.body.type === "BlockStatement")
-      ? evaluateBlockBody(node.body.body, loopCtx)
-      : evaluateStatement(node.body, loopCtx);
+    
+    let res;
+    if (node.body.type === "BlockStatement") {
+        res = evaluateBlockBody(node.body.body, loopCtx);
+    } else {
+        res = evaluateStatement(node.body, loopCtx);
+    }
 
     if (isBreakSignal(res)) {
       if (!res.label) {
-        ctx.logger.setNext(node.loc.end.line, `Break → exit WHILE loop. Next: ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+        ctx.logger.setNext(node.loc.end.line, `Break → exit WHILE loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
         break;
       } else {
         return res;
@@ -591,7 +578,6 @@ function evalWhile(node: any, ctx: EvalContext) {
       if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
         return res;
       }
-      // else continue to next iteration (loop naturally continues)
       continue;
     }
     if (isReturnSignal(res) || isThrowSignal(res)) {
@@ -611,17 +597,15 @@ function evalSwitch(node: any, ctx: EvalContext) {
   let matchedIndex = -1;
   let defaultIndex = -1;
 
-  // find first matching case (or default)
   for (let i = 0; i < node.cases.length; i++) {
     const c = node.cases[i];
     if (c.test === null) {
-      // default
       defaultIndex = i;
     } else {
       const testVal = evaluateExpression(c.test, ctx);
       if (testVal === disc) {
         matchedIndex = i;
-        break; // stop at first match
+        break; 
       }
     }
   }
@@ -630,52 +614,43 @@ function evalSwitch(node: any, ctx: EvalContext) {
       matchedIndex = defaultIndex;
   }
 
-
   if (matchedIndex === -1) {
-    // no case matched & no default: continue to next statement
     ctx.logger.addFlow("SWITCH: no case matched");
     return;
   }
 
-  // execute cases from matchedIndex onwards until break
   for (let i = matchedIndex; i < node.cases.length; i++) {
     const c = node.cases[i];
 
     for (let stmt of c.consequent) {
       const res = evaluateStatement(stmt, ctx);
       if (isBreakSignal(res)) {
-        // break inside switch consumes break (no label) and stop switch
         if (!res.label) {
           ctx.logger.addFlow("SWITCH: break → end switch");
-          // next step after switch
           if (ctx.nextStatement) {
-            ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `After switch → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+            ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `After switch → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
           }
           return;
         } else {
-          // label break: bubble up
           return res;
         }
       }
       if (isReturnSignal(res) || isThrowSignal(res) || isContinueSignal(res)) {
-        return res; // propagate
+        return res;
       }
     }
   }
 
-  // finished all cases: next is after switch
   if (ctx.nextStatement) {
-    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `After switch → ${firstLineOf(ctx.nextStatement, ctx.logger.getCode())}`);
+    ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `After switch → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
   }
 }
 
 // ---------- TRY / CATCH / FINALLY ----------
 function evalTry(node: any, ctx: EvalContext) {
-  // try block
   ctx.logger.addFlow("TRY block start");
   let res = (node.block.type === "BlockStatement")
     ? (function() {
-        // new block env for try
         const newEnv = ctx.env.extend("block");
         const innerCtx = { ...ctx, env: newEnv };
         ctx.logger.setCurrentEnv(newEnv);
@@ -686,26 +661,21 @@ function evalTry(node: any, ctx: EvalContext) {
     : evaluateStatement(node.block, ctx);
 
   if (isThrowSignal(res)) {
-    // if there's a catch clause, bind the thrown value to the param and execute catch
     if (node.handler) {
       const catchParam = node.handler.param?.name;
-      const catchBody = node.handler.body; // BlockStatement
+      const catchBody = node.handler.body; 
       ctx.logger.addFlow("Exception caught → entering catch");
       const catchEnv = ctx.env.extend("block");
       const innerCtx: EvalContext = { ...ctx, env: catchEnv };
-      // bind exception variable
       if (catchParam) {
         catchEnv.record.createMutableBinding(catchParam, "let", res.value, true);
       }
       ctx.logger.setCurrentEnv(catchEnv);
       res = evaluateBlockBody(catchBody.body, innerCtx);
       ctx.logger.setCurrentEnv(ctx.env);
-    } else {
-      // no catch: propagate throw to caller after finally runs
     }
   }
 
-  // finally always runs if present
   if (node.finalizer) {
     ctx.logger.addFlow("Entering finally");
     const finEnv = ctx.env.extend("block");
@@ -713,13 +683,11 @@ function evalTry(node: any, ctx: EvalContext) {
     ctx.logger.setCurrentEnv(finEnv);
     const finRes = evaluateBlockBody(node.finalizer.body, finCtx);
     ctx.logger.setCurrentEnv(ctx.env);
-    // If finally produced control signal, it overrides previous (mimic JS behavior)
     if (isReturnSignal(finRes) || isThrowSignal(finRes) || isBreakSignal(finRes) || isContinueSignal(finRes)) {
       return finRes;
     }
   }
 
-  // propagate result (might be throw if not caught)
   return res;
 }
 
@@ -847,7 +815,6 @@ function evaluateExpression(node: any, ctx: EvalContext): any {
       return ctx.thisValue;
 
     default:
-      // unsupported expression types return undefined
       return undefined;
   }
 }
@@ -868,7 +835,6 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
   const params = node.params ?? [];
   const body = node.body;
 
-  // Implementation that will be attached to FunctionValue via createFunction
   const functionImplementation = function (this: FunctionValue, thisArg: any, args: any[]) {
     const funcName = node.id?.name || node.key?.name || "Function";
     const fnEnv = new LexEnv(funcName, "function", new EnvironmentRecord(), this.__env);
@@ -899,7 +865,7 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
 
     const first = body.type === "BlockStatement" ? getFirstMeaningfulStatement(body) : body;
     if (first) {
-        logger.setNext(first.loc.start.line - 1, `Next Step → ${firstLineOf(first, logger.getCode())}`);
+        logger.setNext(first.loc.start.line - 1, `Next Step → ${displayHeader(first, logger.getCode())}`);
     }
 
 
