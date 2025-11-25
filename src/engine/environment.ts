@@ -1,142 +1,169 @@
 // src/engine/environment.ts
 
-export type BindingKind = "var" | "let" | "const" | "function" | "class";
+export type EnvKind = "global" | "function" | "block";
 
-export interface BindingRecord {
+interface Binding {
+  kind: "var" | "let" | "const" | "function" | "class";
   value: any;
-  mutable: boolean;
-  initialized: boolean;
-  kind: BindingKind;
 }
 
 export class EnvironmentRecord {
-  private bindings = new Map<string, BindingRecord>();
+  private bindings = new Map<string, Binding>();
 
   hasBinding(name: string): boolean {
     return this.bindings.has(name);
   }
 
-  createMutableBinding(name: string, kind: BindingKind, value: any = undefined, initialized = false) {
+  createMutableBinding(
+    name: string,
+    kind: Binding["kind"],
+    value: any,
+    _deletable: boolean
+  ) {
     if (this.bindings.has(name)) {
-      // shadowing allowed in inner environments, but not same record (for simplicity)
-      // in real spec it's more nuanced, but this is good enough
-      throw new Error(`Identifier '${name}' has already been declared in this scope`);
+      // Over-simplified: real JS would behave differently for some kinds.
+      return;
     }
-    const mutable = kind !== "const";
-    this.bindings.set(name, { value, mutable, initialized, kind });
+    this.bindings.set(name, { kind, value });
   }
 
   initializeBinding(name: string, value: any) {
-    const rec = this.bindings.get(name);
-    if (!rec) throw new Error(`Cannot initialize undeclared binding '${name}'`);
-    rec.value = value;
-    rec.initialized = true;
+    const binding = this.bindings.get(name);
+    if (!binding) {
+      // This can happen with function hoisting where the binding is created
+      // but not yet initialized with the function value.
+      this.bindings.set(name, { kind: 'function', value });
+      return;
+    }
+    binding.value = value;
   }
 
   setMutableBinding(name: string, value: any) {
-    const rec = this.bindings.get(name);
-    if (!rec) throw new Error(`Assignment to undeclared variable '${name}'`);
-    if (!rec.initialized) {
-      throw new Error(`ReferenceError: Cannot access '${name}' before initialization`);
+    const binding = this.bindings.get(name);
+    if (!binding) {
+      throw new Error(`Binding ${name} not found for setMutableBinding`);
     }
-    if (!rec.mutable) {
-      throw new Error(`TypeError: Assignment to constant variable '${name}'`);
+    if (binding.kind === 'const') {
+        throw new TypeError('Assignment to constant variable.');
     }
-    rec.value = value;
+    binding.value = value;
   }
 
   getBindingValue(name: string): any {
-    const rec = this.bindings.get(name);
-    if (!rec) throw new Error(`ReferenceError: ${name} is not defined`);
-    if (!rec.initialized) {
-      throw new Error(`ReferenceError: Cannot access '${name}' before initialization`);
+    const binding = this.bindings.get(name);
+    if (!binding) {
+      // This should ideally not be hit if hasBinding is checked first.
+      throw new Error(`Binding ${name} not found for getBindingValue`);
     }
-    return rec.value;
+    return binding.value;
   }
 
   snapshot(): Record<string, any> {
-    const obj: Record<string, any> = {};
-    for (const [name, rec] of this.bindings.entries()) {
-      if (!rec.initialized) continue;
-      obj[name] = rec.value;
+    const out: Record<string, any> = {};
+    for (const [name, binding] of this.bindings.entries()) {
+      out[name] = binding.value;
     }
-    return obj;
+    return out;
   }
 }
 
-export type EnvironmentType = 'global' | 'script' | 'function' | 'block';
-
 export class LexicalEnvironment {
-  constructor(
-    public name: string,
-    public kind: EnvironmentType,
-    public record: EnvironmentRecord,
-    public outer: LexicalEnvironment | null
-  ) {}
+  public record: EnvironmentRecord;
+  public outer: LexicalEnvironment | null;
+  public kind: EnvKind;
+  public name: string;
 
+  constructor(
+    name: string,
+    kind: EnvKind,
+    record?: EnvironmentRecord,
+    outer?: LexicalEnvironment | null
+  ) {
+    this.name = name;
+    this.kind = kind;
+    this.record = record ?? new EnvironmentRecord();
+    this.outer = outer ?? null;
+  }
+  
   static newGlobal(): LexicalEnvironment {
     return new LexicalEnvironment("Global", 'global', new EnvironmentRecord(), null);
   }
 
-  extend(name: string, kind: EnvironmentType = 'block'): LexicalEnvironment {
-    return new LexicalEnvironment(name, kind, new EnvironmentRecord(), this);
+  extend(kind: EnvKind, name = ""): LexicalEnvironment {
+    const envName = name || (kind === "block" ? "Block" : "Function");
+    return new LexicalEnvironment(envName, kind, new EnvironmentRecord(), this);
   }
 
   hasBinding(name: string): boolean {
-    let env: LexicalEnvironment | null = this;
-    while (env) {
-      if (env.record.hasBinding(name)) return true;
-      env = env.outer;
+    if (this.record.hasBinding(name)) return true;
+    return this.outer ? this.outer.hasBinding(name) : false;
+  }
+
+  createMutableBinding(
+    name: string,
+    kind: Binding["kind"],
+    value: any,
+    deletable: boolean
+  ) {
+    this.record.createMutableBinding(name, kind, value, deletable);
+  }
+
+  initializeBinding(name: string, value: any) {
+    this.record.initializeBinding(name, value);
+  }
+
+  set(name: string, value: any) {
+    if (this.record.hasBinding(name)) {
+      this.record.setMutableBinding(name, value);
+      return;
     }
-    return false;
+    if (this.outer) {
+      this.outer.set(name, value);
+      return;
+    }
+    // If not found, create at global level (teaching simplification)
+    this.record.createMutableBinding(name, "var", value, true);
   }
 
   get(name: string): any {
-    let env: LexicalEnvironment | null = this;
-    while (env) {
-      if (env.record.hasBinding(name)) {
-        return env.record.getBindingValue(name);
-      }
-      env = env.outer;
+    if (this.record.hasBinding(name)) {
+      return this.record.getBindingValue(name);
+    }
+    if (this.outer) {
+      return this.outer.get(name);
     }
     throw new Error(`ReferenceError: ${name} is not defined`);
   }
 
-  set(name: string, value: any): void {
-    let env: LexicalEnvironment | null = this;
-    while (env) {
-      if (env.record.hasBinding(name)) {
-        env.record.setMutableBinding(name, value);
-        return;
-      }
-      env = env.outer;
-    }
-    // non-strict mode var-like behavior: assign to global
-    this.record.createMutableBinding(name, "var", value, true);
-  }
-
   snapshotChain(): Record<string, any> {
     const result: Record<string, any> = {};
-    let env: LexicalEnvironment | null = this;
-    let i = 0;
-    while (env) {
-      const snapshot = env.record.snapshot();
-      let name = env.name;
-      
-      const isBlock = name.toLowerCase().includes('block') || name.toLowerCase().includes('loop');
-      if (isBlock && result['Block']) {
-        // Don't overwrite existing block, just merge
-        result['Block'] = { ...snapshot, ...result['Block'] };
-      } else if (name && Object.keys(snapshot).length > 0) {
-        // Avoid duplicate names like "Block", "Block", "Block"
-        if(result[name]) {
-            name = `${name} ${i}`;
+    let current: LexicalEnvironment | null = this;
+    let funcIndex = 1;
+    let blockIndex = 1;
+
+    while (current) {
+      const snapshot = current.record.snapshot();
+      if (Object.keys(snapshot).length > 0) {
+        let label = current.name;
+        if (current.kind === "global") {
+            label = "Global";
+        } else if (current.kind === 'function') {
+            label = current.name || `Function#${funcIndex++}`;
+        } else if (current.kind === 'block') {
+            if(result[`Block#${blockIndex}`]) {
+                // Merge with existing block if there are nested blocks
+                 result[`Block#${blockIndex}`] = {...snapshot, ...result[`Block#${blockIndex}`]};
+                 current = current.outer;
+                 continue;
+            }
+            label = `Block#${blockIndex++}`;
         }
-        result[name] = snapshot;
+        result[label] = snapshot;
       }
-      env = env.outer;
-      i++;
+
+      current = current.outer;
     }
+
     return result;
   }
 }
