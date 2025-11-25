@@ -1,3 +1,4 @@
+
 // src/engine/expressions.ts
 // Pure expression evaluator — no statement logic.
 // This file is imported by evaluator.ts and next-step-helpers.ts.
@@ -174,7 +175,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
       const left = evaluateExpression(node.left, ctx);
 
       switch (node.operator) {
-        case "&&": return left &amp;&amp; evaluateExpression(node.right, ctx);
+        case "&&": return left && evaluateExpression(node.right, ctx);
         case "||": return left || evaluateExpression(node.right, ctx);
         case "??": return left ?? evaluateExpression(node.right, ctx);
         default:
@@ -195,12 +196,12 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
     // ──────────────────────────
     case "AssignmentExpression": {
       // --- LOGICAL ASSIGNMENT -----------------------------------
-      if (["&amp;&amp;=", "||=", "??="].includes(node.operator)) {
+      if (["&&=", "||=", "??="].includes(node.operator)) {
         const target = resolveAssignmentTarget(node.left, ctx);
         const oldVal = target.get();
         let shouldAssign = false;
         switch (node.operator) {
-          case "&amp;&amp;=":
+          case "&&=":
             shouldAssign = !!oldVal;
             break;
           case "||=":
@@ -277,7 +278,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
     }
     
     // ──────────────────────────
-    // Functions &amp; 'this'
+    // Functions & 'this'
     // ──────────────────────────
     case "ArrowFunctionExpression":
     case "FunctionExpression":
@@ -316,7 +317,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
       );
 
       // builtin console.log
-      if (callee &amp;&amp; callee.__builtin === "console.log") {
+      if (callee && callee.__builtin === "console.log") {
         ctx.logger.logOutput(...args);
         return undefined;
       }
@@ -347,7 +348,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
         evaluateExpression(a, ctx)
       );
 
-      if (ctor &amp;&amp; (ctor as any).construct) {
+      if (ctor && (ctor as any).construct) {
         return (ctor as any).construct(args);
       }
 
