@@ -22,7 +22,7 @@ import { useCompilerFs, type ActiveFile, type FileSystem } from '@/hooks/use-com
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { useSettings } from '@/hooks/use-settings';
-import { parse } from 'esprima-next';
+import * as acorn from 'acorn';
 
 export interface RunResult {
     output: string;
@@ -255,7 +255,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev + 1);
+      setHistoryIndex(prev => prev - 1);
     }
   }, [historyIndex, history.length, setHistoryIndex]);
 
@@ -268,12 +268,12 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     
     // Client-side syntax check
     try {
-        parse(code, { tolerant: false });
+        acorn.parse(code, { ecmaVersion: 'latest', silent: false });
     } catch (e: any) {
         const result: RunResult = {
-            output: `SyntaxError: ${e.description}`,
+            output: `SyntaxError: ${e.message}`,
             type: 'error',
-            lineNumber: e.lineNumber,
+            lineNumber: e.loc?.line,
         };
         if (variant !== 'minimal') {
             setOutput(result);
@@ -595,3 +595,5 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
