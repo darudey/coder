@@ -1,3 +1,4 @@
+
 // src/engine/statements/evalDeclarations.ts
 import { bindPattern } from '../patterns/evalDestructuring';
 import { createClassConstructor } from './evalClass';
