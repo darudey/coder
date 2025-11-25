@@ -4,7 +4,7 @@
 import type { EvalContext } from "../types";
 import { createUserFunction, createObject, setProperty, type FunctionValue } from "../values";
 
-function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
+export function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
   const className = node.id?.name || 'AnonymousClass';
   
   const constructorDef = node.body.body.find(
@@ -38,7 +38,7 @@ function createClassConstructor(node: any, ctx: EvalContext): FunctionValue {
       return instance;
   }
 
-  const classFn = createFunction(
+  const classFn = createUserFunction(
       ctx.env,
       ctorParams,
       ctorBody,
