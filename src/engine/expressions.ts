@@ -12,10 +12,7 @@ import {
 } from "./values";
 
 import {
-  makeReturn,
-  makeThrow,
   isReturnSignal,
-  isThrowSignal,
 } from "./signals";
 import { assignPattern } from "./patterns/evalDestructuring";
 
@@ -36,6 +33,32 @@ export function resolveMember(node: any, ctx: EvalContext) {
 
   return { obj, prop };
 }
+
+function resolveAssignmentTarget(node: any, ctx: EvalContext) {
+  if (node.type === "Identifier") {
+    return {
+      get: () => ctx.env.get(node.name),
+      set: (v: any) => ctx.env.set(node.name, v),
+      name: node.name
+    };
+  }
+
+  if (node.type === "MemberExpression") {
+    const obj = evaluateExpression(node.object, ctx);
+    const prop = node.computed
+      ? evaluateExpression(node.property, ctx)
+      : node.property.name;
+
+    return {
+      get: () => getProperty(obj, prop),
+      set: (v: any) => setProperty(obj, prop, v),
+      name: `obj.${String(prop)}`
+    };
+  }
+
+  throw new Error("Unsupported logical assignment target");
+}
+
 
 //
 // ──────────────────────────────────────────────
@@ -151,7 +174,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
       const left = evaluateExpression(node.left, ctx);
 
       switch (node.operator) {
-        case "&&": return left && evaluateExpression(node.right, ctx);
+        case "&&": return left &amp;&amp; evaluateExpression(node.right, ctx);
         case "||": return left || evaluateExpression(node.right, ctx);
         case "??": return left ?? evaluateExpression(node.right, ctx);
         default:
@@ -171,6 +194,30 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
     // AssignmentExpression (+=, ??=, &&=, ||=)
     // ──────────────────────────
     case "AssignmentExpression": {
+      // --- LOGICAL ASSIGNMENT -----------------------------------
+      if (["&amp;&amp;=", "||=", "??="].includes(node.operator)) {
+        const target = resolveAssignmentTarget(node.left, ctx);
+        const oldVal = target.get();
+        let shouldAssign = false;
+        switch (node.operator) {
+          case "&amp;&amp;=":
+            shouldAssign = !!oldVal;
+            break;
+          case "||=":
+            shouldAssign = !oldVal;
+            break;
+          case "??=":
+            shouldAssign = (oldVal === null || oldVal === undefined);
+            break;
+        }
+        if (!shouldAssign) {
+          return oldVal;
+        }
+        const rightVal = evaluateExpression(node.right, ctx);
+        target.set(rightVal);
+        return rightVal;
+      }
+      
       const val = evaluateExpression(node.right, ctx);
 
       if (node.left.type === "Identifier") {
@@ -230,7 +277,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
     }
     
     // ──────────────────────────
-    // Functions & 'this'
+    // Functions &amp; 'this'
     // ──────────────────────────
     case "ArrowFunctionExpression":
     case "FunctionExpression":
@@ -269,7 +316,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
       );
 
       // builtin console.log
-      if (callee && callee.__builtin === "console.log") {
+      if (callee &amp;&amp; callee.__builtin === "console.log") {
         ctx.logger.logOutput(...args);
         return undefined;
       }
@@ -300,7 +347,7 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
         evaluateExpression(a, ctx)
       );
 
-      if (ctor && (ctor as any).construct) {
+      if (ctor &amp;&amp; (ctor as any).construct) {
         return (ctor as any).construct(args);
       }
 
