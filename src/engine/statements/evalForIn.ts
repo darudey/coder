@@ -3,7 +3,7 @@ import type { EvalContext } from '../types';
 import { evaluateBlockBody, evaluateStatement } from '../evaluator';
 import { evaluateExpression } from '../expressions';
 import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from '../signals';
-import { getFirstMeaningfulStatement, displayHeader } from '../next-step';
+import { getFirstMeaningfulStatement, displayHeader } from '../next-step-helpers';
 import { evalVariableDeclaration } from './evalDeclarations';
 import { assignPattern } from '../patterns/evalDestructuring';
 

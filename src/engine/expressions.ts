@@ -17,6 +17,7 @@ import {
   isReturnSignal,
   isThrowSignal,
 } from "./signals";
+import { assignPattern } from "./patterns/evalDestructuring";
 
 //
 // ──────────────────────────────────────────────
@@ -170,84 +171,28 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
     // AssignmentExpression (+=, ??=, &&=, ||=)
     // ──────────────────────────
     case "AssignmentExpression": {
-      let target;
+      const val = evaluateExpression(node.right, ctx);
 
       if (node.left.type === "Identifier") {
-        const name = node.left.name;
-        const prior = ctx.env.get(name);
-
-        switch (node.operator) {
-          case "=":
-            return ctx.env.set(name,
-              evaluateExpression(node.right, ctx)
-            );
-
-          case "+=":
-            return ctx.env.set(name, prior + evaluateExpression(node.right, ctx));
-          
-          case "-=":
-            return ctx.env.set(name, prior - evaluateExpression(node.right, ctx));
-            
-          case "*=":
-            return ctx.env.set(name, prior * evaluateExpression(node.right, ctx));
-
-          case "/=":
-            return ctx.env.set(name, prior / evaluateExpression(node.right, ctx));
-          
-          case "%=":
-            return ctx.env.set(name, prior % evaluateExpression(node.right, ctx));
-
-          case "??=":
-            if (prior ?? false) return prior;
-            return ctx.env.set(name, evaluateExpression(node.right, ctx));
-
-          case "&&=":
-            if (!prior) return prior;
-            return ctx.env.set(name, evaluateExpression(node.right, ctx));
-
-          case "||=":
-            if (prior) return prior;
-            return ctx.env.set(name, evaluateExpression(node.right, ctx));
-
-          default:
-            throw new Error("Unsupported assignment operator " + node.operator);
-        }
+        ctx.env.set(node.left.name, val);
+        return val;
       }
-
-      // MemberExpression e.g. obj.x += 2
+    
+      // Destructuring assignment
+      if (
+        node.left.type === "ObjectPattern" ||
+        node.left.type === "ArrayPattern"
+      ) {
+        assignPattern(node.left, val, ctx);
+        return val;
+      }
+    
       if (node.left.type === "MemberExpression") {
-        const { obj, prop } = resolveMember(node.left, ctx);
-        const prior = obj[prop];
-
-        switch (node.operator) {
-          case "=":
-            obj[prop] = evaluateExpression(node.right, ctx);
-            return obj[prop];
-
-          case "+=":
-            obj[prop] = prior + evaluateExpression(node.right, ctx);
-            return obj[prop];
-
-          case "??=":
-            if (prior ?? false) return prior;
-            obj[prop] = evaluateExpression(node.right, ctx);
-            return obj[prop];
-
-          case "&&=":
-            if (!prior) return prior;
-            obj[prop] = evaluateExpression(node.right, ctx);
-            return obj[prop];
-
-          case "||=":
-            if (prior) return prior;
-            obj[prop] = evaluateExpression(node.right, ctx);
-            return obj[prop];
-
-          default:
-            throw new Error("Unsupported assignment operator " + node.operator);
-        }
+        const { object, property } = resolveMember(node.left, ctx);
+        setProperty(object, property, val);
+        return val;
       }
-
+    
       throw new Error("Unsupported assignment target");
     }
 
