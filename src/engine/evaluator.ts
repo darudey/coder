@@ -1,4 +1,5 @@
 
+
 import type { LexicalEnvironment } from "./environment";
 import { EnvironmentRecord, LexicalEnvironment as LexEnv } from "./environment";
 import { TimelineLogger } from "./timeline";
@@ -95,18 +96,20 @@ export function hoistProgram(ast: any, env: LexicalEnvironment) {
   for (const node of ast.body ?? []) {
     if (node.type === "FunctionDeclaration") {
       const rec = env.record;
-      if (!rec.hasBinding(node.id.name)) {
+      if (node.id && !rec.hasBinding(node.id.name)) {
         rec.createMutableBinding(node.id.name, "function", undefined, false);
       }
     } else if (node.type === "VariableDeclaration" && node.kind === "var") {
       for (const decl of node.declarations) {
-        const name = decl.id.name;
-        if (!env.record.hasBinding(name)) {
-          env.record.createMutableBinding(name, "var", undefined, true);
+        if(decl.id.type === 'Identifier') {
+            const name = decl.id.name;
+            if (!env.record.hasBinding(name)) {
+                env.record.createMutableBinding(name, "var", undefined, true);
+            }
         }
       }
     } else if (node.type === "ClassDeclaration") {
-      if (!env.record.hasBinding(node.id.name)) {
+      if (node.id && !env.record.hasBinding(node.id.name)) {
         env.record.createMutableBinding(node.id.name, "class", undefined, false);
       }
     }
@@ -195,10 +198,13 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
       break;
 
     case "ExpressionStatement":
-      if (node.expression.range) {
-        ctx.logger.addFlow("Evaluating expression statement");
-      }
       result = evaluateExpression(node.expression, ctx);
+       if (ctx.nextStatement) {
+        ctx.logger.setNext(
+            ctx.nextStatement.loc.start.line - 1,
+            `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+        );
+      }
       break;
 
     case "ReturnStatement": {
@@ -223,12 +229,25 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
         ctx.logger.setCurrentEnv(newEnv);
         ctx.logger.addFlow("Entering new block scope");
       }
+      
+      if (node.body && node.body.length > 0) {
+        ctx.logger.setNext(
+          node.body[0].loc.start.line - 1,
+          "Enter block"
+        );
+      }
 
       result = evaluateBlockBody(node.body, innerCtx);
 
       if (shouldCreateBlock) {
         ctx.logger.addFlow("Exiting block scope");
         ctx.logger.setCurrentEnv(ctx.env);
+      }
+       if (ctx.nextStatement) {
+        ctx.logger.setNext(
+            ctx.nextStatement.loc.start.line - 1,
+            `Exit block → next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+        );
       }
       break;
     }
@@ -281,12 +300,14 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
 function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
   for (const decl of node.declarations) {
-    const name = decl.id.name;
-    const value = decl.init ? evaluateExpression(decl.init, ctx) : undefined;
-    if (kind === "var") {
-      ctx.env.set(name, value);
-    } else {
-      ctx.env.record.createMutableBinding(name, kind, value, true);
+    if (decl.id.type === 'Identifier') {
+        const name = decl.id.name;
+        const value = decl.init ? evaluateExpression(decl.init, ctx) : undefined;
+        if (kind === "var") {
+          ctx.env.set(name, value);
+        } else {
+          ctx.env.record.createMutableBinding(name, kind, value, true);
+        }
     }
   }
 }
@@ -307,7 +328,11 @@ function evalIf(node: any, ctx: EvalContext) {
       node.consequent.loc.start.line - 1,
       `Condition is TRUE → continue to: ${displayHeader(node.consequent, ctx.logger.getCode())}`
     );
-    return evaluateStatement(node.consequent, ctx);
+    if (node.consequent.type === "BlockStatement") {
+      return evaluateBlockBody(node.consequent.body, ctx);
+    } else {
+      return evaluateStatement(node.consequent, ctx);
+    }
   } else if (node.alternate) {
     ctx.logger.setNext(
       node.alternate.loc.start.line - 1,
@@ -316,7 +341,11 @@ function evalIf(node: any, ctx: EvalContext) {
         ctx.logger.getCode()
       )}`
     );
-    return evaluateStatement(node.alternate, ctx);
+    if (node.alternate.type === "BlockStatement") {
+      return evaluateBlockBody(node.alternate.body, ctx);
+    } else {
+      return evaluateStatement(node.alternate, ctx);
+    }
   } else if (ctx.nextStatement) {
     ctx.logger.setNext(
       ctx.nextStatement.loc.start.line - 1,
@@ -652,8 +681,10 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
     }
 
     this.__params.forEach((param: any, index: number) => {
-      const name = param.name;
-      fnEnv.record.createMutableBinding(name, "var", args[index], true);
+        if(param.type === 'Identifier') {
+          const name = param.name;
+          fnEnv.record.createMutableBinding(name, "var", args[index], true);
+        }
     });
 
     const logger = this.__ctx?.logger as TimelineLogger;
@@ -667,6 +698,13 @@ function createUserFunction(node: any, env: LexicalEnvironment): FunctionValue {
       logger,
       stack,
     };
+    
+    if (this.__body.loc) {
+      logger.setNext(
+        this.__body.loc.start.line -1,
+        `Enter function ${funcName} body`
+      );
+    }
 
     const stackName = funcName || "<anonymous>";
     innerCtx.stack.push(stackName);
