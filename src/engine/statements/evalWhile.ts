@@ -1,108 +1,133 @@
-
 // src/engine/statements/evalWhile.ts
-// Complete WhileStatement evaluator with correct next-step prediction
 
-import { evaluateStatement, evaluateBlockBody } from "../evaluator";
+import type { EvalContext } from "../types";
 import { evaluateExpression } from "../expressions";
-
 import {
   isBreakSignal,
   isContinueSignal,
   isReturnSignal,
   isThrowSignal,
-  makeBreak,
 } from "../signals";
-
+import { evaluateBlockBody, evaluateStatement } from "../evaluator";
 import {
-  logIfRealStatement,
   displayHeader,
   getFirstMeaningfulStatement,
 } from "../next-step-helpers";
 
-import type { EvalContext } from "../types";
-
-export function evalWhileStatement(node: any, ctx: EvalContext) {
+export function evalWhileStatement(node: any, ctx: EvalContext): any {
+  // Each WHILE has its own block environment
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
 
-  let iteration = 0;
   let result: any;
+  let iteration = 0;
 
   while (true) {
     iteration++;
-
-    // Use correct environment for loop body
     ctx.logger.setCurrentEnv(loopEnv);
 
-    // --- Evaluate Condition ---
-    logIfRealStatement(node.test, loopCtx);
-    const test = evaluateExpression(node.test, { ...loopCtx, safe: true });
+    // 🔹 1. Create a fresh timeline step for THIS iteration's condition
+    ctx.logger.log(node.loc.start.line - 1);
+
+    // 🔹 2. Safely evaluate condition for explanation (no side effects)
+    const test = evaluateExpression(node.test, {
+      ...loopCtx,
+      safe: true,
+    });
 
     ctx.logger.addExpressionEval(node.test, test);
     ctx.logger.addExpressionContext(node.test, "While Loop Condition");
-
-    ctx.logger.addFlow("WHILE LOOP CHECK:");
-    ctx.logger.addFlow(`Iteration #${iteration}`);
-    ctx.logger.addFlow(test ? "TRUE → continue loop" : "FALSE → exit loop");
+    ctx.logger.addFlow(`WHILE CHECK (#${iteration})`);
+    ctx.logger.addFlow(test ? "TRUE → body" : "FALSE → exit");
 
     if (!test) {
-      // NEXT-STEP after WHILE exits
-      ctx.logger.setNext(
-        node.loc.end.line,
-        `Exit WHILE loop → ${ctx.nextStatement ? displayHeader(ctx.nextStatement, ctx.logger.getCode()) : "End"}`
-      );
+      // 🔹 Exit while: next is the outer nextStatement
+      if (ctx.nextStatement) {
+        ctx.logger.setNext(
+          ctx.nextStatement.loc.start.line - 1,
+          `Exit WHILE → ${displayHeader(
+            ctx.nextStatement,
+            ctx.logger.getCode()
+          )}`
+        );
+      } else {
+        ctx.logger.setNext(null, "Exit WHILE → end of block");
+      }
       break;
     }
 
-    // --- NEXT STEP: enter loop body ---
-    const first = getFirstMeaningfulStatement(node.body);
-    if (first) {
+    // 🔹 3. Predict: first real statement inside body
+    const firstBodyStmt =
+      node.body.type === "BlockStatement"
+        ? getFirstMeaningfulStatement(node.body)
+        : node.body;
+
+    if (firstBodyStmt) {
       ctx.logger.setNext(
-        first.loc.start.line - 1,
-        "Next Step → " + displayHeader(first, ctx.logger.getCode())
+        firstBodyStmt.loc.start.line - 1,
+        `Next Step → ${displayHeader(
+          firstBodyStmt,
+          ctx.logger.getCode()
+        )}`
       );
     }
 
-    // --- Execute Loop Body ---
-    let bodyResult;
+    // 🔹 4. Execute body
+    let bodyResult: any;
     if (node.body.type === "BlockStatement") {
-      bodyResult = evaluateBlockBody(node.body.body, loopCtx);
+      bodyResult = evaluateBlockBody(node.body.body, {
+        ...loopCtx,
+        // inside body we don't care about outer nextStatement,
+        // next-step will be set by body statements themselves
+        nextStatement: undefined,
+      });
     } else {
       bodyResult = evaluateStatement(node.body, loopCtx);
     }
 
-    // --- Handle Control Signals ---
+    // 🔹 5. Handle control signals coming from inside the loop body
+
+    // break;
     if (isBreakSignal(bodyResult)) {
       if (!bodyResult.label) {
-        ctx.logger.setNext(
-          node.loc.end.line,
-          `Break → exit WHILE loop. Next: ${ctx.nextStatement ? displayHeader(ctx.nextStatement, ctx.logger.getCode()) : "End"}`
-        );
+        if (ctx.nextStatement) {
+          ctx.logger.setNext(
+            ctx.nextStatement.loc.start.line - 1,
+            `Break → exit WHILE → ${displayHeader(
+              ctx.nextStatement,
+              ctx.logger.getCode()
+            )}`
+          );
+        } else {
+          ctx.logger.setNext(null, "Break → exit WHILE → end of block");
+        }
         break;
-      } else {
-        // labeled break bubbles up
-        return bodyResult;
       }
+      // labeled break for some outer loop/switch → bubble up
+      result = bodyResult;
+      break;
     }
 
+    // continue;
     if (isContinueSignal(bodyResult)) {
-      // labeled continue must bubble up if mismatched
+      // if it's labeled for an outer loop, propagate
       if (bodyResult.label && (!ctx.labels || !ctx.labels[bodyResult.label])) {
-        return bodyResult;
+        result = bodyResult;
+        break;
       }
-
-      // continue → re-check condition
+      // else just start next iteration (go back to while condition)
       continue;
     }
 
+    // return / throw
     if (isReturnSignal(bodyResult) || isThrowSignal(bodyResult)) {
       result = bodyResult;
       break;
     }
+
+    // No signal → next iteration (condition will create a new step)
   }
 
-  // Restore environment
   ctx.logger.setCurrentEnv(ctx.env);
-
   return result;
 }

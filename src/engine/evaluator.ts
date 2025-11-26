@@ -74,7 +74,11 @@ export function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (!node) return;
 
-  logIfRealStatement(node, ctx);
+  // IMPORTANT:
+  // We let WHILE handle its own logging per iteration in evalWhileStatement.
+  if (node.type !== "WhileStatement") {
+    logIfRealStatement(node, ctx);
+  }
 
   let result: any;
 
@@ -156,7 +160,10 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
   // If no specific next-step was set by clause/loop logic, use sequential prediction.
   if (!ctx.logger.hasNext()) {
     if (ctx.nextStatement) {
-      ctx.logger.setNext(ctx.nextStatement.loc.start.line - 1, `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
+      ctx.logger.setNext(
+        ctx.nextStatement.loc.start.line - 1,
+        `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+      );
     } else {
       ctx.logger.setNext(null, "End of block");
     }
