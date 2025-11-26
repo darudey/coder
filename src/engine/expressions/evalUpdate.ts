@@ -12,15 +12,23 @@ export function evalUpdate(node: any, ctx: EvalContext) {
     const oldVal = ctx.env.get(name);
     const newVal = node.operator === "++" ? oldVal + 1 : oldVal - 1;
 
+    // --- PATCH ---
+    // Update the environment *before* logging the step,
+    // so the timeline shows the *new* value in the scope.
+    ctx.env.set(name, newVal);
+    
+    // Log this as its own step.
+    ctx.logger.log(node.loc.start.line - 1);
+    // --- END PATCH ---
+
     ctx.logger.addFlow(
         `Update: ${name} ${node.operator}  (old = ${oldVal}, new = ${newVal})`
     );
 
-    ctx.logger.addExpressionEval(node, newVal, [
+    ctx.logger.addExpressionEval(node, node.prefix ? newVal : oldVal, [
         `${name} was ${oldVal}`,
         `${node.operator} → ${newVal}`,
     ]);
-
-    ctx.env.set(name, newVal);
+    
     return node.prefix ? newVal : oldVal;
 }

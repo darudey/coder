@@ -8,7 +8,8 @@ import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from "
 
 export function evalWhileStatement(node: any, ctx: EvalContext): any {
     const loopEnv = ctx.env.extend("block");
-    const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+    // Pass the current loop type down to nested evaluations
+    const loopCtx: EvalContext = { ...ctx, env: loopEnv, currentLoop: 'while' };
 
     let iteration = 0;
 
@@ -16,7 +17,8 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
         iteration++;
         ctx.logger.setCurrentEnv(loopEnv);
 
-        // Log condition as a real step
+        // --- Step 1: Condition Check ---
+        // Log the condition check as a distinct step in the timeline.
         logIfRealStatement(node.test, loopCtx);
 
         const cond = safeEvaluate(node.test, loopCtx);
@@ -32,11 +34,14 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
                     ctx.nextStatement.loc.start.line - 1,
                     `Exit WHILE → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
                 );
+            } else {
+                 ctx.logger.setNext(null, "End of block");
             }
             break;
         }
 
-        // Next-step → first statement inside body
+        // --- Step 2: Set Next-Step to Body ---
+        // Predict that the next action is to enter the loop's body.
         const first = getFirstMeaningfulStatement(node.body);
         if (first) {
             ctx.logger.setNext(
@@ -45,14 +50,41 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
             );
         }
 
+        // --- Step 3: Execute Body ---
         const result =
             node.body.type === "BlockStatement"
                 ? evaluateBlockBody(node.body.body, loopCtx)
                 : evaluateStatement(node.body, loopCtx);
 
-        if (isBreakSignal(result)) return;
-        if (isContinueSignal(result)) continue;
-        if (isReturnSignal(result) || isThrowSignal(result)) return result;
+        // --- Step 4: Handle Signals ---
+        if (isBreakSignal(result)) {
+            // If a break is found, stop the loop entirely.
+            if(ctx.nextStatement) {
+                ctx.logger.setNext(ctx.nextStatement.loc.start.line -1, `Break → exit loop to ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
+            } else {
+                ctx.logger.setNext(null, 'Break → exit loop');
+            }
+            break;
+        }
+        if (isContinueSignal(result)) {
+            // If a continue is found, schedule the next condition check and skip the rest of this iteration.
+            ctx.logger.setNext(
+                node.test.loc.start.line - 1,
+                "Continue → check condition again"
+            );
+            continue;
+        }
+        if (isReturnSignal(result) || isThrowSignal(result)) {
+            // Propagate return/throw signals up immediately.
+            return result;
+        }
+
+        // --- Step 5: Schedule Next Condition Check ---
+        // After a successful body execution, the next logical step is to re-evaluate the condition.
+        ctx.logger.setNext(
+            node.test.loc.start.line - 1,
+            "Next Step → evaluate while condition again"
+        );
     }
 
     ctx.logger.setCurrentEnv(ctx.env);
