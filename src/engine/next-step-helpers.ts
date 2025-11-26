@@ -77,5 +77,7 @@ export function logIfRealStatement(node: any, ctx: EvalContext) {
 
 // ---- safeEvaluate wrapper used for conditions ----
 export function safeEvaluate(node: any, ctx: EvalContext) {
+  // We call the real evaluator, but with a "safe" flag.
+  // The expression evaluator then knows not to execute side-effects.
   return evaluateExpression(node, { ...ctx, safe: true });
 }

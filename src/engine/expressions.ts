@@ -89,16 +89,27 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
   // SAFE MODE: preview only (used for Next-Step prediction)
   if (ctx.safe) {
     switch (node.type) {
-      case "Identifier": return ctx.env.get(node.name);
-      case "Literal": return node.value;
-      case "BinaryExpression": return undefined;
-      case "LogicalExpression": return undefined;
-      case "CallExpression": return "[Side Effect]";
+      // These are safe to evaluate fully
+      case "Identifier":
+      case "Literal":
+      case "BinaryExpression":
+      case "LogicalExpression":
+        break; 
+
+      // These have potential side effects and should be blocked
+      case "CallExpression":
+        return "[Side Effect]";
+      case "AssignmentExpression":
       case "UpdateExpression":
-        if (node.argument.type === 'Identifier') {
+        if (node.argument?.type === 'Identifier') {
           return ctx.env.get(node.argument.name);
         }
         return undefined;
+      
+      // For other types, we continue to the full evaluator but with the safe flag.
+      // The individual evaluator functions can decide how to handle it.
+      default:
+        break;
     }
   }
   
