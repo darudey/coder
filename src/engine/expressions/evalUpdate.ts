@@ -1,14 +1,23 @@
-// src/engine/expressions/evalUpdate.ts
-import type { EvalContext } from '../types';
 
-export function evalUpdate(node: any, ctx: EvalContext): any {
-    const argNode = node.argument;
-    if (argNode.type === "Identifier") {
-      const name = argNode.name;
-      const current = ctx.env.get(name);
-      const next = node.operator === "++" ? current + 1 : current - 1;
-      ctx.env.set(name, next);
-      return node.prefix ? next : current;
-    }
-    throw new Error("Unsupported update target");
+// PATCH: ++x, x++, --x, x--
+
+import type { EvalContext } from "../types";
+import { evaluateExpression } from "../evaluator";
+
+export function evalUpdate(node: any, ctx: EvalContext) {
+  if (node.argument.type !== "Identifier") {
+    throw new Error("Update target must be an identifier");
+  }
+
+  const name = node.argument.name;
+  const oldValue = ctx.env.get(name);
+
+  let newValue;
+  if (node.operator === "++") newValue = oldValue + 1;
+  else if (node.operator === "--") newValue = oldValue - 1;
+  else throw new Error("Unsupported update operator: " + node.operator);
+
+  ctx.env.set(name, newValue);
+
+  return node.prefix ? newValue : oldValue;
 }
