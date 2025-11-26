@@ -58,17 +58,22 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
 
         // --- Step 4: Handle Signals ---
         if (isBreakSignal(result)) {
-            // If a break is found, stop the loop entirely.
-            if(ctx.nextStatement) {
-                ctx.logger.setNext(ctx.nextStatement.loc.start.line -1, `Break → exit loop to ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
-            } else {
-                ctx.logger.setNext(null, 'Break → exit loop');
+            if (!result.label) {
+                if(ctx.nextStatement) {
+                    ctx.logger.setNext(ctx.nextStatement.loc.start.line -1, `Break → exit loop to ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`);
+                } else {
+                    ctx.logger.setNext(null, 'Break → exit loop');
+                }
+                break;
             }
-            break;
+            return result; // Labeled break
         }
         if (isContinueSignal(result)) {
-            // If a continue is found, schedule the next condition check and skip the rest of this iteration.
-            ctx.logger.setNext(
+            if (result.label && (!ctx.labels || !ctx.labels[result.label])) {
+                return result; // Propagate labeled continue
+            }
+            // Simple continue: schedule next condition check
+             ctx.logger.setNext(
                 node.test.loc.start.line - 1,
                 "Continue → check condition again"
             );
