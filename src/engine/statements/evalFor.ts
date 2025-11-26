@@ -29,6 +29,7 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
     ctx.logger.setCurrentEnv(loopEnv);
 
     if (node.test) {
+      logIfRealStatement(node.test, loopCtx);
       const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
@@ -99,6 +100,7 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
 
     if (node.update) {
       ctx.logger.addFlow("FOR LOOP UPDATE:");
+      logIfRealStatement(node.update, loopCtx);
       evaluateExpression(node.update, loopCtx);
       if (node.test?.loc) {
         ctx.logger.setNext(
@@ -111,4 +113,17 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
 
   ctx.logger.setCurrentEnv(ctx.env);
   return result;
+}
+
+function logIfRealStatement(node: any, ctx: EvalContext) {
+    const validStatements = new Set([
+        "VariableDeclaration", "ExpressionStatement", "IfStatement",
+        "ForStatement", "WhileStatement", "ReturnStatement",
+        "BlockStatement", "FunctionDeclaration", "ClassDeclaration",
+        "BreakStatement", "ContinueStatement", "SwitchStatement",
+        "TryStatement", "ThrowStatement", "LabeledStatement"
+    ]);
+    if (node && node.loc && validStatements.has(node.type)) {
+        ctx.logger.log(node.loc.start.line - 1);
+    }
 }

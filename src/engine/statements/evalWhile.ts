@@ -2,7 +2,7 @@
 
 import type { EvalContext } from "../types";
 import { evaluateStatement, evaluateBlockBody } from "../evaluator";
-import { safeEvaluate, getFirstMeaningfulStatement, displayHeader } from "../next-step";
+import { safeEvaluate, getFirstMeaningfulStatement, displayHeader } from "../next-step-helpers";
 import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from "../signals";
 
 export function evalWhileStatement(node: any, ctx: EvalContext): any {
@@ -16,6 +16,7 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
     iteration++;
     ctx.logger.setCurrentEnv(loopEnv);
 
+    logIfRealStatement(node.test, loopCtx);
     const test = safeEvaluate(node.test, loopCtx);
     ctx.logger.addExpressionEval(node.test, test);
     ctx.logger.addExpressionContext(node.test, "While Loop Condition");
@@ -83,4 +84,17 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
 
   ctx.logger.setCurrentEnv(ctx.env);
   return result;
+}
+
+function logIfRealStatement(node: any, ctx: EvalContext) {
+    const validStatements = new Set([
+        "VariableDeclaration", "ExpressionStatement", "IfStatement",
+        "ForStatement", "WhileStatement", "ReturnStatement",
+        "BlockStatement", "FunctionDeclaration", "ClassDeclaration",
+        "BreakStatement", "ContinueStatement", "SwitchStatement",
+        "TryStatement", "ThrowStatement", "LabeledStatement"
+    ]);
+    if (node && node.loc && validStatements.has(node.type)) {
+        ctx.logger.log(node.loc.start.line - 1);
+    }
 }

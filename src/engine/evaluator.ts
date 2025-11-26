@@ -1,4 +1,3 @@
-
 // src/engine/evaluator.ts
 // The main dispatcher for the JavaScript engine.
 // It routes statements to their respective handler modules.
