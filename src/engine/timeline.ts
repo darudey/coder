@@ -155,62 +155,63 @@ export class TimelineLogger {
   private buildExpressionBreakdown(expr: any): string[] {
     const lines: string[] = [];
 
-    const walk = (node: any): any => {
+    const walk = (node: any, indent = ""): any => {
+      if (!node) return;
+      
+      const log = (msg: string) => lines.push(indent + msg);
+
       switch (node.type) {
         case "Identifier": {
           const v = this.safeValue(node.name);
-          lines.push(`${node.name} = ${v}`);
+          log(`Identifier "${node.name}" → ${JSON.stringify(v)}`);
           return v;
         }
         case "Literal": {
-          lines.push(`literal ${node.value}`);
+          log(`Literal → ${JSON.stringify(node.value)}`);
           return node.value;
         }
         case "BinaryExpression": {
-          const left = walk(node.left);
-          const right = walk(node.right);
+          log(`Binary Expression: ${node.operator}`);
+          const left = walk(node.left, indent + "  ");
+          const right = walk(node.right, indent + "  ");
           const result = this.applyOperator(left, right, node.operator);
-          lines.push(`${left} ${node.operator} ${right} = ${result}`);
+          log(`Result → ${JSON.stringify(result)}`);
           return result;
         }
+        case "MemberExpression": {
+            log(`Member Access:`);
+            const obj = walk(node.object, indent + "  ");
+            let prop;
+            if (node.computed) {
+                prop = walk(node.property, indent + "  ");
+            } else {
+                prop = node.property.name;
+                log(`${indent}  Property: "${prop}"`);
+            }
+            if(obj === undefined || obj === null) {
+                log(`Cannot read property of ${obj}`);
+                return undefined;
+            }
+            const result = obj[prop];
+            log(`Result → ${JSON.stringify(result)}`);
+            return result;
+        }
+         case "CallExpression": {
+            log(`Function Call:`);
+            walk(node.callee, indent + "  ");
+            log(`Arguments:`);
+            node.arguments.forEach((arg: any) => walk(arg, indent + "    "));
+            log(`(Result not simulated in breakdown)`);
+            return "[Function Call]";
+        }
         default:
+          log(`(Unsupported node type: ${node.type})`);
           return undefined;
       }
     };
 
     walk(expr);
     return lines;
-  }
-
-  private friendlyText(op: string) {
-    switch (op) {
-      case "%":
-        return "finding the remainder";
-      case "==":
-      case "===":
-        return "checking if the two values are equal";
-      case "!=":
-      case "!==":
-        return "checking if the two values are NOT equal";
-      case "<":
-        return "checking if left is less than right";
-      case ">":
-        return "checking if left is greater than right";
-      case "<=":
-        return "checking if left is less than or equal to right";
-      case ">=":
-        return "checking if left is greater than or equal to right";
-      case "+":
-        return "adding the two values";
-      case "-":
-        return "subtracting right from left";
-      case "*":
-        return "multiplying the two values";
-      case "/":
-        return "dividing left by right";
-      default:
-        return `evaluating operator '${op}'`;
-    }
   }
 
   private makeFriendlyExplanation(expr: any, result: any): string[] {
@@ -262,19 +263,19 @@ export class TimelineLogger {
     return lines;
   }
 
-  addExpressionEval(expr: any, value: any) {
+  addExpressionEval(expr: any, value: any, customBreakdown?: string[]) {
     const last = this.entries[this.entries.length - 1];
     if (!last || !expr.range) return;
 
     const exprString = this.code.substring(expr.range[0], expr.range[1]);
     if (!last.expressionEval) last.expressionEval = {};
-
-    const breakdown = this.buildExpressionBreakdown(expr);
+    
+    const breakdown = customBreakdown || this.buildExpressionBreakdown(expr);
     const friendly = this.makeFriendlyExplanation(expr, value);
 
     last.expressionEval[exprString] = {
       result: value,
-      breakdown,
+      breakdown: breakdown,
       friendly,
     };
   }
