@@ -2,7 +2,7 @@
 
 import type { EvalContext } from "../types";
 import { evaluateBlockBody } from "../evaluator";
-import { getFirstMeaningfulStatement, displayHeader } from "../next-step";
+import { getFirstMeaningfulStatement, displayHeader } from "../next-step-helpers";
 
 export function evalBlockStatement(node: any, ctx: EvalContext): any {
   const shouldCreateBlock =
@@ -29,7 +29,7 @@ export function evalBlockStatement(node: any, ctx: EvalContext): any {
   result = evaluateBlockBody(node.body, innerCtx);
 
   if (shouldCreateBlock) {
-    ctx.logger.addFlow("Exiting new block scope");
+    ctx.logger.addFlow("Exiting block scope");
 
     if (ctx.nextStatement) {
       ctx.logger.setNext(
