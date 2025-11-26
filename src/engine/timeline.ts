@@ -30,7 +30,7 @@ function isUserFunctionValue(value: any) {
 
 export class TimelineLogger {
   private entries: TimelineEntry[] = [];
-  private step = 0;
+  private step = 1;
   private output: string[] = [];
 
   constructor(
