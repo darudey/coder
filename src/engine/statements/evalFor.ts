@@ -1,3 +1,4 @@
+
 // src/engine/statements/evalFor.ts
 
 import type { EvalContext } from "../types";
@@ -11,9 +12,13 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv, currentLoop: 'for' };
 
+  // ------------------------------------
+  // 1. INIT
+  // ------------------------------------
   if (node.init) {
     ctx.logger.setCurrentEnv(loopEnv);
     ctx.logger.addFlow("FOR LOOP INIT:");
+
     if (node.init.type === "VariableDeclaration") {
       evalVariableDeclaration(node.init, loopCtx);
     } else {
@@ -28,69 +33,78 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
     iteration++;
     ctx.logger.setCurrentEnv(loopEnv);
 
+    // ------------------------------------
+    // 2. CONDITION CHECK
+    // ------------------------------------
     if (node.test) {
       logIfRealStatement(node.test, loopCtx);
+
       const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
+
       ctx.logger.addFlow(`FOR LOOP CHECK (iteration #${iteration})`);
-      ctx.logger.addFlow(
-        `Result: ${
-          test ? "TRUE → enter loop body" : "FALSE → exit loop"
-        }`
-      );
+      ctx.logger.addFlow(test ? "Result: TRUE → enter loop body" : "Result: FALSE → exit loop");
 
       if (!test) {
         ctx.logger.setNext(
           node.loc.end.line,
-          `Exit FOR loop → ${displayHeader(
-            ctx.nextStatement,
-            ctx.logger.getCode()
-          )}`
+          `Exit FOR loop → ${ctx.nextStatement ?
+            displayHeader(ctx.nextStatement, ctx.logger.getCode()) :
+            "End"}`
         );
         break;
       }
     }
 
-    const first =
+    // ------------------------------------
+    // 3. NEXT STEP → first statement of body
+    // ------------------------------------
+    const firstBodyStmt =
       node.body.type === "BlockStatement"
         ? getFirstMeaningfulStatement(node.body)
         : node.body;
 
-    if (first) {
+    if (firstBodyStmt) {
       ctx.logger.setNext(
-        first.loc.start.line - 1,
-        "Next Step → " + displayHeader(first, ctx.logger.getCode())
+        firstBodyStmt.loc.start.line - 1,
+        `Next Step → ${displayHeader(firstBodyStmt, ctx.logger.getCode())}`
       );
     }
 
-    let res;
+    // ------------------------------------
+    // 4. EXECUTE BODY
+    // ------------------------------------
+    let res: any;
     if (node.body.type === "BlockStatement") {
       res = evaluateBlockBody(node.body.body, loopCtx);
     } else {
       res = evaluateStatement(node.body, loopCtx);
     }
 
+    // BREAK
     if (isBreakSignal(res)) {
       if (!res.label) {
         ctx.logger.setNext(
           node.loc.end.line,
-          `Break → exit FOR loop. Next: ${displayHeader(
-            ctx.nextStatement,
-            ctx.logger.getCode()
-          )}`
+          `Break → exit FOR loop. Next: ${
+            ctx.nextStatement ?
+              displayHeader(ctx.nextStatement, ctx.logger.getCode()) :
+              "End"
+          }`
         );
         break;
-      } else {
-        return res;
       }
+      return res; // labelled break
     }
 
+    // CONTINUE
     if (isContinueSignal(res)) {
+      // label mismatch -> propagate up
       if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
         return res;
       }
-      // fall through → do update then next iteration
+      // else: continue to update step
     }
 
     if (isReturnSignal(res) || isThrowSignal(res)) {
@@ -98,23 +112,33 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
       break;
     }
 
+    // ------------------------------------
+    // 5. UPDATE
+    // ------------------------------------
     if (node.update) {
       ctx.logger.addFlow("FOR LOOP UPDATE:");
       logIfRealStatement(node.update, loopCtx);
+
+      // ⭐ LOG UPDATE *AS ITS OWN STEP*
+      ctx.logger.setNext(
+        node.update.loc.start.line - 1,
+        `Next Step → ${displayHeader(node.update, ctx.logger.getCode())}`
+      );
+
       evaluateExpression(node.update, loopCtx);
-      if (node.test?.loc) {
+
+      // ⭐ Then set next-step to condition
+      if (node.test) {
         ctx.logger.setNext(
           node.test.loc.start.line - 1,
           "Go to loop condition check"
         );
       }
-    } else {
-        if (node.test?.loc) {
-            ctx.logger.setNext(
-                node.test.loc.start.line - 1,
-                "Next Step → evaluate for condition again"
-            );
-        }
+    } else if (node.test) {
+        ctx.logger.setNext(
+            node.test.loc.start.line - 1,
+            "Next Step → evaluate for condition again"
+        );
     }
   }
 
