@@ -16,8 +16,6 @@ export function evalUpdate(node: any, ctx: EvalContext) {
     // Update the environment *before* logging the step,
     // so the timeline shows the *new* value in the scope.
     ctx.env.set(name, newVal);
-    
-    // Log this as its own step.
     ctx.logger.log(node.loc.start.line - 1);
     // --- END PATCH ---
 
