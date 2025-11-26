@@ -1,3 +1,4 @@
+
 // src/engine/statements/evalFor.ts
 
 import type { EvalContext } from "../types";
@@ -36,6 +37,9 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
     // 2. CONDITION CHECK
     // ------------------------------------
     if (node.test) {
+      // Log the condition check as a step
+      ctx.logger.log(node.test.loc.start.line - 1);
+      
       const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
@@ -113,15 +117,15 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
     // 5. UPDATE
     // ------------------------------------
     if (node.update) {
-      ctx.logger.addFlow("FOR LOOP UPDATE:");
-      
-      // ⭐ LOG UPDATE *AS ITS OWN STEP*
-      ctx.logger.log(node.update.loc.start.line - 1);
-      
+      // Set the "next step" to be the update expression itself
       ctx.logger.setNext(
         node.update.loc.start.line - 1,
         `Next Step → ${displayHeader(node.update, ctx.logger.getCode())}`
       );
+      
+      // LOG UPDATE *AS ITS OWN STEP*
+      ctx.logger.log(node.update.loc.start.line - 1);
+      ctx.logger.addFlow("FOR LOOP UPDATE:");
 
       evaluateExpression(node.update, loopCtx);
 
