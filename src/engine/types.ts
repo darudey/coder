@@ -14,4 +14,7 @@ export interface EvalContext {
 
   // for labelled break/continue targets (used by loops / labels)
   labels?: Record<string, any>;
+
+  // To prevent noisy logging inside loops
+  currentLoop?: "while" | "for" | null;
 }

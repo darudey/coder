@@ -7,7 +7,7 @@ import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from "
 
 export function evalWhileStatement(node: any, ctx: EvalContext): any {
   const loopEnv = ctx.env.extend("block");
-  const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+  const loopCtx: EvalContext = { ...ctx, env: loopEnv, currentLoop: 'while' };
 
   let result: any;
   let iteration = 0;
@@ -69,16 +69,24 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
       }
     }
 
+    if (isReturnSignal(res) || isThrowSignal(res)) {
+      result = res;
+      break;
+    }
+
+    // After body execution, explicitly point back to the condition
+    if (node.test?.loc) {
+        ctx.logger.setNext(
+            node.test.loc.start.line - 1,
+            "Next Step → evaluate while condition again"
+        );
+    }
+
     if (isContinueSignal(res)) {
       if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
         return res;
       }
       continue;
-    }
-
-    if (isReturnSignal(res) || isThrowSignal(res)) {
-      result = res;
-      break;
     }
   }
 
@@ -87,14 +95,8 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
 }
 
 function logIfRealStatement(node: any, ctx: EvalContext) {
-    const validStatements = new Set([
-        "VariableDeclaration", "ExpressionStatement", "IfStatement",
-        "ForStatement", "WhileStatement", "ReturnStatement",
-        "BlockStatement", "FunctionDeclaration", "ClassDeclaration",
-        "BreakStatement", "ContinueStatement", "SwitchStatement",
-        "TryStatement", "ThrowStatement", "LabeledStatement"
-    ]);
-    if (node && node.loc && validStatements.has(node.type)) {
+    // This is a minimal logger, only caring about expressions within the loop header
+    if (node && node.loc && node.type.endsWith("Expression")) {
         ctx.logger.log(node.loc.start.line - 1);
     }
 }

@@ -50,12 +50,11 @@ export function displayHeader(node: any, code: string): string {
 
 // ---- logging helper for “real statements” ----
 export function logIfRealStatement(node: any, ctx: EvalContext) {
+  // Loops are logged internally, so we exclude them here to prevent duplicates.
   const validStatements = new Set([
     "VariableDeclaration",
     "ExpressionStatement",
     "IfStatement",
-    "ForStatement",
-    "WhileStatement",
     "ReturnStatement",
     "BlockStatement",
     "FunctionDeclaration",
@@ -66,8 +65,6 @@ export function logIfRealStatement(node: any, ctx: EvalContext) {
     "TryStatement",
     "ThrowStatement",
     "LabeledStatement",
-    "ForInStatement",
-    "ForOfStatement"
   ]);
 
   if (node && node.loc && validStatements.has(node.type)) {

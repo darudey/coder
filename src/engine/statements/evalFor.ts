@@ -9,7 +9,7 @@ import { evalVariableDeclaration } from "./evalDeclarations";
 
 export function evalForStatement(node: any, ctx: EvalContext): any {
   const loopEnv = ctx.env.extend("block");
-  const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+  const loopCtx: EvalContext = { ...ctx, env: loopEnv, currentLoop: 'for' };
 
   if (node.init) {
     ctx.logger.setCurrentEnv(loopEnv);
@@ -108,6 +108,13 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
           "Go to loop condition check"
         );
       }
+    } else {
+        if (node.test?.loc) {
+            ctx.logger.setNext(
+                node.test.loc.start.line - 1,
+                "Next Step → evaluate for condition again"
+            );
+        }
     }
   }
 
@@ -116,14 +123,8 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
 }
 
 function logIfRealStatement(node: any, ctx: EvalContext) {
-    const validStatements = new Set([
-        "VariableDeclaration", "ExpressionStatement", "IfStatement",
-        "ForStatement", "WhileStatement", "ReturnStatement",
-        "BlockStatement", "FunctionDeclaration", "ClassDeclaration",
-        "BreakStatement", "ContinueStatement", "SwitchStatement",
-        "TryStatement", "ThrowStatement", "LabeledStatement"
-    ]);
-    if (node && node.loc && validStatements.has(node.type)) {
+    // This is a minimal logger, only caring about expressions within the loop header
+    if (node && node.loc && (node.type.endsWith("Expression") || node.type === "VariableDeclaration")) {
         ctx.logger.log(node.loc.start.line - 1);
     }
 }
