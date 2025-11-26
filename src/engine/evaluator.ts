@@ -5,7 +5,6 @@
 
 import type { EvalContext } from "./types";
 import {
-  makeThrow,
   isReturnSignal,
   isBreakSignal,
   isContinueSignal,
@@ -18,15 +17,13 @@ import {
 import { hoistProgram } from "./hoist";
 
 // Import statement evaluators
-import { evalVariableDeclaration } from "./statements/evalDeclarations";
+import { evalVariableDeclaration, evalFunctionDeclaration, evalClassDeclaration } from "./statements/evalDeclarations";
 import { evalExpressionStatement } from "./statements/evalExpressionStmt";
 import { evalReturnStatement } from "./statements/evalReturn";
 import { evalIfStatement } from "./statements/evalIf";
 import { evalBlockStatement } from "./statements/evalBlock";
 import { evalForStatement } from "./statements/evalFor";
 import { evalWhileStatement } from "./statements/evalWhile";
-import { evalFunctionDeclaration } from "./statements/evalFunction";
-import { evalClassDeclaration } from "./statements/evalClass";
 import { evalBreakStatement } from "./statements/evalBreak";
 import { evalContinueStatement } from "./statements/evalContinue";
 import { evalLabeled } from "./statements/evalLabeled";
@@ -34,9 +31,7 @@ import { evalSwitchStatement } from "./statements/evalSwitch";
 import { evalTryStatement } from "./statements/evalTry";
 import { evalForIn } from "./statements/evalForIn";
 import { evalForOf } from "./statements/evalForOf";
-
-// Import the single, central expression evaluator
-import { evaluateExpression } from "./expressions";
+import { evalThrow } from './statements/evalThrow';
 
 
 // ---------- MAIN ENTRY ----------
@@ -150,9 +145,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
       break;
 
     case "ThrowStatement":
-      result = makeThrow(
-        node.argument ? evaluateExpression(node.argument, ctx) : undefined
-      );
+      result = evalThrow(node, ctx);
       break;
 
     default:
@@ -172,3 +165,6 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
 
   return result;
 }
+
+// Re-export from expressions for other modules
+export { evaluateExpression } from './expressions';

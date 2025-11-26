@@ -1,23 +1,31 @@
 
 // src/engine/expressions/evalLogical.ts
-import type { EvalContext } from '../types';
 import { evaluateExpression } from '../evaluator';
-import { getProperty, setProperty } from "../values";
-import { evalMemberTarget } from "./evalMember";
+import type { EvalContext } from '../types';
+import { makeLogicalAssignmentTarget } from './evalLogical';
 
 export function evalLogical(node: any, ctx: EvalContext): any {
     const left = evaluateExpression(node.left, ctx);
-    if (node.operator === "&&") {
-      return left && evaluateExpression(node.right, ctx);
-    } else if (node.operator === "||") {
-      return left || evaluateExpression(node.right, ctx);
+    switch (node.operator) {
+        case "&&":
+            return left && evaluateExpression(node.right, ctx);
+        case "||":
+            return left || evaluateExpression(node.right, ctx);
+        case "??":
+            return (left === null || left === undefined)
+                ? evaluateExpression(node.right, ctx)
+                : left;
+        default:
+            throw new Error(`Unsupported logical operator: ${node.operator}`);
     }
-    throw new Error(`Unsupported logical operator: ${node.operator}`);
 }
 
 // --------------------------
 // Logical Assignment Helpers
 // --------------------------
+
+import { getProperty, setProperty } from "../values";
+import { evalMemberTarget } from "./evalMember";
 
 export function makeLogicalAssignmentTarget(left: any, ctx: EvalContext) {
   // Identifier: x ??= y

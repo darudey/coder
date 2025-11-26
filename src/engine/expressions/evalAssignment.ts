@@ -9,7 +9,7 @@ export function evalAssignment(node: any, ctx: EvalContext): any {
     if (
       node.operator === "&&=" ||
       node.operator === "||=" ||
-      node.operator === "??"
+      node.operator === "??="
     ) {
       const target = makeLogicalAssignmentTarget(node.left, ctx);
       const desc = target.describe;

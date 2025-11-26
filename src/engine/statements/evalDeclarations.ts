@@ -1,10 +1,10 @@
 
 // src/engine/statements/evalDeclarations.ts
 import { bindPattern } from '../patterns/evalDestructuring';
-import { createClassConstructor } from './evalClass';
 import type { EvalContext } from '../types';
 import { evaluateExpression } from '../expressions';
 import { createFunction } from '../values';
+import { createClassConstructor } from './evalClass';
 
 export function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
@@ -23,7 +23,7 @@ export function evalVariableDeclaration(node: any, ctx: EvalContext) {
     }
 
     // destructuring
-     if (pattern.type !== "Identifier") {
+    if (pattern.type !== "Identifier") {
         ctx.logger.setNext(
             pattern.loc.start.line - 1,
             `Next Step → destructure: ${ctx.logger.getCode().slice(pattern.range[0], pattern.range[1])}`
