@@ -1,75 +1,66 @@
+
 // src/engine/statements/evalForOf.ts
 import type { EvalContext } from '../types';
-import { evaluateBlockBody, evaluateStatement } from '../evaluator';
-import { evaluateExpression } from '../expressions';
-import { isBreakSignal, isContinueSignal, isReturnSignal, isThrowSignal } from '../signals';
+import { evaluateBlockBody, evaluateStatement, evaluateExpression } from '../evaluator';
+import { isBreakSignal, isContinueSignal, isReturnSignal } from '../signals';
 import { getFirstMeaningfulStatement, displayHeader } from '../next-step-helpers';
-import { evalVariableDeclaration } from './evalDeclarations';
-import { assignPattern } from '../patterns/evalDestructuring';
 
 export function evalForOf(node: any, ctx: EvalContext) {
-  const loopEnv = ctx.env.extend("block");
-  const loopCtx: EvalContext = { ...ctx, env: loopEnv };
+    const rightVal = evaluateExpression(node.right, ctx);
+    if (!rightVal || typeof rightVal[Symbol.iterator] !== 'function') {
+        throw new TypeError("Right-hand side of 'for...of' is not iterable.");
+    }
+    const iterator = rightVal[Symbol.iterator]();
 
-  const rhs = evaluateExpression(node.right, loopCtx);
-  const iterable = rhs ?? [];
-  let result: any;
+    ctx.logger.addFlow("FOR-OF: start iteration");
 
-  ctx.logger.setCurrentEnv(loopEnv);
-  ctx.logger.addFlow("FOR-OF INIT");
+    let step;
+    let iteration = 0;
 
-  const values = typeof (iterable as any)[Symbol.iterator] === "function" ? Array.from(iterable as any) : [];
+    while (!(step = iterator.next()).done) {
+        iteration++;
 
-  for (let idx = 0; idx < values.length; idx++) {
-    const value = values[idx];
+        const value = step.value;
 
-    if (node.left.type === "VariableDeclaration") {
-      evalVariableDeclaration(
-        { ...node.left, declarations: [{ id: node.left.declarations[0].id, init: { type: "Literal", value } }] },
-        loopCtx
-      );
-    } else {
-      assignPattern(node.left, value, loopCtx);
+        // Bind loop variable
+        if (node.left.type === "VariableDeclaration") {
+            const decl = node.left.declarations[0];
+            ctx.env.record.createMutableBinding(
+                decl.id.name,
+                "let",
+                value,
+                true
+            );
+        } else if (node.left.type === "Identifier") {
+            ctx.env.set(node.left.name, value);
+        }
+
+        ctx.logger.addFlow(`FOR-OF (#${iteration}) → value = ${JSON.stringify(value)}`);
+
+        const first = node.body.type === "BlockStatement"
+            ? getFirstMeaningfulStatement(node.body)
+            : node.body;
+
+        if (first) {
+            ctx.logger.setNext(
+                first.loc.start.line - 1,
+                `Next Step → ${displayHeader(first, ctx.logger.getCode())}`
+            );
+        }
+
+        const res = node.body.type === "BlockStatement"
+            ? evaluateBlockBody(node.body.body, ctx)
+            : evaluateStatement(node.body, ctx);
+
+        if (isBreakSignal(res)) return;
+        if (isContinueSignal(res)) continue;
+        if (isReturnSignal(res)) return res;
     }
 
-    const first = node.body.type === "BlockStatement"
-      ? getFirstMeaningfulStatement(node.body)
-      : node.body;
-    if (first) {
-      ctx.logger.setNext(
-        first.loc.start.line - 1,
-        "Next Step → " + displayHeader(first, ctx.logger.getCode())
-      );
-    }
-
-    const res =
-      node.body.type === "BlockStatement"
-        ? evaluateBlockBody(node.body.body, loopCtx)
-        : evaluateStatement(node.body, loopCtx);
-
-    if (isBreakSignal(res)) {
-      if (!res.label) {
+    if (ctx.nextStatement) {
         ctx.logger.setNext(
-          node.loc.end.line,
-          `Break → exit FOR-OF loop. Next: ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+            ctx.nextStatement.loc.start.line - 1,
+            `After FOR-OF → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
         );
-        break;
-      } else {
-        return res;
-      }
     }
-    if (isContinueSignal(res)) {
-      if (res.label && (!ctx.labels || !ctx.labels[res.label])) {
-        return res;
-      }
-      continue;
-    }
-    if (isReturnSignal(res) || isThrowSignal(res)) {
-      result = res;
-      break;
-    }
-  }
-
-  ctx.logger.setCurrentEnv(ctx.env);
-  return result;
 }

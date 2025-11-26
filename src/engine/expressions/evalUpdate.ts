@@ -1,23 +1,26 @@
 
 // PATCH: ++x, x++, --x, x--
-
 import type { EvalContext } from "../types";
-import { evaluateExpression } from "../evaluator";
 
 export function evalUpdate(node: any, ctx: EvalContext) {
-  if (node.argument.type !== "Identifier") {
-    throw new Error("Update target must be an identifier");
-  }
+    const arg = node.argument;
+    if (arg.type !== "Identifier") {
+      throw new Error("Update target must be an identifier");
+    }
 
-  const name = node.argument.name;
-  const oldValue = ctx.env.get(name);
+    const name = arg.name;
+    const oldVal = ctx.env.get(name);
+    const newVal = node.operator === "++" ? oldVal + 1 : oldVal - 1;
 
-  let newValue;
-  if (node.operator === "++") newValue = oldValue + 1;
-  else if (node.operator === "--") newValue = oldValue - 1;
-  else throw new Error("Unsupported update operator: " + node.operator);
+    ctx.logger.addFlow(
+        `Update: ${name} ${node.operator}  (old = ${oldVal}, new = ${newVal})`
+    );
 
-  ctx.env.set(name, newValue);
+    ctx.logger.addExpressionEval(node, newVal, [
+        `${name} was ${oldVal}`,
+        `${node.operator} → ${newVal}`,
+    ]);
 
-  return node.prefix ? newValue : oldValue;
+    ctx.env.set(name, newVal);
+    return node.prefix ? newVal : oldVal;
 }

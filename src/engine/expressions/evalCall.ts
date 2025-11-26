@@ -1,3 +1,4 @@
+
 // src/engine/expressions/evalCall.ts
 import type { EvalContext } from '../types';
 import { evaluateExpression } from '../evaluator';
@@ -18,7 +19,9 @@ export function evalCall(node: any, ctx: EvalContext): any {
     }
   
     if (calleeVal && (calleeVal as any).__builtin === "console.log") {
-      ctx.logger.logOutput(...args);
+      const formattedArgs = args.join(" ");
+      ctx.logger.logOutput(formattedArgs);
+      ctx.logger.addFlow(`console.log → ${formattedArgs}`);
       return undefined;
     }
   
