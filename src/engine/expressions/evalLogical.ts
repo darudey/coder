@@ -1,8 +1,6 @@
-
 // src/engine/expressions/evalLogical.ts
 import { evaluateExpression } from '../evaluator';
 import type { EvalContext } from '../types';
-import { makeLogicalAssignmentTarget } from './evalLogical';
 
 export function evalLogical(node: any, ctx: EvalContext): any {
     const left = evaluateExpression(node.left, ctx);
