@@ -37,8 +37,6 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
     // 2. CONDITION CHECK
     // ------------------------------------
     if (node.test) {
-      logIfRealStatement(node.test, loopCtx);
-
       const test = safeEvaluate(node.test, loopCtx);
       ctx.logger.addExpressionEval(node.test, test);
       ctx.logger.addExpressionContext(node.test, "For Loop Condition");
@@ -117,9 +115,10 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
     // ------------------------------------
     if (node.update) {
       ctx.logger.addFlow("FOR LOOP UPDATE:");
-      logIfRealStatement(node.update, loopCtx);
-
+      
       // ⭐ LOG UPDATE *AS ITS OWN STEP*
+      ctx.logger.log(node.update.loc.start.line - 1);
+      
       ctx.logger.setNext(
         node.update.loc.start.line - 1,
         `Next Step → ${displayHeader(node.update, ctx.logger.getCode())}`
@@ -130,8 +129,8 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
       // ⭐ Then set next-step to condition
       if (node.test) {
         ctx.logger.setNext(
-          node.test.loc.start.line - 1,
-          "Go to loop condition check"
+            node.test.loc.start.line - 1,
+            "Go to loop condition check"
         );
       }
     } else if (node.test) {
@@ -144,11 +143,4 @@ export function evalForStatement(node: any, ctx: EvalContext): any {
 
   ctx.logger.setCurrentEnv(ctx.env);
   return result;
-}
-
-function logIfRealStatement(node: any, ctx: EvalContext) {
-    // This is a minimal logger, only caring about expressions within the loop header
-    if (node && node.loc && (node.type.endsWith("Expression") || node.type === "VariableDeclaration")) {
-        ctx.logger.log(node.loc.start.line - 1);
-    }
 }
