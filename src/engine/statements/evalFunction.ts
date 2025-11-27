@@ -73,10 +73,21 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
 
     // --- 3. Switch logger to function env & log entry ---
     logger.setCurrentEnv(fnEnv);
-    // create a timeline step for "entering function"
-    if (node.loc) {
-      logger.log(node.loc.start.line - 1);
-    }
+
+    const body = node.body;
+    const firstStmt =
+      body && body.type === "BlockStatement"
+        ? getFirstMeaningfulStatement(body)
+        : body;
+
+    // Decide which line to log as the "entering function" step:
+    // prefer the first meaningful statement in the body, fall back to the declaration line
+    const logLine =
+      (firstStmt && firstStmt.loc?.start.line) ||
+      (node.loc && node.loc.start.line) ||
+      1;
+
+    logger.log(logLine - 1);
     logger.addFlow(`Entering function ${funcName}`);
 
     // Build inner EvalContext for this call
@@ -90,12 +101,6 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
     };
 
     // Predict first statement inside the function for "Next Step"
-    const body = node.body;
-    const firstStmt =
-      body && body.type === "BlockStatement"
-        ? getFirstMeaningfulStatement(body)
-        : body;
-
     if (firstStmt && firstStmt.loc) {
       logger.setNext(
         firstStmt.loc.start.line - 1,
