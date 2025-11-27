@@ -17,6 +17,14 @@ export function evalCall(node: any, ctx: EvalContext): any {
     } else {
       thisArg = ctx.thisValue ?? undefined;
     }
+
+    const calleeName = node.callee.type === "Identifier"
+      ? node.callee.name
+      : node.callee.type === "MemberExpression"
+      ? node.callee.property.name
+      : "<call>";
+
+    ctx.logger.addFlow(`Calling function ${calleeName}(${args.map(a => JSON.stringify(a)).join(", ")})`);
   
     if (calleeVal && (calleeVal as any).__builtin === "console.log") {
       const formattedArgs = args.join(" ");
