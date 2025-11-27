@@ -1,4 +1,3 @@
-
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -463,5 +462,3 @@ export class TimelineLogger {
     return this.entries;
   }
 }
-
-    
