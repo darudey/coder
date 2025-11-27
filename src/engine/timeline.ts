@@ -58,6 +58,20 @@ export class TimelineLogger {
 
     const serializedVars = JSON.parse(
       JSON.stringify(rawVars, (key, value) => {
+        if (value === Math) {
+            // Manually serialize Math object properties
+            const mathObject: {[key: string]: any} = {};
+            for (const prop of Object.getOwnPropertyNames(Math)) {
+                const mathProp = (Math as any)[prop];
+                if (typeof mathProp === 'function') {
+                    mathObject[prop] = '[NativeFunction]';
+                } else {
+                    mathObject[prop] = mathProp;
+                }
+            }
+            return mathObject;
+        }
+
         if (isUserFunctionValue(value)) return "[Function]";
         if (typeof value === "function") return "[NativeFunction]";
 
