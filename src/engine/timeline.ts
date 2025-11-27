@@ -58,8 +58,7 @@ export class TimelineLogger {
 
     const serializedVars = JSON.parse(
       JSON.stringify(rawVars, (key, value) => {
-        if (value === Math) {
-            // Manually serialize Math object properties
+        if (key === 'Math' && value && Object.keys(value).length === 0) {
             const mathObject: {[key: string]: any} = {};
             for (const prop of Object.getOwnPropertyNames(Math)) {
                 const mathProp = (Math as any)[prop];
