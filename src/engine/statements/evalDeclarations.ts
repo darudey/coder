@@ -3,7 +3,6 @@
 import { bindPattern } from '../patterns/evalDestructuring';
 import type { EvalContext } from '../types';
 import { evaluateExpression } from '../expressions';
-import { createFunction } from '../values';
 import { createClassConstructor } from './evalClass';
 
 export function evalVariableDeclaration(node: any, ctx: EvalContext) {
@@ -31,12 +30,6 @@ export function evalVariableDeclaration(node: any, ctx: EvalContext) {
     }
     bindPattern(pattern, initValue, ctx, kind);
   }
-}
-
-export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
-  const name = node.id.name;
-  const fn = createFunction(node, ctx.env);
-  ctx.env.record.initializeBinding(name, fn);
 }
 
 export function evalClassDeclaration(node: any, ctx: EvalContext) {

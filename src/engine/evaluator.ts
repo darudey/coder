@@ -1,3 +1,4 @@
+
 // src/engine/evaluator.ts
 // The main dispatcher for the JavaScript engine.
 // It routes statements to their respective handler modules.
@@ -16,7 +17,8 @@ import {
 import { hoistProgram } from "./hoist";
 
 // Import statement evaluators
-import { evalVariableDeclaration, evalFunctionDeclaration, evalClassDeclaration } from "./statements/evalDeclarations";
+import { evalVariableDeclaration, evalClassDeclaration } from "./statements/evalDeclarations";
+import { evalFunctionDeclaration } from "./statements/evalFunction";
 import { evalExpressionStatement } from "./statements/evalExpressionStmt";
 import { evalReturnStatement } from "./statements/evalReturn";
 import { evalIfStatement } from "./statements/evalIf";
@@ -74,9 +76,8 @@ export function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (!node) return;
 
-  // IMPORTANT:
-  // We let WHILE handle its own logging per iteration in evalWhileStatement.
-  if (node.type !== "WhileStatement") {
+  // Loops log their entry step internally to prevent duplicates.
+  if (node.type !== "WhileStatement" && node.type !== "ForStatement") {
     logIfRealStatement(node, ctx);
   }
 
@@ -156,6 +157,11 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
       return;
   }
 
+  // If a return is bubbling up, don't set a next step, let the caller handle it.
+  if (isReturnSignal(result)) {
+    return result;
+  }
+  
   // GLOBAL FALLBACK NEXT-STEP
   // If no specific next-step was set by clause/loop logic, use sequential prediction.
   if (!ctx.logger.hasNext()) {
@@ -164,8 +170,6 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
         ctx.nextStatement.loc.start.line - 1,
         `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
       );
-    } else {
-      ctx.logger.setNext(null, "End of block");
     }
   }
 
