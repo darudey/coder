@@ -6,6 +6,7 @@ import { createClassConstructor } from './evalClass';
 
 export function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
+  ctx.logger.addFlow(`Running ${kind} declaration`);
 
   for (const decl of node.declarations) {
     const pattern = decl.id;

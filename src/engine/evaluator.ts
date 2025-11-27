@@ -1,4 +1,3 @@
-
 // src/engine/evaluator.ts
 // The main dispatcher for the JavaScript engine.
 // It routes statements to their respective handler modules.
@@ -76,9 +75,13 @@ export function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (!node) return;
 
-  // Loops log their entry step internally to prevent duplicates.
-  if (node.type !== "WhileStatement" && node.type !== "ForStatement") {
-    logIfRealStatement(node, ctx);
+  /**
+   * Always log real statements — except loops,
+   * because loops log their own “enter iteration” step.
+   */
+  const skip = new Set(["WhileStatement", "ForStatement"]);
+  if (!skip.has(node.type)) {
+      logIfRealStatement(node, ctx);
   }
 
   let result: any;

@@ -8,6 +8,7 @@ export function evalReturnStatement(node: any, ctx: EvalContext) {
   let val: any;
 
   if (node.argument) {
+    ctx.logger.addFlow(`Evaluating return expression`);
     // Evaluate return expression
     val = evaluateExpression(node.argument, ctx);
 

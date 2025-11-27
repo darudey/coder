@@ -60,8 +60,8 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
       logger.log(node.loc.start.line - 1);
+      logger.addFlow(`Entering function ${funcName}`);
     }
-    logger.addFlow(`Entering function ${funcName}`);
 
     // Predict next step inside body
     const body = node.body;
