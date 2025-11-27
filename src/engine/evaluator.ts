@@ -75,17 +75,10 @@ export function evaluateBlockBody(body: any[], ctx: EvalContext): any {
 export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (!node) return;
 
-  /**
-   * Always log real statements — except loops,
-   * because loops log their own “enter iteration” step.
-   */
   const skip = new Set(["WhileStatement", "ForStatement"]);
-  if (!skip.has(node.type)) {
-      logIfRealStatement(node, ctx);
-  }
-
+  
+  // --- 1. Execute the statement FIRST to gather its flow info ---
   let result: any;
-
   switch (node.type) {
     case "VariableDeclaration":
       result = evalVariableDeclaration(node, ctx);
@@ -159,7 +152,13 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
       // unsupported statement types are ignored for now
       return;
   }
+  
+  // --- 2. Log the statement step AFTER its flow info is populated ---
+  if (!skip.has(node.type) && node.loc) {
+    ctx.logger.log(node.loc.start.line - 1);
+  }
 
+  // --- 3. Set the next-step prediction AFTER logging the current step ---
   // If a return is bubbling up, don't set a next step, let the caller handle it.
   if (isReturnSignal(result)) {
     return result;
