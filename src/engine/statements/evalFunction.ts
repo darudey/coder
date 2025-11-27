@@ -1,3 +1,4 @@
+
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
@@ -18,30 +19,35 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
   const name = node.id?.name || "<anonymous>";
   const definingEnv = ctx.env;
 
-  // --- Create the function value ---
+  // --- FUNCTION IMPLEMENTATION ---
   const impl = function (this: FunctionValue, thisArg: any, args: any[]) {
     const funcName = node.id?.name || "Function";
 
-    // 1. Create execution environment for the call
+    // 1. Create execution env
     const fnEnv = new LexEnv(
       funcName,
       "function",
       new EnvironmentRecord(),
-      this.__env // closure link
+      this.__env
     );
 
     // Bind parameters
     (node.params ?? []).forEach((param: any, index: number) => {
       if (param.type === "Identifier") {
-        fnEnv.record.createMutableBinding(param.name, "var", args[index], true);
+        fnEnv.record.createMutableBinding(
+          param.name,
+          "var",
+          args[index],
+          true
+        );
       }
     });
 
-    // 2. Use caller logger + stack
+    // 2. Logger + stack from call
     const logger = this.__ctx?.logger || ctx.logger;
     const stack = this.__ctx?.stack || ctx.stack;
 
-    // Resolve this-value
+    // 3. Determine `this` value
     let callThisValue = thisArg;
     if (node.type === "ArrowFunctionExpression") {
       try {
@@ -51,12 +57,14 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
       }
     }
 
-    // 3. Log entering function
+    // 4. Log entry
     logger.setCurrentEnv(fnEnv);
-    if (node.loc) logger.log(node.loc.start.line - 1);
+    if (node.loc) {
+      logger.log(node.loc.start.line - 1);
+    }
     logger.addFlow(`Entering function ${funcName}`);
 
-    // Predict first step inside body
+    // Predict next step inside body
     const body = node.body;
     const firstStmt =
       body && body.type === "BlockStatement"
@@ -66,11 +74,14 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
     if (firstStmt?.loc) {
       logger.setNext(
         firstStmt.loc.start.line - 1,
-        `Next Step → ${displayHeader(firstStmt, logger.getCode())}`
+        `Next Step → ${displayHeader(
+          firstStmt,
+          logger.getCode()
+        )}`
       );
     }
 
-    // Build call context
+    // 5. Build call context
     const innerCtx: EvalContext = {
       ...ctx,
       env: fnEnv,
@@ -80,34 +91,44 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
       nextStatement: undefined,
     };
 
-    // 4. Push onto call stack
+    // 6. Push to callstack
     stack.push(funcName);
 
-    // 5. Execute function body
-    let result: any;
+    // 7. Execute function body
+    let result: any = undefined;
 
     if (body && body.type === "BlockStatement") {
       hoistProgram({ body: body.body }, fnEnv);
       result = evaluateBlockBody(body.body, innerCtx);
     }
 
-    // 6. Pop stack & restore environment
+    // 8. Pop stack
     stack.pop();
-    logger.addFlow(`Returning from function ${funcName}`);
+
+    // 🔥 PATCH — cleaner return flow (NO spam, no nested dumping)
+    const returnValue = isReturnSignal(result) ? result.value : undefined;
+    logger.addFlow(
+      `Return → ${funcName} returns ${JSON.stringify(returnValue)}`
+    );
+
+    // Restore environment
     logger.setCurrentEnv(this.__env);
 
-    // 7. Handle return or undefined
-    if (isReturnSignal(result)) return result.value;
+    // 9. Forward actual return
+    if (isReturnSignal(result)) {
+      return result.value;
+    }
+
     return undefined;
   };
 
-  // --- Create function and attach AST node ---
+  // Create FunctionValue
   const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
   (fn as any).__node = node;
 
-  // --- Initialize hoisted binding with runtime function value ---
+  // Initialize hoisted binding
   ctx.env.record.initializeBinding(name, fn);
 
-  // --- Keep only a small flow log (do NOT force next-step) ---
+  // Simple declaration flow
   ctx.logger.addFlow(`Declared function ${name}`);
 }
