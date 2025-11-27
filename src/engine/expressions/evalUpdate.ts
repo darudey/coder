@@ -1,32 +1,59 @@
 
-// PATCH: ++x, x++, --x, x--
+// src/engine/expressions/evalUpdate.ts
+
 import type { EvalContext } from "../types";
+import { evaluateExpression } from "../expressions";
 
-export function evalUpdate(node: any, ctx: EvalContext) {
-    const arg = node.argument;
-    if (arg.type !== "Identifier") {
-      throw new Error("Update target must be an identifier");
-    }
+export function evalUpdateExpression(node: any, ctx: EvalContext): any {
+  const logger = ctx.logger;
 
-    const name = arg.name;
-    const oldVal = ctx.env.get(name);
-    const newVal = node.operator === "++" ? oldVal + 1 : oldVal - 1;
+  // Only log a new step if this update expression is a top-level ExpressionStatement.
+  if (!ctx.safe && node.loc) {
+    logger.log(node.loc.start.line - 1);
+  }
 
-    // --- PATCH ---
-    // Update the environment *before* logging the step,
-    // so the timeline shows the *new* value in the scope.
-    ctx.env.set(name, newVal);
-    ctx.logger.log(node.loc.start.line - 1);
-    // --- END PATCH ---
+  // Only valid target: Identifier
+  if (node.argument.type !== "Identifier") {
+    throw new Error("Unsupported update target");
+  }
 
-    ctx.logger.addFlow(
-        `Update: ${name} ${node.operator}  (old = ${oldVal}, new = ${newVal})`
+  const name = node.argument.name;
+  const oldValue = ctx.env.get(name);
+
+  let newValue = oldValue;
+  if (node.operator === "++") {
+    newValue = oldValue + 1;
+  } else if (node.operator === "--") {
+    newValue = oldValue - 1;
+  } else {
+    throw new Error("Unsupported update operator: " + node.operator);
+  }
+
+  // Apply side effect
+  ctx.env.set(name, newValue);
+
+  // Friendly step log
+  if (!ctx.safe) {
+    const friendly = [];
+    friendly.push(`Update: ${name} ${node.operator}`);
+    friendly.push(`Old value: ${oldValue}`);
+    friendly.push(`New value: ${newValue}`);
+    friendly.push(
+      `Final result (expression value): ${
+        node.prefix ? newValue : oldValue
+      }`
     );
 
-    ctx.logger.addExpressionEval(node, node.prefix ? newVal : oldVal, [
-        `${name} was ${oldVal}`,
-        `${node.operator} → ${newVal}`,
-    ]);
-    
-    return node.prefix ? newVal : oldVal;
+    logger.addExpressionEval(node, {
+      result: node.prefix ? newValue : oldValue,
+      breakdown: [
+        `${name} = ${oldValue}`,
+        `${name} ${node.operator} → ${newValue}`,
+      ],
+      friendly,
+    });
+  }
+
+  // Return prefix or postfix value
+  return node.prefix ? newValue : oldValue;
 }

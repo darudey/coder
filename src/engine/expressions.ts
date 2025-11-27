@@ -20,7 +20,7 @@ import { evalMember } from './expressions/evalMember';
 import { evalNew } from './expressions/evalNew';
 import { evalObject } from './expressions/evalObject';
 import { evalUnary } from './expressions/evalUnary';
-import { evalUpdate } from './expressions/evalUpdate';
+import { evalUpdateExpression } from './expressions/evalUpdate';
 import { createFunction } from './values';
 import { isReturnSignal } from './signals';
 
@@ -58,7 +58,7 @@ const expressionEvaluators: { [type: string]: (node: any, ctx: EvalContext) => a
   "FunctionExpression": (node: any, ctx: EvalContext) => createFunction(node, ctx.env),
   "ArrowFunctionExpression": (node: any, ctx: EvalContext) => createFunction(node, ctx.env),
   "UnaryExpression": evalUnary,
-  "UpdateExpression": evalUpdate,
+  "UpdateExpression": evalUpdateExpression,
   "BinaryExpression": evalBinary,
   "AssignmentExpression": evalAssignment,
   "LogicalExpression": evalLogical,

@@ -1,8 +1,9 @@
+
 // src/engine/statements/evalLabeled.ts
 import type { EvalContext } from '../types';
 import { evaluateStatement } from '../evaluator';
 import { isBreakSignal } from '../signals';
-import { displayHeader } from '../next-step';
+import { displayHeader } from '../next-step-helpers';
 
 export function evalLabeled(node: any, ctx: EvalContext): any {
   const labelName = node.label?.name;

@@ -1,4 +1,7 @@
 // src/engine/next-step.ts
+// This file is DEPRECATED and its contents have been moved to next-step-helpers.ts
+// It is kept for now to avoid breaking imports, but should be removed in a future refactor.
+
 import type { EvalContext } from './types';
 import { evaluateExpression } from './expressions';
 
@@ -70,9 +73,4 @@ export function logIfRealStatement(node: any, ctx: EvalContext) {
   if (node && node.loc && validStatements.has(node.type)) {
     ctx.logger.log(node.loc.start.line - 1);
   }
-}
-
-// ---- safeEvaluate wrapper used for conditions ----
-export function safeEvaluate(node: any, ctx: EvalContext) {
-  return evaluateExpression(node, { ...ctx, safe: true });
 }
