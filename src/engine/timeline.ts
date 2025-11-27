@@ -1,4 +1,3 @@
-
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -28,6 +27,72 @@ function isUserFunctionValue(value: any) {
   return value && typeof value === "object" && value.__isFunctionValue === true;
 }
 
+function safeSerializeEnv(envObj: any): Record<string, any> {
+  const out: Record<string, any> = {};
+
+  for (const key of Object.keys(envObj)) {
+    const value = envObj[key];
+
+    // Hide internal engine stuff
+    if (key.startsWith("__")) continue;
+
+    // Functions
+    if (typeof value === "function") {
+      out[key] = "[NativeFunction]";
+      continue;
+    }
+
+    // User-defined functions
+    if (value && typeof value === "object" && value.__isFunctionValue) {
+      out[key] = "[Function]";
+      continue;
+    }
+
+    // Undefined
+    if (value === undefined) {
+      out[key] = undefined;
+      continue;
+    }
+
+    // Primitives
+    if (typeof value !== "object" || value === null) {
+      out[key] = value;
+      continue;
+    }
+
+    // Plain objects
+    if (Object.getPrototypeOf(value) === Object.prototype) {
+      const objOut: Record<string, any> = {};
+      for (const prop of Object.keys(value)) {
+        const propVal = value[prop];
+        if (typeof propVal === "function") {
+          objOut[prop] = "[NativeFunction]";
+        } else if (propVal === undefined) {
+          objOut[prop] = undefined;
+        } else {
+          objOut[prop] = propVal;
+        }
+      }
+      out[key] = objOut;
+      continue;
+    }
+
+    // Arrays
+    if (Array.isArray(value)) {
+      out[key] = value.map((v) =>
+        typeof v === "function" ? "[NativeFunction]" : v
+      );
+      continue;
+    }
+
+    // Objects with cycles / unknown structures
+    out[key] = "[Object]";
+  }
+
+  return out;
+}
+
+
 export class TimelineLogger {
   private entries: TimelineEntry[] = [];
   private step = 1;
@@ -56,45 +121,7 @@ export class TimelineLogger {
     const env = this.getEnvSnapshot();
     const rawVars = env.snapshotChain();
 
-    const serializedVars = JSON.parse(
-      JSON.stringify(rawVars, (key, value) => {
-        if (value === undefined) {
-          return "[undefined]";
-        }
-        
-        if (key === 'Math' && value && Object.keys(value).length > 0) {
-            const mathObject: {[key: string]: any} = {};
-            for (const prop of Object.getOwnPropertyNames(Math)) {
-                const mathProp = (Math as any)[prop];
-                if (typeof mathProp === 'function') {
-                    mathObject[prop] = '[NativeFunction]';
-                } else {
-                    mathObject[prop] = mathProp;
-                }
-            }
-            return mathObject;
-        }
-
-        if (isUserFunctionValue(value)) return "[Function]";
-        if (typeof value === "function") return "[NativeFunction]";
-
-        if (
-          key === "__env" ||
-          key === "__body" ||
-          key === "__params" ||
-          key === "__proto__" ||
-          key === "outer" ||
-          key === "record"
-        ) {
-          return undefined;
-        }
-
-        return value;
-      })
-    );
-    
-    // Replace placeholder string with actual undefined
-    const finalVars = JSON.parse(JSON.stringify(serializedVars).replace(/"\[undefined\]"/g, 'undefined'));
+    const finalVars = safeSerializeEnv(rawVars);
 
     const entry: TimelineEntry = {
       step: this.step++,
