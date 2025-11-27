@@ -210,6 +210,10 @@ export class TimelineLogger {
     const last = this.entries[this.entries.length - 1];
     return last?.nextStep;
   }
+  
+  peekLastStep(): TimelineEntry | undefined {
+    return this.entries[this.entries.length - 1];
+  }
 
   // ---------- CONTROL FLOW NARRATION ----------
 
