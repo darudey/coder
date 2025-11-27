@@ -1,3 +1,4 @@
+
 // src/engine/evaluator.ts
 // The main dispatcher for the JavaScript engine.
 // It routes statements to their respective handler modules.
@@ -80,6 +81,8 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
   // --- 1. LOG CURRENT STEP FIRST ---
   if (!skip.has(node.type) && node.loc) {
     ctx.logger.log(node.loc.start.line - 1);
+    // Add placeholder to be overwritten by specific evaluators
+    ctx.logger.setNext(null, '...'); 
   }
 
   // --- 2. THEN EXECUTE STATEMENT ---
@@ -109,11 +112,15 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (isReturnSignal(result)) return result;
 
   // --- 4. FALLBACK NEXT-STEP ---
-  if (!ctx.logger.hasNext() && ctx.nextStatement) {
-    ctx.logger.setNext(
-      ctx.nextStatement.loc.start.line - 1,
-      `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
-    );
+  if (!ctx.logger.hasNext()) {
+    if (ctx.nextStatement) {
+      ctx.logger.setNext(
+        ctx.nextStatement.loc.start.line - 1,
+        `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+      );
+    } else {
+        ctx.logger.setNext(null, "End of block");
+    }
   }
 
   return result;
