@@ -12,43 +12,39 @@ import { evaluateBlockBody, evaluateStatement } from "../evaluator";
 import {
   displayHeader,
   getFirstMeaningfulStatement,
+  safeEvaluate
 } from "../next-step-helpers";
 
 export function evalWhileStatement(node: any, ctx: EvalContext): any {
-  // Each WHILE has its own block environment
   const loopEnv = ctx.env.extend("block");
   const loopCtx: EvalContext = { ...ctx, env: loopEnv };
 
-  let result: any;
   let iteration = 0;
+  let result: any;
 
   while (true) {
     iteration++;
     ctx.logger.setCurrentEnv(loopEnv);
 
-    // 🔹 1. Create a fresh timeline step for THIS iteration's condition
-    ctx.logger.log(node.loc.start.line - 1);
+    // STEP 🎯: condition is ALWAYS a separate step
+    ctx.logger.log(node.test.loc.start.line - 1);
 
-    // 🔹 2. Safely evaluate condition for explanation (no side effects)
-    const test = evaluateExpression(node.test, {
-      ...loopCtx,
-      safe: true,
-    });
-
-    ctx.logger.addExpressionEval(node.test, test);
+    // Safe preview for debugger explanation
+    const preview = safeEvaluate(node.test, loopCtx);
+    ctx.logger.addExpressionEval(node.test, preview);
     ctx.logger.addExpressionContext(node.test, "While Loop Condition");
+
     ctx.logger.addFlow(`WHILE CHECK (#${iteration})`);
-    ctx.logger.addFlow(test ? "TRUE → body" : "FALSE → exit");
+    ctx.logger.addFlow(preview ? "TRUE → body" : "FALSE → exit");
+
+    // REAL evaluation (side effects allowed)
+    const test = evaluateExpression(node.test, loopCtx);
 
     if (!test) {
-      // 🔹 Exit while: next is the outer nextStatement
       if (ctx.nextStatement) {
         ctx.logger.setNext(
           ctx.nextStatement.loc.start.line - 1,
-          `Exit WHILE → ${displayHeader(
-            ctx.nextStatement,
-            ctx.logger.getCode()
-          )}`
+          `Exit WHILE → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
         );
       } else {
         ctx.logger.setNext(null, "Exit WHILE → end of block");
@@ -56,7 +52,7 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
       break;
     }
 
-    // 🔹 3. Predict: first real statement inside body
+    // NEXT STEP → first body statement
     const firstBodyStmt =
       node.body.type === "BlockStatement"
         ? getFirstMeaningfulStatement(node.body)
@@ -65,29 +61,22 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
     if (firstBodyStmt) {
       ctx.logger.setNext(
         firstBodyStmt.loc.start.line - 1,
-        `Next Step → ${displayHeader(
-          firstBodyStmt,
-          ctx.logger.getCode()
-        )}`
+        `Next Step → ${displayHeader(firstBodyStmt, ctx.logger.getCode())}`
       );
     }
 
-    // 🔹 4. Execute body
+    // EXECUTE BODY (its own stepping)
     let bodyResult: any;
     if (node.body.type === "BlockStatement") {
       bodyResult = evaluateBlockBody(node.body.body, {
         ...loopCtx,
-        // inside body we don't care about outer nextStatement,
-        // next-step will be set by body statements themselves
         nextStatement: undefined,
       });
     } else {
       bodyResult = evaluateStatement(node.body, loopCtx);
     }
 
-    // 🔹 5. Handle control signals coming from inside the loop body
-
-    // break;
+    // HANDLE CONTROL SIGNALS
     if (isBreakSignal(bodyResult)) {
       if (!bodyResult.label) {
         if (ctx.nextStatement) {
@@ -103,29 +92,33 @@ export function evalWhileStatement(node: any, ctx: EvalContext): any {
         }
         break;
       }
-      // labeled break for some outer loop/switch → bubble up
-      result = bodyResult;
-      break;
+      return bodyResult; // propagate labelled break
     }
 
-    // continue;
     if (isContinueSignal(bodyResult)) {
-      // if it's labeled for an outer loop, propagate
       if (bodyResult.label && (!ctx.labels || !ctx.labels[bodyResult.label])) {
-        result = bodyResult;
-        break;
+        return bodyResult;
       }
-      // else just start next iteration (go back to while condition)
+
+      // IMPORTANT FIX ⭐
+      ctx.logger.setNext(
+        node.test.loc.start.line - 1,
+        "Go to WHILE condition check"
+      );
+
       continue;
     }
 
-    // return / throw
     if (isReturnSignal(bodyResult) || isThrowSignal(bodyResult)) {
       result = bodyResult;
       break;
     }
 
-    // No signal → next iteration (condition will create a new step)
+    // NORMAL loop → go to next condition
+    ctx.logger.setNext(
+      node.test.loc.start.line - 1,
+      "Go to WHILE condition check"
+    );
   }
 
   ctx.logger.setCurrentEnv(ctx.env);
