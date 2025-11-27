@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -114,35 +115,52 @@ export class TimelineLogger {
   private safeSerializeEnv(envSnapshot: any): Record<string, any> {
     const out: Record<string, any> = {};
     if (!envSnapshot || typeof envSnapshot !== "object") return out;
+    
+    // --- HIDE USELESS GLOBALS ---
+    const HIDDEN_GLOBALS = new Set([
+        "Math", "JSON",
+        "Number", "String", "Boolean",
+        "Object", "Array", "Function",
+        "Date", "RegExp",
+        "Error", "TypeError", "ReferenceError", "SyntaxError",
+        "Promise", "Reflect", "Proxy", "Intl",
+        "WeakMap", "WeakSet", "Set", "Map",
+        "console",
+        // engine internals
+        "__proto__", "__env", "__body", "__params", "bindings", "outer", "record",
+    ]);
 
-    // Case 1: snapshotChain gives an array of frames
-    if (Array.isArray(envSnapshot)) {
-      for (const frame of envSnapshot) {
+    const frames = Array.isArray(envSnapshot) ? envSnapshot : Object.values(envSnapshot);
+
+    for (const frame of frames) {
         if (!frame) continue;
 
-        // Shape: { name, bindings }
-        if (frame.name && frame.bindings) {
-          out[frame.name] = this.safeSerializeValue(frame.bindings);
-        } else if (typeof frame === "object") {
-          const name = (frame as any).name || "[scope]";
-          const bindings =
-            (frame as any).bindings && typeof (frame as any).bindings === "object"
-              ? (frame as any).bindings
-              : frame;
-          out[name] = this.safeSerializeValue(bindings);
+        let name = "Global";
+        if (typeof frame === 'object' && frame !== null && 'name' in frame) {
+            name = frame.name || "Global";
         }
-      }
-      return out;
+        
+        let bindings = (typeof frame === 'object' && frame !== null && 'bindings' in frame) ? frame.bindings : frame;
+        
+        if (name.startsWith("Block#") && Object.keys(bindings).length === 0) {
+          continue;
+        }
+
+        const cleaned: Record<string, any> = {};
+        for (const key of Object.keys(bindings)) {
+            if (HIDDEN_GLOBALS.has(key)) continue;
+            try {
+                cleaned[key] = this.safeSerializeValue(bindings[key]);
+            } catch {
+                cleaned[key] = "[Error]";
+            }
+        }
+
+        if (Object.keys(cleaned).length > 0) {
+            out[name] = cleaned;
+        }
     }
 
-    // Case 2: plain object map of scopes
-    for (const key of Object.keys(envSnapshot)) {
-      try {
-        out[key] = this.safeSerializeValue(envSnapshot[key]);
-      } catch {
-        out[key] = "[ErrorSerializing]";
-      }
-    }
     return out;
   }
 
