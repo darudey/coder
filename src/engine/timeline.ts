@@ -58,7 +58,11 @@ export class TimelineLogger {
 
     const serializedVars = JSON.parse(
       JSON.stringify(rawVars, (key, value) => {
-        if (key === 'Math' && value && Object.keys(value).length === 0) {
+        if (value === undefined) {
+          return "[undefined]";
+        }
+        
+        if (key === 'Math' && value && Object.keys(value).length > 0) {
             const mathObject: {[key: string]: any} = {};
             for (const prop of Object.getOwnPropertyNames(Math)) {
                 const mathProp = (Math as any)[prop];
@@ -88,11 +92,14 @@ export class TimelineLogger {
         return value;
       })
     );
+    
+    // Replace placeholder string with actual undefined
+    const finalVars = JSON.parse(JSON.stringify(serializedVars).replace(/"\[undefined\]"/g, 'undefined'));
 
     const entry: TimelineEntry = {
       step: this.step++,
       line,
-      variables: serializedVars,
+      variables: finalVars,
       heap: {},
       stack: [...this.getStack()],
       output: [...this.output],
