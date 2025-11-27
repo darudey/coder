@@ -112,7 +112,8 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
   if (isReturnSignal(result)) return result;
 
   // --- 4. FALLBACK NEXT-STEP ---
-  if (!ctx.logger.hasNext()) {
+  // Overwrite placeholder if no specific evaluator did.
+  if (ctx.logger.hasNext() && ctx.logger.peekNext()?.message === '...') {
     if (ctx.nextStatement) {
       ctx.logger.setNext(
         ctx.nextStatement.loc.start.line - 1,
@@ -122,6 +123,7 @@ export function evaluateStatement(node: any, ctx: EvalContext): any {
         ctx.logger.setNext(null, "End of block");
     }
   }
+
 
   return result;
 }

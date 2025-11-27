@@ -9,6 +9,11 @@ export interface ExpressionInfo {
   friendly?: string[];
 }
 
+export interface NextStep {
+    line: number | null;
+    message: string;
+}
+
 export interface TimelineEntry {
   step: number;
   line: number;
@@ -18,10 +23,7 @@ export interface TimelineEntry {
   output: string[];
   expressionEval?: Record<string, ExpressionInfo>;
   controlFlow?: string[];
-  nextStep?: {
-    line: number | null;
-    message: string;
-  };
+  nextStep?: NextStep;
 }
 
 function isUserFunctionValue(value: any) {
@@ -202,6 +204,11 @@ export class TimelineLogger {
   hasNext(): boolean {
     const last = this.entries[this.entries.length - 1];
     return !!last?.nextStep;
+  }
+  
+  peekNext(): NextStep | undefined {
+    const last = this.entries[this.entries.length - 1];
+    return last?.nextStep;
   }
 
   // ---------- CONTROL FLOW NARRATION ----------
