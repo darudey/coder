@@ -3,6 +3,7 @@ import { bindPattern } from '../patterns/evalDestructuring';
 import type { EvalContext } from '../types';
 import { evaluateExpression } from '../expressions';
 import { createClassConstructor } from './evalClass';
+import { displayHeader } from '../next-step-helpers';
 
 export function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
@@ -66,6 +67,16 @@ export function evalVariableDeclaration(node: any, ctx: EvalContext) {
     }
 
     bindPattern(pattern, initValue, ctx, kind);
+  }
+  
+  // After the full declaration statement, predict the next sequential step.
+  if (ctx.nextStatement) {
+    ctx.logger.setNext(
+        ctx.nextStatement.loc.start.line - 1,
+        `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+    );
+  } else {
+      ctx.logger.setNext(null, "End of block");
   }
 }
 
