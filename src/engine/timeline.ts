@@ -742,26 +742,46 @@ export class TimelineLogger {
 
   // ---------- EXPRESSION API ----------
 
-  addExpressionEval(
-    expr: any,
-    value: any,
-    customBreakdown?: string[]
-  ) {
+  addExpressionEval(expr: any, value: any, customBreakdown?: string[]) {
     const last = this.entries[this.entries.length - 1];
     if (!last || !expr) return;
-
-    const exprString = expr.range
-      ? this.code.substring(expr.range[0], expr.range[1])
-      : expr.type || "<expr>";
-
+  
+    // Expression key must always be a SAFE STRING
+    let exprString = "<expr>";
+    try {
+      exprString = expr.range
+        ? this.code.substring(expr.range[0], expr.range[1])
+        : expr.type || "<expr>";
+    } catch {
+      exprString = expr.type || "<expr>";
+    }
+  
+    // Prevent circular expressionEval keys
     if (!last.expressionEval) last.expressionEval = {};
-
+  
+    // --- Safety: Convert breakdown lines to safe strings ---
     const breakdown =
-      customBreakdown ?? this.buildExpressionBreakdown(expr);
-    const friendly = this.makeFriendlyExplanation(expr, value);
-
+      (customBreakdown ?? this.buildExpressionBreakdown(expr)).map((line) =>
+        typeof line === "string" ? line : String(line)
+      );
+  
+    // --- Safety: compute friendly explanation safely ---
+    let friendly: string[];
+    try {
+      friendly = this.makeFriendlyExplanation(expr, value).map((x) =>
+        typeof x === "string" ? x : String(x)
+      );
+    } catch {
+      friendly = [`Expression result: ${value}`];
+    }
+  
+    // --- Store only JSON-safe data ---
     last.expressionEval[exprString] = {
-      result: value,
+      result:
+        typeof value === "function" ||
+        (value && typeof value === "object" && value.__isFunctionValue)
+          ? "[Function]"
+          : value,
       breakdown,
       friendly,
     };
