@@ -428,6 +428,7 @@ export class TimelineLogger {
           log(`Identifier "${node.name}" → ${JSON.stringify(v)}`);
           return v;
         }
+
         case "Literal": {
           log(`Literal → ${JSON.stringify(node.value)}`);
           return node.value;
@@ -517,7 +518,7 @@ export class TimelineLogger {
             );
             return undefined;
           }
-          const result = obj[prop];
+          const result = (obj as any)[prop];
           log(`${indent}  Result → ${JSON.stringify(result)}`);
           return result;
         }
@@ -599,7 +600,11 @@ export class TimelineLogger {
 
           const name = node.left.name;
           const oldVal = this.safeValue(name);
-          log(`Left side identifier "${name}" → old value ${JSON.stringify(oldVal)}`);
+          log(
+            `Left side identifier "${name}" → old value ${JSON.stringify(
+              oldVal
+            )}`
+          );
 
           // RIGHT SIDE -----------------------------------
           const rightVal = walk(node.right, indent + "  ");
@@ -611,28 +616,31 @@ export class TimelineLogger {
               newVal = rightVal;
               break;
             case "+=":
-              newVal = oldVal + rightVal;
+              newVal = (oldVal as any) + rightVal;
               break;
             case "-=":
-              newVal = oldVal - rightVal;
+              newVal = (oldVal as any) - rightVal;
               break;
             case "*=":
-              newVal = oldVal * rightVal;
+              newVal = (oldVal as any) * rightVal;
               break;
             case "/=":
-              newVal = oldVal / rightVal;
+              newVal = (oldVal as any) / rightVal;
               break;
             case "%=":
-              newVal = oldVal % rightVal;
+              newVal = (oldVal as any) % rightVal;
               break;
             default:
-              log(`Unsupported assignment operator "${node.operator}"`);
+              log(
+                `Unsupported assignment operator "${node.operator}"`
+              );
               return undefined;
           }
 
           log(
-            `=> ${name} ${node.operator} ${JSON.stringify(rightVal)} ` +
-            `sets new value ${JSON.stringify(newVal)}`
+            `=> ${name} ${node.operator} ${JSON.stringify(
+              rightVal
+            )} sets new value ${JSON.stringify(newVal)}`
           );
 
           return newVal;
@@ -661,30 +669,36 @@ export class TimelineLogger {
 
     if (expr.type === "BinaryExpression") {
       const op = expr.operator;
+
+      const leftNode = expr.left;
+      const rightNode = expr.right;
+
       const leftName =
-        expr.left?.type === "Identifier"
-          ? expr.left.name
+        leftNode?.type === "Identifier"
+          ? leftNode.name
           : this.code.substring(
-              expr.left?.range?.[0] ?? 0,
-              expr.left?.range?.[1] ?? 0
-            );
-      const rightName =
-        expr.right?.type === "Identifier"
-          ? expr.right.name
-          : this.code.substring(
-              expr.right?.range?.[0] ?? 0,
-              expr.right?.range?.[1] ?? 0
+              leftNode?.range?.[0] ?? 0,
+              leftNode?.range?.[1] ?? 0
             );
 
+      const rightName =
+        rightNode?.type === "Identifier"
+          ? rightNode.name
+          : this.code.substring(
+              rightNode?.range?.[0] ?? 0,
+              rightNode?.range?.[1] ?? 0
+            );
+
+      // 🔹 NEW: literals use their literal value, not env lookup
       const leftVal =
-        expr.left.type === "Literal"
-          ? expr.left.value
-          : this.safeValue(expr.left?.name ?? leftName);
-      
+        leftNode?.type === "Literal"
+          ? leftNode.value
+          : this.safeValue(leftNode?.name ?? leftName);
+
       const rightVal =
-        expr.right.type === "Literal"
-          ? expr.right.value
-          : this.safeValue(expr.right?.name ?? rightName);
+        rightNode?.type === "Literal"
+          ? rightNode.value
+          : this.safeValue(rightNode?.name ?? rightName);
 
       const lines: string[] = [];
       const exprString = this.code.substring(
@@ -725,7 +739,11 @@ export class TimelineLogger {
 
   // ---------- EXPRESSION API ----------
 
-  addExpressionEval(expr: any, value: any, customBreakdown?: string[]) {
+  addExpressionEval(
+    expr: any,
+    value: any,
+    customBreakdown?: string[]
+  ) {
     const last = this.entries[this.entries.length - 1];
     if (!last || !expr) return;
 
@@ -792,5 +810,3 @@ export class TimelineLogger {
     return this.entries;
   }
 }
-
-    
