@@ -14,12 +14,19 @@ import {
   displayHeader,
 } from "../next-step-helpers";
 
-export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
+export function evalFunctionDeclaration(
+  node: any,
+  ctx: EvalContext
+) {
   const name = node.id?.name || "<anonymous>";
   const definingEnv = ctx.env;
 
   // --- FUNCTION IMPLEMENTATION ---
-  const impl = function (this: FunctionValue, thisArg: any, args: any[]) {
+  const impl = function (
+    this: FunctionValue,
+    thisArg: any,
+    args: any[]
+  ) {
     const funcName = node.id?.name || "Function";
 
     // 1. Create execution env
@@ -104,8 +111,9 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
     // 8. Pop stack
     stack.pop();
 
-    // 🔥 PATCH — cleaner return flow (NO spam, no nested dumping)
-    const returnValue = isReturnSignal(result) ? result.value : undefined;
+    const returnValue = isReturnSignal(result)
+      ? result.value
+      : undefined;
     logger.addFlow(
       `Return → ${funcName} returns ${JSON.stringify(returnValue)}`
     );
@@ -113,7 +121,6 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
     // Restore environment
     logger.setCurrentEnv(this.__env);
 
-    // 9. Forward actual return
     if (isReturnSignal(result)) {
       return result.value;
     }
@@ -122,7 +129,12 @@ export function evalFunctionDeclaration(node: any, ctx: EvalContext) {
   };
 
   // Create FunctionValue
-  const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
+  const fn = createFunction(
+    definingEnv,
+    node.params ?? [],
+    node.body,
+    impl
+  );
   (fn as any).__node = node;
 
   // Initialize hoisted binding
