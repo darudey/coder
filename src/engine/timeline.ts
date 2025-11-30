@@ -1,4 +1,3 @@
-
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -10,8 +9,17 @@ export interface ExpressionInfo {
 }
 
 export interface NextStep {
-    line: number | null;
-    message: string;
+  line: number | null;
+  message: string;
+}
+
+export interface DiffSnapshot {
+  /**
+   * Keys are "Scope.var", e.g. "Global.x", "test.a"
+   */
+  added: Record<string, any>;
+  changed: Record<string, { from: any; to: any }>;
+  removed: Record<string, any>;
 }
 
 export interface TimelineEntry {
@@ -24,6 +32,7 @@ export interface TimelineEntry {
   expressionEval?: Record<string, ExpressionInfo>;
   controlFlow?: string[];
   nextStep?: NextStep;
+  diff?: DiffSnapshot;
 }
 
 function isUserFunctionValue(value: any) {
@@ -34,6 +43,9 @@ export class TimelineLogger {
   private entries: TimelineEntry[] = [];
   private step = 1;
   private output: string[] = [];
+
+  // last serialized variables snapshot, used for diff calculation
+  private lastVars: Record<string, any> | null = null;
 
   constructor(
     private getEnvSnapshot: () => LexicalEnvironment,
@@ -52,10 +64,18 @@ export class TimelineLogger {
 
   // ---------- SAFE SERIALIZER ----------
 
-  private safeSerializeValue(val: any, seen = new WeakSet(), depth = 0): any {
+  private safeSerializeValue(
+    val: any,
+    seen = new WeakSet(),
+    depth = 0
+  ): any {
     if (val === undefined) return undefined;
     if (val === null) return null;
-    if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+    if (
+      typeof val === "string" ||
+      typeof val === "number" ||
+      typeof val === "boolean"
+    ) {
       return val;
     }
     if (typeof val === "function") {
@@ -89,7 +109,11 @@ export class TimelineLogger {
         const out: Record<string, any> = {};
         for (const k of Object.keys(val)) {
           try {
-            out[k] = this.safeSerializeValue((val as any)[k], seen, depth + 1);
+            out[k] = this.safeSerializeValue(
+              (val as any)[k],
+              seen,
+              depth + 1
+            );
           } catch {
             out[k] = "[ErrorReading]";
           }
@@ -103,7 +127,11 @@ export class TimelineLogger {
       };
       for (const k of Object.keys(val).slice(0, 6)) {
         try {
-          summary[k] = this.safeSerializeValue((val as any)[k], seen, depth + 1);
+          summary[k] = this.safeSerializeValue(
+            (val as any)[k],
+            seen,
+            depth + 1
+          );
         } catch {
           summary[k] = "[ErrorReading]";
         }
@@ -117,53 +145,147 @@ export class TimelineLogger {
   private safeSerializeEnv(envSnapshot: any): Record<string, any> {
     const out: Record<string, any> = {};
     if (!envSnapshot || typeof envSnapshot !== "object") return out;
-    
+
     // --- HIDE USELESS GLOBALS ---
     const HIDDEN_GLOBALS = new Set([
-        "Math", "JSON",
-        "Number", "String", "Boolean",
-        "Object", "Array", "Function",
-        "Date", "RegExp",
-        "Error", "TypeError", "ReferenceError", "SyntaxError",
-        "Promise", "Reflect", "Proxy", "Intl",
-        "WeakMap", "WeakSet", "Set", "Map",
-        "console",
-        // engine internals
-        "__proto__", "__env", "__body", "__params", "bindings", "outer", "record",
+      "Math",
+      "JSON",
+      "Number",
+      "String",
+      "Boolean",
+      "Object",
+      "Array",
+      "Function",
+      "Date",
+      "RegExp",
+      "Error",
+      "TypeError",
+      "ReferenceError",
+      "SyntaxError",
+      "Promise",
+      "Reflect",
+      "Proxy",
+      "Intl",
+      "WeakMap",
+      "WeakSet",
+      "Set",
+      "Map",
+      "console",
+      // engine internals
+      "__proto__",
+      "__env",
+      "__body",
+      "__params",
+      "bindings",
+      "outer",
+      "record",
     ]);
 
-    const frames = Array.isArray(envSnapshot) ? envSnapshot : Object.values(envSnapshot);
+    const frames = Array.isArray(envSnapshot)
+      ? envSnapshot
+      : Object.values(envSnapshot);
 
     for (const frame of frames) {
-        if (!frame) continue;
+      if (!frame) continue;
 
-        let name = "Global";
-        if (typeof frame === 'object' && frame !== null && 'name' in frame) {
-            name = frame.name || "Global";
-        }
-        
-        let bindings = (typeof frame === 'object' && frame !== null && 'bindings' in frame) ? frame.bindings : frame;
-        
-        if (name.startsWith("Block#") && Object.keys(bindings).length === 0) {
-          continue;
-        }
+      let name = "Global";
+      if (typeof frame === "object" && frame !== null && "name" in frame) {
+        name = (frame as any).name || "Global";
+      }
 
-        const cleaned: Record<string, any> = {};
-        for (const key of Object.keys(bindings)) {
-            if (HIDDEN_GLOBALS.has(key)) continue;
-            try {
-                cleaned[key] = this.safeSerializeValue(bindings[key]);
-            } catch {
-                cleaned[key] = "[Error]";
-            }
-        }
+      const bindings =
+        typeof frame === "object" &&
+        frame !== null &&
+        "bindings" in frame &&
+        (frame as any).bindings
+          ? (frame as any).bindings
+          : frame;
 
-        if (Object.keys(cleaned).length > 0) {
-            out[name] = cleaned;
+      if (
+        typeof name === "string" &&
+        name.startsWith("Block#") &&
+        Object.keys(bindings as any).length === 0
+      ) {
+        continue;
+      }
+
+      const cleaned: Record<string, any> = {};
+      for (const key of Object.keys(bindings as any)) {
+        if (HIDDEN_GLOBALS.has(key)) continue;
+        try {
+          cleaned[key] = this.safeSerializeValue(
+            (bindings as any)[key]
+          );
+        } catch {
+          cleaned[key] = "[Error]";
         }
+      }
+
+      if (Object.keys(cleaned).length > 0) {
+        out[name] = cleaned;
+      }
     }
 
     return out;
+  }
+
+  // ---------- DIFF CALCULATION ----------
+
+  private computeDiff(
+    prev: Record<string, any> | null,
+    curr: Record<string, any>
+  ): DiffSnapshot {
+    const diff: DiffSnapshot = {
+      added: {},
+      changed: {},
+      removed: {},
+    };
+
+    if (!prev) {
+      // First step: everything is "added"
+      for (const scope of Object.keys(curr)) {
+        const vars = curr[scope];
+        for (const k of Object.keys(vars)) {
+          const key = `${scope}.${k}`;
+          diff.added[key] = vars[k];
+        }
+      }
+      return diff;
+    }
+
+    // ADDED / CHANGED
+    for (const scope of Object.keys(curr)) {
+      const currVars = curr[scope] || {};
+      const prevVars = prev[scope] || {};
+      for (const k of Object.keys(currVars)) {
+        const key = `${scope}.${k}`;
+        if (!(scope in prev) || !(k in prevVars)) {
+          diff.added[key] = currVars[k];
+        } else {
+          const prevVal = prevVars[k];
+          const currVal = currVars[k];
+          const same =
+            JSON.stringify(prevVal) === JSON.stringify(currVal);
+          if (!same) {
+            diff.changed[key] = { from: prevVal, to: currVal };
+          }
+        }
+      }
+    }
+
+    // REMOVED
+    for (const scope of Object.keys(prev)) {
+      const prevVars = prev[scope] || {};
+      const currVars = curr[scope] || {};
+      for (const k of Object.keys(prevVars)) {
+        if (!(scope in curr) || !(k in currVars)) {
+          const key = `${scope}.${k}`;
+          diff.removed[key] = prevVars[k];
+        }
+      }
+    }
+
+    return diff;
   }
 
   // ---------- STEP LOGGING ----------
@@ -176,12 +298,16 @@ export class TimelineLogger {
     const env = this.getEnvSnapshot();
     let rawVars: any;
     try {
-      rawVars = (env as any).snapshotChain ? (env as any).snapshotChain() : env;
+      rawVars = (env as any).snapshotChain
+        ? (env as any).snapshotChain()
+        : env;
     } catch {
       rawVars = env;
     }
 
     const serializedVars = this.safeSerializeEnv(rawVars);
+    const diff = this.computeDiff(this.lastVars, serializedVars);
+    this.lastVars = serializedVars;
 
     const entry: TimelineEntry = {
       step: this.step++,
@@ -190,27 +316,38 @@ export class TimelineLogger {
       heap: {},
       stack: [...this.getStack()],
       output: [...this.output],
+      diff,
     };
 
     this.entries.push(entry);
   }
 
-  setNext(line: number | null, message: string) {
-    const last = this.entries[this.entries.length - 1];
-    if (!last) return;
-    last.nextStep = { line, message };
+  /**
+   * Set the "next step" prediction.
+   * If `entry` is provided, we patch that specific step;
+   * otherwise we patch the latest one.
+   */
+  setNext(
+    line: number | null,
+    message: string,
+    entry?: TimelineEntry
+  ) {
+    const target =
+      entry ?? this.entries[this.entries.length - 1];
+    if (!target) return;
+    target.nextStep = { line, message };
   }
 
   hasNext(): boolean {
     const last = this.entries[this.entries.length - 1];
     return !!last?.nextStep;
   }
-  
+
   peekNext(): NextStep | undefined {
     const last = this.entries[this.entries.length - 1];
     return last?.nextStep;
   }
-  
+
   peekLastStep(): TimelineEntry | undefined {
     return this.entries[this.entries.length - 1];
   }
@@ -231,7 +368,9 @@ export class TimelineLogger {
       const env = this.getEnvSnapshot();
       if (!env || typeof (env as any).get !== "function") return undefined;
       const name =
-        typeof nameOrNode === "string" ? nameOrNode : nameOrNode?.name;
+        typeof nameOrNode === "string"
+          ? nameOrNode
+          : nameOrNode?.name;
       return (env as any).get(name);
     } catch {
       return undefined;
@@ -297,7 +436,11 @@ export class TimelineLogger {
           log(`Binary Expression (${node.operator}):`);
           const left = walk(node.left, indent + "  ");
           const right = walk(node.right, indent + "  ");
-          const result = this.applyOperator(left, right, node.operator);
+          const result = this.applyOperator(
+            left,
+            right,
+            node.operator
+          );
           log(
             `=> ${JSON.stringify(left)} ${node.operator} ${JSON.stringify(
               right
@@ -345,7 +488,8 @@ export class TimelineLogger {
         case "UpdateExpression": {
           const id = node.argument.name;
           const current = this.safeValue(id);
-          const newVal = node.operator === "++" ? current + 1 : current - 1;
+          const newVal =
+            node.operator === "++" ? current + 1 : current - 1;
           log(
             `Update: ${id} ${node.operator} (old = ${JSON.stringify(
               current
@@ -365,7 +509,11 @@ export class TimelineLogger {
             log(`${indent}  Property: "${prop}"`);
           }
           if (obj === undefined || obj === null) {
-            log(`${indent}  Cannot read property of ${JSON.stringify(obj)}`);
+            log(
+              `${indent}  Cannot read property of ${JSON.stringify(
+                obj
+              )}`
+            );
             return undefined;
           }
           const result = obj[prop];
@@ -379,7 +527,9 @@ export class TimelineLogger {
             walk(el, indent + "  ")
           );
           log(
-            `${indent}  [${items.map((i) => JSON.stringify(i)).join(", ")}]`
+            `${indent}  [${items
+              .map((i) => JSON.stringify(i))
+              .join(", ")}]`
           );
           return items;
         }
@@ -394,7 +544,9 @@ export class TimelineLogger {
                 : walk(prop.key, indent + "  ");
             const val = walk(prop.value, indent + "  ");
             out[key] = val;
-            log(`${indent}  ${String(key)}: ${JSON.stringify(val)}`);
+            log(
+              `${indent}  ${String(key)}: ${JSON.stringify(val)}`
+            );
           }
           return out;
         }
@@ -410,7 +562,10 @@ export class TimelineLogger {
           } else {
             log(indent + "  (no arguments)");
           }
-          log(indent + "  (call result not evaluated in breakdown)");
+          log(
+            indent +
+              "  (call result not evaluated in breakdown)"
+          );
           return "[FunctionCall]";
         }
 
@@ -429,7 +584,10 @@ export class TimelineLogger {
     return lines;
   }
 
-  private makeFriendlyExplanation(expr: any, result: any): string[] {
+  private makeFriendlyExplanation(
+    expr: any,
+    result: any
+  ): string[] {
     if (!expr || !expr.type) return [`Expression result: ${result}`];
 
     if (expr.type === "BinaryExpression") {
@@ -450,7 +608,9 @@ export class TimelineLogger {
             );
 
       const leftVal = this.safeValue(expr.left?.name ?? leftName);
-      const rightVal = this.safeValue(expr.right?.name ?? rightName);
+      const rightVal = this.safeValue(
+        expr.right?.name ?? rightName
+      );
 
       const lines: string[] = [];
       const exprString = this.code.substring(
@@ -459,8 +619,12 @@ export class TimelineLogger {
       );
 
       lines.push(`Expression: ${exprString}`);
-      if (leftName) lines.push(`${leftName} is ${JSON.stringify(leftVal)}`);
-      if (rightName) lines.push(`${rightName} is ${JSON.stringify(rightVal)}`);
+      if (leftName)
+        lines.push(`${leftName} is ${JSON.stringify(leftVal)}`);
+      if (rightName)
+        lines.push(
+          `${rightName} is ${JSON.stringify(rightVal)}`
+        );
 
       if (op === "%") {
         lines.push(
@@ -497,7 +661,8 @@ export class TimelineLogger {
 
     if (!last.expressionEval) last.expressionEval = {};
 
-    const breakdown = customBreakdown ?? this.buildExpressionBreakdown(expr);
+    const breakdown =
+      customBreakdown ?? this.buildExpressionBreakdown(expr);
     const friendly = this.makeFriendlyExplanation(expr, value);
 
     last.expressionEval[exprString] = {
