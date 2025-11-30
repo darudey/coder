@@ -425,7 +425,11 @@ export class TimelineLogger {
       switch (node.type) {
         case "Identifier": {
           const v = this.safeValue(node.name);
-          log(`Identifier "${node.name}" → ${JSON.stringify(v)}`);
+          // 🔥 PATCH: don't dump full function object for user functions
+          const display = isUserFunctionValue(v)
+            ? "[Function]"
+            : JSON.stringify(v);
+          log(`Identifier "${node.name}" → ${display}`);
           return v;
         }
 
