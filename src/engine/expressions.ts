@@ -1,4 +1,3 @@
-
 // src/engine/expressions.ts
 // Pure expression evaluator — no statement logic.
 // This file is imported by evaluator.ts and next-step-helpers.ts.
