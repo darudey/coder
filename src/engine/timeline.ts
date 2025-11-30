@@ -749,20 +749,20 @@ export class TimelineLogger {
     if (typeof val === "string" ||
         typeof val === "number" ||
         typeof val === "boolean") return val;
-
+  
     // avoid leaking internal FunctionValue
     if (val && typeof val === "object" && val.__isFunctionValue) {
       return "[Function]";
     }
-
+  
     // plain function
     if (typeof val === "function") return "[NativeFunction]";
-
+  
     // arrays → shallow sanitize  
     if (Array.isArray(val)) {
       return val.map(v => this.safeExpressionResult(v));
     }
-
+  
     // objects → shallow sanitize  
     if (typeof val === "object") {
       const out: Record<string, any> = {};
@@ -771,7 +771,7 @@ export class TimelineLogger {
       }
       return out;
     }
-
+  
     return String(val);
   }
 
