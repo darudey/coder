@@ -1,4 +1,3 @@
-
 // src/engine/environment.ts
 
 export type EnvKind = "global" | "function" | "block";
