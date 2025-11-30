@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -742,10 +743,46 @@ export class TimelineLogger {
 
   // ---------- EXPRESSION API ----------
 
-  addExpressionEval(expr: any, value: any, customBreakdown?: string[]) {
+  private safeExpressionResult(val: any): any {
+    // primitives
+    if (val === null || val === undefined) return val;
+    if (typeof val === "string" ||
+        typeof val === "number" ||
+        typeof val === "boolean") return val;
+
+    // avoid leaking internal FunctionValue
+    if (val && typeof val === "object" && val.__isFunctionValue) {
+      return "[Function]";
+    }
+
+    // plain function
+    if (typeof val === "function") return "[NativeFunction]";
+
+    // arrays → shallow sanitize  
+    if (Array.isArray(val)) {
+      return val.map(v => this.safeExpressionResult(v));
+    }
+
+    // objects → shallow sanitize  
+    if (typeof val === "object") {
+      const out: Record<string, any> = {};
+      for (const k of Object.keys(val).slice(0, 5)) {
+        out[k] = this.safeExpressionResult(val[k]);
+      }
+      return out;
+    }
+
+    return String(val);
+  }
+
+  addExpressionEval(
+    expr: any,
+    value: any,
+    customBreakdown?: string[]
+  ) {
     const last = this.entries[this.entries.length - 1];
     if (!last || !expr) return;
-  
+
     // Expression key must always be a SAFE STRING
     let exprString = "<expr>";
     try {
@@ -755,16 +792,16 @@ export class TimelineLogger {
     } catch {
       exprString = expr.type || "<expr>";
     }
-  
+
     // Prevent circular expressionEval keys
     if (!last.expressionEval) last.expressionEval = {};
-  
+
     // --- Safety: Convert breakdown lines to safe strings ---
     const breakdown =
       (customBreakdown ?? this.buildExpressionBreakdown(expr)).map((line) =>
         typeof line === "string" ? line : String(line)
       );
-  
+
     // --- Safety: compute friendly explanation safely ---
     let friendly: string[];
     try {
@@ -774,14 +811,10 @@ export class TimelineLogger {
     } catch {
       friendly = [`Expression result: ${value}`];
     }
-  
+
     // --- Store only JSON-safe data ---
     last.expressionEval[exprString] = {
-      result:
-        typeof value === "function" ||
-        (value && typeof value === "object" && value.__isFunctionValue)
-          ? "[Function]"
-          : value,
+      result: this.safeExpressionResult(value),
       breakdown,
       friendly,
     };
@@ -833,3 +866,4 @@ export class TimelineLogger {
     return this.entries;
   }
 }
+```
