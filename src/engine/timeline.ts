@@ -813,4 +813,3 @@ export class TimelineLogger {
     return this.entries;
   }
 }
-```
