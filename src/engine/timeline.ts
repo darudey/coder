@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -813,14 +814,3 @@ export class TimelineLogger {
     return this.entries;
   }
 }
-```
-
-Now, for your `test(5)` example, the breakdown line that used to be:
-
-> Identifier "test" → { "__isFunctionValue": true, ... }
-
-should become:
-
-> Identifier "test" → "[Function]"
-
-and the CallExpression section will no longer spam the full internal function object anywhere.
