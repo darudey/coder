@@ -111,13 +111,6 @@ export function evalFunctionDeclaration(
     // 8. Pop stack
     stack.pop();
 
-    const returnValue = isReturnSignal(result)
-      ? result.value
-      : undefined;
-    logger.addFlow(
-      `Return → ${funcName} returns ${JSON.stringify(returnValue)}`
-    );
-
     // Restore environment
     logger.setCurrentEnv(this.__env);
 

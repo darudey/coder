@@ -1,27 +1,55 @@
 // src/engine/statements/evalReturn.ts
-
 import type { EvalContext } from "../types";
 import { evaluateExpression } from "../expressions";
 import { makeReturn } from "../signals";
 
-export function evalReturnStatement(node: any, ctx: EvalContext) {
-  let val: any;
+/**
+ * Small helper to keep Control Flow logs readable.
+ * We don't want to dump the entire internal FunctionValue structure.
+ */
+function formatValueForLog(value: any): string {
+  if (value && typeof value === "object" && (value as any).__isFunctionValue) {
+    return "[Function]";
+  }
+  if (typeof value === "function") return "[NativeFunction]";
 
-  if (node.argument) {
-    ctx.logger.addFlow(`Evaluating return expression`);
-    // Evaluate return expression
-    val = evaluateExpression(node.argument, ctx);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    try {
+      return String(value);
+    } catch {
+      return "[Unprintable]";
+    }
+  }
+}
 
-    // Attach breakdown of the return expression to this step
-    ctx.logger.addExpressionEval(node.argument, val);
-    ctx.logger.addExpressionContext(node.argument, "Return value expression");
-  } else {
-    val = undefined;
+export function evalReturnStatement(node: any, ctx: EvalContext): any {
+  const logger = ctx.logger;
+  const arg = node.argument;
+
+  logger.addFlow("Evaluating return expression");
+
+  let value: any = undefined;
+
+  if (arg) {
+    value = evaluateExpression(arg, ctx);
+
+    // mark this expression as "return value" for the Expression Evaluation panel
+    logger.addExpressionContext(arg, "Return value expression");
+    logger.addExpressionEval(arg, value);
   }
 
-  // 🔹 Control flow narration for Execution Flow panel
-  ctx.logger.addFlow(`Return encountered → value: ${JSON.stringify(val)}`);
-  ctx.logger.setNext(null, "Return: control returns to caller");
+  const pretty = formatValueForLog(value);
 
-  return makeReturn(val);
+  // Clean, short messages instead of giant JSON blobs
+  logger.addFlow(`Return encountered → value: ${pretty}`);
+
+  const funcName = ctx.stack[ctx.stack.length - 1] || "<anonymous>";
+  logger.addFlow(`Return → ${funcName} returns ${pretty}`);
+
+  // After return, control goes back to caller
+  logger.setNext(null, "Return: control returns to caller");
+
+  return makeReturn(value);
 }

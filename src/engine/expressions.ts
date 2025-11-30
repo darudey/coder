@@ -158,14 +158,6 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // 10. Pop from callstack
     stack.pop();
 
-    const returnValue = isReturnSignal(result)
-      ? result.value
-      : undefined;
-
-    logger.addFlow(
-      `Return → ${funcName} returns ${JSON.stringify(returnValue)}`
-    );
-
     // Restore outer env for logger
     logger.setCurrentEnv(this.__env);
 
