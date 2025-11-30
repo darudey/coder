@@ -677,12 +677,14 @@ export class TimelineLogger {
             );
 
       const leftVal =
-        expr.left.type === "Literal" ? expr.left.value :
-        this.safeValue(expr.left?.name ?? leftName);
-
+        expr.left.type === "Literal"
+          ? expr.left.value
+          : this.safeValue(expr.left?.name ?? leftName);
+      
       const rightVal =
-        expr.right.type === "Literal" ? expr.right.value :
-        this.safeValue(expr.right?.name ?? rightName);
+        expr.right.type === "Literal"
+          ? expr.right.value
+          : this.safeValue(expr.right?.name ?? rightName);
 
       const lines: string[] = [];
       const exprString = this.code.substring(
@@ -790,3 +792,5 @@ export class TimelineLogger {
     return this.entries;
   }
 }
+
+    
