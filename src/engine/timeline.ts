@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -569,6 +570,56 @@ export class TimelineLogger {
           return "[FunctionCall]";
         }
 
+        case "AssignmentExpression": {
+          log(`Assignment (${node.operator}):`);
+
+          // LEFT SIDE -----------------------------------
+          if (node.left.type !== "Identifier") {
+            log("Unsupported assignment target (not Identifier)");
+            return undefined;
+          }
+
+          const name = node.left.name;
+          const oldVal = this.safeValue(name);
+          log(`Left side identifier "${name}" → old value ${JSON.stringify(oldVal)}`);
+
+          // RIGHT SIDE -----------------------------------
+          const rightVal = walk(node.right, indent + "  ");
+
+          // Compute new value
+          let newVal;
+          switch (node.operator) {
+            case "=":
+              newVal = rightVal;
+              break;
+            case "+=":
+              newVal = oldVal + rightVal;
+              break;
+            case "-=":
+              newVal = oldVal - rightVal;
+              break;
+            case "*=":
+              newVal = oldVal * rightVal;
+              break;
+            case "/=":
+              newVal = oldVal / rightVal;
+              break;
+            case "%=":
+              newVal = oldVal % rightVal;
+              break;
+            default:
+              log(`Unsupported assignment operator "${node.operator}"`);
+              return undefined;
+          }
+
+          log(
+            `=> ${name} ${node.operator} ${JSON.stringify(rightVal)} ` +
+            `sets new value ${JSON.stringify(newVal)}`
+          );
+
+          return newVal;
+        }
+
         default:
           log(`(Unsupported node type in breakdown: ${node.type})`);
           return undefined;
@@ -718,3 +769,5 @@ export class TimelineLogger {
     return this.entries;
   }
 }
+
+    
