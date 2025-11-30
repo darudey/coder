@@ -554,19 +554,37 @@ export class TimelineLogger {
 
         case "CallExpression": {
           log("Call Expression:");
-          walk(node.callee, indent + "  ");
+        
+          // --- Callee evaluation ---
+          const calleeVal = walk(node.callee, indent + "  ");
+        
+          const calleeDisplay =
+            typeof calleeVal === "function" ||
+            (calleeVal && calleeVal.__isFunctionValue)
+              ? "[Function]"
+              : JSON.stringify(calleeVal);
+        
+          log(indent + `  Callee → ${calleeDisplay}`);
+        
+          // --- Arguments ---
           if (node.arguments && node.arguments.length) {
             log(indent + "  Arguments:");
-            node.arguments.forEach((a: any) =>
-              walk(a, indent + "    ")
-            );
+            for (const arg of node.arguments) {
+              const argVal = walk(arg, indent + "    ");
+              const argDisplay =
+                typeof argVal === "function" ||
+                (argVal && argVal.__isFunctionValue)
+                  ? "[Function]"
+                  : JSON.stringify(argVal);
+        
+              log(indent + "    " + argDisplay);
+            }
           } else {
             log(indent + "  (no arguments)");
           }
-          log(
-            indent +
-              "  (call result not evaluated in breakdown)"
-          );
+        
+          // We do NOT evaluate call result here, evaluator handles it separately
+          log(indent + "  (call result not evaluated here)");
           return "[FunctionCall]";
         }
 
@@ -658,10 +676,13 @@ export class TimelineLogger {
               expr.right?.range?.[1] ?? 0
             );
 
-      const leftVal = this.safeValue(expr.left?.name ?? leftName);
-      const rightVal = this.safeValue(
-        expr.right?.name ?? rightName
-      );
+      const leftVal =
+        expr.left.type === "Literal" ? expr.left.value :
+        this.safeValue(expr.left?.name ?? leftName);
+
+      const rightVal =
+        expr.right.type === "Literal" ? expr.right.value :
+        this.safeValue(expr.right?.name ?? rightName);
 
       const lines: string[] = [];
       const exprString = this.code.substring(
@@ -769,5 +790,3 @@ export class TimelineLogger {
     return this.entries;
   }
 }
-
-    
