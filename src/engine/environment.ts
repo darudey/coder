@@ -1,3 +1,4 @@
+
 // src/engine/environment.ts
 
 export type EnvKind = "global" | "function" | "block";
@@ -32,7 +33,7 @@ export class EnvironmentRecord {
     if (!binding) {
       // This can happen with function hoisting where the binding is created
       // but not yet initialized with the function value.
-      this.bindings.set(name, { kind: 'function', value });
+      this.bindings.set(name, { kind: "function", value });
       return;
     }
     binding.value = value;
@@ -43,8 +44,8 @@ export class EnvironmentRecord {
     if (!binding) {
       throw new Error(`Binding ${name} not found for setMutableBinding`);
     }
-    if (binding.kind === 'const') {
-        throw new TypeError('Assignment to constant variable.');
+    if (binding.kind === "const") {
+      throw new TypeError("Assignment to constant variable.");
     }
     binding.value = value;
   }
@@ -84,14 +85,24 @@ export class LexicalEnvironment {
     this.record = record ?? new EnvironmentRecord();
     this.outer = outer ?? null;
   }
-  
+
   static newGlobal(): LexicalEnvironment {
-    return new LexicalEnvironment("Global", 'global', new EnvironmentRecord(), null);
+    return new LexicalEnvironment(
+      "Global",
+      "global",
+      new EnvironmentRecord(),
+      null
+    );
   }
 
   extend(kind: EnvKind, name = ""): LexicalEnvironment {
     const envName = name || (kind === "block" ? "Block" : "Function");
-    return new LexicalEnvironment(envName, kind, new EnvironmentRecord(), this);
+    return new LexicalEnvironment(
+      envName,
+      kind,
+      new EnvironmentRecord(),
+      this
+    );
   }
 
   hasBinding(name: string): boolean {
@@ -135,8 +146,19 @@ export class LexicalEnvironment {
     throw new Error(`ReferenceError: ${name} is not defined`);
   }
 
-  snapshotChain(): Record<string, any> {
-    const result: Record<string, any> = {};
+  /**
+   * New shape:
+   * [
+   *   { name: "Global",   kind: "global",   bindings: {...} },
+   *   { name: "factorial", kind: "function", bindings: {...} },
+   *   { name: "Block#1",  kind: "block",    bindings: {...} },
+   *   ...
+   * ]
+   *
+   * This matches what timeline.ts expects (array of frames).
+   */
+  snapshotChain(): any[] {
+    const frames: any[] = [];
     let current: LexicalEnvironment | null = this;
     let funcIndex = 1;
     let blockIndex = 1;
@@ -144,26 +166,30 @@ export class LexicalEnvironment {
     while (current) {
       const snapshot = current.record.snapshot();
       if (Object.keys(snapshot).length > 0) {
-        let label = current.name;
+        let name: string;
+
         if (current.kind === "global") {
-            label = "Global";
-        } else if (current.kind === 'function') {
-            label = current.name || `Function#${funcIndex++}`;
-        } else if (current.kind === 'block') {
-            if(result[`Block#${blockIndex}`]) {
-                // Merge with existing block if there are nested blocks
-                 result[`Block#${blockIndex}`] = {...snapshot, ...result[`Block#${blockIndex}`]};
-                 current = current.outer;
-                 continue;
-            }
-            label = `Block#${blockIndex++}`;
+          name = "Global";
+        } else if (current.kind === "function") {
+          // Prefer the environment's name if set, otherwise auto-label
+          name = current.name || `Function#${funcIndex++}`;
+        } else {
+          // block
+          name = current.name && current.name !== "Block"
+            ? current.name
+            : `Block#${blockIndex++}`;
         }
-        result[label] = snapshot;
+
+        frames.push({
+          name,
+          kind: current.kind,
+          bindings: snapshot,
+        });
       }
 
       current = current.outer;
     }
 
-    return result;
+    return frames;
   }
 }
