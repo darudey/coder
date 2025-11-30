@@ -1,56 +1,90 @@
 // src/engine/signals.ts
 
-// ---------- CONTROL SIGNAL TYPES ----------
-export interface ReturnSignal {
+// ----------------------------------------------------
+// CONTROL SIGNAL TYPES
+// ----------------------------------------------------
+
+export interface BaseSignal {
+  __signal: true;
+  __type: "Return" | "Break" | "Continue" | "Throw";
+}
+
+export interface ReturnSignal extends BaseSignal {
   __type: "Return";
   value: any;
 }
 
-export interface BreakSignal {
+export interface BreakSignal extends BaseSignal {
   __type: "Break";
-  label?: string | null;
+  label: string | null;
 }
 
-export interface ContinueSignal {
+export interface ContinueSignal extends BaseSignal {
   __type: "Continue";
-  label?: string | null;
+  label: string | null;
 }
 
-export interface ThrowSignal {
+export interface ThrowSignal extends BaseSignal {
   __type: "Throw";
   value: any;
 }
 
-// ---------- FACTORY HELPERS ----------
+// ----------------------------------------------------
+// FACTORY HELPERS — IMMUTABLE SIGNAL OBJECTS
+// ----------------------------------------------------
+
 export function makeReturn(value: any): ReturnSignal {
-  return { __type: "Return", value };
+  return Object.freeze({
+    __signal: true,
+    __type: "Return",
+    value,
+  });
 }
 
 export function makeBreak(label?: string | null): BreakSignal {
-  return { __type: "Break", label: label ?? null };
+  return Object.freeze({
+    __signal: true,
+    __type: "Break",
+    label: label ?? null,
+  });
 }
 
 export function makeContinue(label?: string | null): ContinueSignal {
-  return { __type: "Continue", label: label ?? null };
+  return Object.freeze({
+    __signal: true,
+    __type: "Continue",
+    label: label ?? null,
+  });
 }
 
 export function makeThrow(value: any): ThrowSignal {
-  return { __type: "Throw", value };
+  return Object.freeze({
+    __signal: true,
+    __type: "Throw",
+    value,
+  });
 }
 
-// ---------- TYPE GUARDS ----------
+// ----------------------------------------------------
+// TYPE GUARDS
+// ----------------------------------------------------
+
+export function isSignal(v: any): v is BaseSignal {
+  return v && v.__signal === true;
+}
+
 export function isReturnSignal(v: any): v is ReturnSignal {
-  return v && v.__type === "Return";
+  return v && v.__signal === true && v.__type === "Return";
 }
 
 export function isBreakSignal(v: any): v is BreakSignal {
-  return v && v.__type === "Break";
+  return v && v.__signal === true && v.__type === "Break";
 }
 
 export function isContinueSignal(v: any): v is ContinueSignal {
-  return v && v.__type === "Continue";
+  return v && v.__signal === true && v.__type === "Continue";
 }
 
 export function isThrowSignal(v: any): v is ThrowSignal {
-  return v && v.__type === "Throw";
+  return v && v.__signal === true && v.__type === "Throw";
 }
