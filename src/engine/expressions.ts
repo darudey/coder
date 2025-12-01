@@ -111,11 +111,43 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // 5. Log function entry as its own step
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
+      // This creates the "Step: N | Line: X" for the function / closure
       logger.log(node.loc.start.line - 1);
 
       if (isArrow) {
-        // This log is now handled in detail inside `evalCall`
-        // which has access to the argument values.
+        // 🔹 Arrow closure entry narration on THIS step
+        const paramPairs = (node.params ?? [])
+          .filter((p: any) => p.type === "Identifier")
+          .map(
+            (p: any, index: number) =>
+              `${p.name} = ${JSON.stringify(args[index])}`
+          );
+
+        const paramText =
+          paramPairs.length > 0
+            ? paramPairs.join(", ")
+            : "no parameters";
+        
+        logger.addFlow(`Entering closure (${paramText})`);
+
+        // ✨ ADDED: Log captured variables
+        let capturedPairs: string[] = [];
+        try {
+            // @ts-ignore
+            const capturedBindings = this.__env?.outer?.record?.bindings;
+            if (capturedBindings) {
+                for (const [key, binding] of capturedBindings.entries()) {
+                     if (!(node.params.some((p:any) => p.name === key))) {
+                        capturedPairs.push(`${key} = ${JSON.stringify(binding.value)}`);
+                    }
+                }
+            }
+        } catch {}
+
+        if (capturedPairs.length > 0) {
+            logger.addFlow(`Captured: ${capturedPairs.join(", ")}`);
+        }
+
       } else {
         logger.addFlow(`Entering function ${funcName}`);
       }
@@ -160,18 +192,15 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       // ────────────────────────────────────
       // Arrow with EXPRESSION body (like a + b)
       // ────────────────────────────────────
-      if (body?.loc) {
-          const entry = logger.peekLastStep(); // <-- reuse the current step
+      if (body?.loc && body.range) {
+        const slice = logger
+          .getCode()
+          .slice(body.range[0], body.range[1])
+          .trim();
 
-          const slice = logger
-            .getCode()
-            .slice(body.range[0], body.range[1])
-            .trim();
-
-          logger.addFlow(`Evaluating arrow body: ${slice}`);
-          logger.setNext(null, "Evaluating arrow body", entry);
+        // Narration on the SAME step (the closure step)
+        logger.addFlow(`Evaluating arrow body: ${slice}`);
       }
-
 
       const value = evaluateExpression(body, innerCtx);
 
@@ -218,7 +247,6 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   return fn;
 }
 
-
 //
 // ──────────────────────────────────────────────
 //   MAIN evaluateExpression
@@ -235,7 +263,7 @@ const expressionEvaluators: {
   ArrayExpression: evalArray,
   ObjectExpression: evalObject,
 
-  // 🔥 FIXED: now use proper function value with closure + logging
+  // Now use proper function value with closure + logging
   FunctionExpression: (node: any, ctx: EvalContext) =>
     buildFunctionValue(node, ctx),
 
