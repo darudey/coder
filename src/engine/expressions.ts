@@ -27,7 +27,7 @@ import { evalUpdateExpression } from "./expressions/evalUpdate";
 import { EnvironmentRecord, LexicalEnvironment } from "./environment";
 import { hoistProgram } from "./hoist";
 import { evaluateBlockBody } from "./evaluator";
-import { isReturnSignal, /* makeReturn if you have it */ } from "./signals";
+import { isReturnSignal, makeReturn } from "./signals";
 import {
   getFirstMeaningfulStatement,
   displayHeader,
@@ -65,7 +65,11 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     thisArg: any,
     args: any[]
   ) {
-    const funcName = node.id?.name || "Function";
+    const isArrow = node.type === "ArrowFunctionExpression";
+
+    const funcName =
+      node.id?.name ||
+      (isArrow ? "(arrow closure)" : "Function");
 
     // 1. Create execution environment for this call
     const fnEnv = new LexicalEnvironment(
@@ -94,7 +98,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     // 4. Determine `this` value
     let callThisValue = thisArg;
-    if (node.type === "ArrowFunctionExpression") {
+    if (isArrow) {
       // Arrow functions capture lexical this
       try {
         callThisValue = this.__env.get("this");
@@ -103,29 +107,36 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       }
     }
 
-    // 5. Log function entry
+    // 5. Log function entry as its own step
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
       logger.log(node.loc.start.line - 1);
-      logger.addFlow(`Entering function ${funcName}`);
+
+      if (isArrow) {
+        const src = logger
+          .getCode()
+          .slice(node.range[0], node.range[1])
+          .trim();
+        logger.addFlow(`Entering closure ${src}`);
+      } else {
+        logger.addFlow(`Entering function ${funcName}`);
+      }
     }
 
-    // 6. Predict next step inside body
     const body = node.body;
-    let firstStmt: any = null;
 
+    // 6. Predict next step *inside block functions* (not arrows with expr body)
     if (body && body.type === "BlockStatement") {
-      firstStmt = getFirstMeaningfulStatement(body);
-    } else {
-      // Arrow with expression body
-      firstStmt = body;
-    }
-
-    if (firstStmt?.loc) {
-      logger.setNext(
-        firstStmt.loc.start.line - 1,
-        `Next Step → ${displayHeader(firstStmt, logger.getCode())}`
-      );
+      const firstStmt = getFirstMeaningfulStatement(body);
+      if (firstStmt?.loc) {
+        logger.setNext(
+          firstStmt.loc.start.line - 1,
+          `Next Step → ${displayHeader(
+            firstStmt,
+            logger.getCode()
+          )}`
+        );
+      }
     }
 
     // 7. Build inner EvalContext
@@ -141,7 +152,6 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // 8. Push to callstack
     stack.push(funcName);
 
-    // 9. Execute body
     let result: any = undefined;
 
     if (body && body.type === "BlockStatement") {
@@ -149,18 +159,45 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       hoistProgram({ body: body.body }, fnEnv);
       result = evaluateBlockBody(body.body, innerCtx);
     } else {
-      // Arrow with expression body → implicit return
+      // ────────────────────────────────────
+      // Arrow with EXPRESSION body (like a + b)
+      // ────────────────────────────────────
+      if (body?.loc) {
+        // Create a dedicated STEP for the arrow body expression
+        logger.log(body.loc.start.line - 1);
+        const slice = logger
+          .getCode()
+          .slice(body.range[0], body.range[1])
+          .trim();
+
+        logger.addFlow(`Evaluating arrow body: ${slice}`);
+      }
+
       const value = evaluateExpression(body, innerCtx);
-      // fabricate a ReturnSignal-like object
-      result = { __type: "Return", value };
+
+      if (body) {
+        // Show detailed breakdown for a + b
+        logger.addExpressionEval(body, value);
+        logger.addExpressionContext(body, "Arrow function body");
+        logger.addFlow(
+          `Arrow body result → ${JSON.stringify(value)}`
+        );
+      }
+
+      // After evaluating arrow body, the next step is: return to caller
+      logger.setNext(null, "Return: control returns to caller");
+
+      // Use a REAL ReturnSignal so the rest of the engine sees it
+      result = makeReturn(value);
     }
 
-    // 10. Pop from callstack
+    // 9. Pop from callstack
     stack.pop();
 
     // Restore outer env for logger
     logger.setCurrentEnv(this.__env);
 
+    // 10. Unwrap ReturnSignal to actual value
     if (isReturnSignal(result)) {
       return result.value;
     }
@@ -180,6 +217,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
   return fn;
 }
+
 
 //
 // ──────────────────────────────────────────────
