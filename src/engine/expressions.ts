@@ -161,15 +161,17 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       // Arrow with EXPRESSION body (like a + b)
       // ────────────────────────────────────
       if (body?.loc) {
-        // Create a dedicated STEP for the arrow body expression
-        logger.log(body.loc.start.line - 1);
-        const slice = logger
-          .getCode()
-          .slice(body.range[0], body.range[1])
-          .trim();
+          const entry = logger.peekLastStep(); // <-- reuse the current step
 
-        logger.addFlow(`Evaluating arrow body: ${slice}`);
+          const slice = logger
+            .getCode()
+            .slice(body.range[0], body.range[1])
+            .trim();
+
+          logger.addFlow(`Evaluating arrow body: ${slice}`);
+          logger.setNext(null, "Evaluating arrow body", entry);
       }
+
 
       const value = evaluateExpression(body, innerCtx);
 
