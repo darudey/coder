@@ -46,13 +46,17 @@ export function evalCall(node: any, ctx: EvalContext): any {
         const body = calleeVal.__node.body;
 
         if (body?.loc) {
-            const line = body.type === "BlockStatement"
-                ? getFirstMeaningfulStatement(body)?.loc.start.line - 1
-                : body.loc.start.line - 1;
+            let line: number | null = null;
+            let message: string = "";
 
-            const message = body.type === "BlockStatement"
-                ? `Next Step → ${displayHeader(calleeVal.__node, ctx.logger.getCode())}`
-                : `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`;
+            if (body.type === "BlockStatement") {
+                const firstStmt = getFirstMeaningfulStatement(body);
+                line = firstStmt ? firstStmt.loc.start.line -1 : null;
+                message = `Next Step → ${displayHeader(calleeVal.__node, ctx.logger.getCode())}`;
+            } else {
+                line = body.loc.start.line - 1;
+                message = `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`;
+            }
 
             ctx.logger.setNext(line, message);
         }
@@ -77,6 +81,10 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
     // ---- Closure entry narration ----
     if (fn?.__node?.type === "ArrowFunctionExpression") {
+        
+        // ⭐ NEW: Create a dedicated step for entering closure
+        ctx.logger.log(node.loc.start.line - 1);
+
         const params = fn.__params.map((p:any) => p.name);
 
         // parameter values
@@ -85,26 +93,23 @@ export function evalCall(node: any, ctx: EvalContext): any {
         // captured values
         let capturedPairs: string[] = [];
         try {
-            const bindings = fn?.__env?.outer?.record?.bindings;
-            if (bindings) {
-                const captured: {[key: string]: any} = {};
-                let currentEnv = fn.__env;
-                while(currentEnv && currentEnv.outer) {
-                    const envBindings = (currentEnv.outer.record as any).bindings;
-                    if (envBindings) {
-                        for (const key of envBindings.keys()) {
-                            if (!(key in captured)) {
-                               captured[key] = envBindings.get(key)?.value;
-                            }
+            let currentEnv = fn.__env;
+            const captured: {[key: string]: any} = {};
+            while(currentEnv && currentEnv.outer) {
+                const envBindings = (currentEnv.outer.record as any).bindings;
+                if (envBindings) {
+                    for (const key of envBindings.keys()) {
+                        if (!(key in captured)) {
+                           captured[key] = envBindings.get(key)?.value;
                         }
                     }
-                    currentEnv = currentEnv.outer;
                 }
-
-                capturedPairs = Object.entries(captured)
-                    .filter(([key]) => params.indexOf(key) === -1) // Exclude params from captured
-                    .map(([k, v]) => `${k} = ${JSON.stringify(v)}`);
+                currentEnv = currentEnv.outer;
             }
+
+            capturedPairs = Object.entries(captured)
+                .filter(([key]) => params.indexOf(key) === -1) // Exclude params from captured
+                .map(([k, v]) => `${k} = ${JSON.stringify(v)}`);
 
         } catch(e) {
             console.error("Error capturing closure values", e);
