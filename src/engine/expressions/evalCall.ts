@@ -39,21 +39,72 @@ export function evalCall(node: any, ctx: EvalContext): any {
       .join(", ")})`
   );
 
-  // PREDICT NEXT-STEP for ALL function types
-  if (calleeVal?.__node) {
-    const body = calleeVal.__node.body;
-    if (body?.loc) {
-      const line = body.type === "BlockStatement"
-          ? getFirstMeaningfulStatement(body)?.loc.start.line - 1
-          : body.loc.start.line - 1;
+    // ---- Closure entry narration ----
+    if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
+        const params = calleeVal.__params.map((p:any) => p.name);
 
-      const message = body.type === "BlockStatement"
-        ? `Next Step → ${displayHeader(calleeVal.__node, ctx.logger.getCode())}`
-        : `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`;
+        // parameter values
+        const paramPairs = params.map((p:any, i:number) => `${p} = ${JSON.stringify(args[i])}`);
 
-      ctx.logger.setNext(line, message);
+        // captured values
+        let capturedPairs: string[] = [];
+        try {
+            const captured: {[key: string]: any} = {};
+            let currentEnv = calleeVal.__env;
+            while(currentEnv && currentEnv.outer) {
+                const bindings = (currentEnv.outer.record as any).bindings;
+                if (bindings) {
+                    for (const key of bindings.keys()) {
+                        if (!(key in captured)) {
+                           captured[key] = bindings.get(key)?.value;
+                        }
+                    }
+                }
+                currentEnv = currentEnv.outer;
+            }
+
+            capturedPairs = Object.entries(captured)
+                .filter(([key]) => params.indexOf(key) === -1) // Exclude params from captured
+                .map(([k, v]) => `${k} = ${JSON.stringify(v)}`);
+
+        } catch(e) {
+            console.error("Error capturing closure values", e);
+        }
+
+        ctx.logger.addFlow(`Entering closure (${paramPairs.join(", ")})`);
+
+        if (capturedPairs.length > 0) {
+            ctx.logger.addFlow(`Captured: ${capturedPairs.join(", ")}`);
+        }
     }
-  }
+
+
+  // PREDICT NEXT-STEP for ALL function types
+    if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
+        const body = calleeVal.__node.body;
+
+        const line = body.loc?.start?.line
+            ? body.loc.start.line - 1
+            : null;
+
+        ctx.logger.setNext(
+            line,
+            `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`
+        );
+    } else if (calleeVal?.__node) {
+        const body = calleeVal.__node.body;
+        if (body?.loc) {
+            const line = body.type === "BlockStatement"
+                ? getFirstMeaningfulStatement(body)?.loc.start.line - 1
+                : body.loc.start.line - 1;
+
+            const message = body.type === "BlockStatement"
+                ? `Next Step → ${displayHeader(calleeVal.__node, ctx.logger.getCode())}`
+                : `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`;
+
+            ctx.logger.setNext(line, message);
+        }
+    }
 
 
   if (calleeVal && (calleeVal as any).__builtin === "console.log") {
@@ -71,31 +122,6 @@ export function evalCall(node: any, ctx: EvalContext): any {
     const fn = calleeVal as FunctionValue;
     if (!fn.__ctx)
       fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
-      
-    if (fn.__node.type === "ArrowFunctionExpression") {
-        const captured: any = {};
-        let currentEnv = fn.__env.outer;
-        while(currentEnv) {
-            const bindings = (currentEnv.record as any).bindings;
-            if (bindings) {
-                for (const key of bindings.keys()) {
-                    if (!(key in captured)) {
-                       captured[key] = bindings.get(key)?.value;
-                    }
-                }
-            }
-            currentEnv = currentEnv.outer;
-        }
-
-        const paramString = fn.__params.map((p, i) => `${p.name} = ${JSON.stringify(args[i])}`).join(', ');
-
-        ctx.logger.addFlow(`Entering closure (${paramString})`);
-
-        const capturedList = Object.keys(captured).map(k => `${k} = ${JSON.stringify(captured[k])}`).join(', ');
-        if (capturedList) {
-            ctx.logger.addFlow(`Captured: ${capturedList}`);
-        }
-    }
       
     const result = fn.call(thisArg, args);
     if (isReturnSignal(result)) return result.value;

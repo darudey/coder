@@ -1,3 +1,4 @@
+
 // src/engine/expressions.ts
 // Pure expression evaluator — no statement logic.
 // This file is imported by evaluator.ts and next-step-helpers.ts.
@@ -113,11 +114,8 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       logger.log(node.loc.start.line - 1);
 
       if (isArrow) {
-        const src = logger
-          .getCode()
-          .slice(node.range[0], node.range[1])
-          .trim();
-        logger.addFlow(`Entering closure ${src}`);
+        // This log is now handled in detail inside `evalCall`
+        // which has access to the argument values.
       } else {
         logger.addFlow(`Entering function ${funcName}`);
       }
