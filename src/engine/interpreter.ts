@@ -103,6 +103,15 @@ export function generateTimeline(
     entries.push(extra);
     return entries;
   }
+  
+  // ---- ADD UNIVERSAL FINAL STEP ----
+  const last = logger.peekLastStep();
+  if (last) {
+    // Reuse last line number for the final step, but create a new step
+    logger.log(last.line); 
+    logger.addFlow("Program finished ✔");
+    logger.setNext(null, "No more steps");
+  }
 
   return logger.getTimeline();
 }
