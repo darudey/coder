@@ -447,8 +447,14 @@ export class TimelineLogger {
       switch (node.type) {
         case "ArrowFunctionExpression": {
             log("Arrow Function:");
-            log(indent + `  Parameters: (${node.params.map((p:any) => p.name).join(", ")})`);
-            log(indent + `  Body: ${this.getCode()?.substring(node.body.range[0], node.body.range[1])}`);
+            const params = node.params.map((p: any) => p.name).join(", ");
+            log(`Parameters: (${params})`);
+
+            if (node.body.type === "BlockStatement") {
+                log("Body: { ... }");
+            } else {
+                 log(`Body: ${this.code.substring(node.body.range[0], node.body.range[1])}`);
+            }
             return "[Function]";
         }
         case "Identifier": {
@@ -699,7 +705,10 @@ export class TimelineLogger {
 
   // ---------- EXPRESSION API ----------
 
-  private safeExpressionResult(val: any): any {
+  private safeExpressionResult(val: any, expr?: any): any {
+    if (val === undefined && expr?.type === "CallExpression") {
+        return "<pending>";
+    }
     // primitives
     if (val === null || val === undefined) return val;
     if (
@@ -769,7 +778,7 @@ export class TimelineLogger {
     }
 
     last.expressionEval[exprString] = {
-      result: this.safeExpressionResult(value),
+      result: this.safeExpressionResult(value, expr),
       breakdown,
       friendly,
     };

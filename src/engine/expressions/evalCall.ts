@@ -47,10 +47,11 @@ export function evalCall(node: any, ctx: EvalContext): any {
           ? getFirstMeaningfulStatement(body)?.loc.start.line - 1
           : body.loc.start.line - 1;
 
-      ctx.logger.setNext(
-        line,
-        `Next Step → ${displayHeader(calleeVal.__node, ctx.logger.getCode())}`
-      );
+      const message = body.type === "BlockStatement"
+        ? `Next Step → ${displayHeader(calleeVal.__node, ctx.logger.getCode())}`
+        : `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`;
+
+      ctx.logger.setNext(line, message);
     }
   }
 
@@ -70,6 +71,32 @@ export function evalCall(node: any, ctx: EvalContext): any {
     const fn = calleeVal as FunctionValue;
     if (!fn.__ctx)
       fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
+      
+    if (fn.__node.type === "ArrowFunctionExpression") {
+        const captured: any = {};
+        let currentEnv = fn.__env.outer;
+        while(currentEnv) {
+            const bindings = (currentEnv.record as any).bindings;
+            if (bindings) {
+                for (const key of bindings.keys()) {
+                    if (!(key in captured)) {
+                       captured[key] = bindings.get(key)?.value;
+                    }
+                }
+            }
+            currentEnv = currentEnv.outer;
+        }
+
+        const paramString = fn.__params.map((p, i) => `${p.name} = ${JSON.stringify(args[i])}`).join(', ');
+
+        ctx.logger.addFlow(`Entering closure (${paramString})`);
+
+        const capturedList = Object.keys(captured).map(k => `${k} = ${JSON.stringify(captured[k])}`).join(', ');
+        if (capturedList) {
+            ctx.logger.addFlow(`Captured: ${capturedList}`);
+        }
+    }
+      
     const result = fn.call(thisArg, args);
     if (isReturnSignal(result)) return result.value;
     return result;
