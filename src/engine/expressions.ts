@@ -111,17 +111,19 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // 5. Log function entry as its own step
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
-      // NOTE: for arrow functions we DO NOT create the entry step here.
-      // evalCall handles arrow closure entry logging (it has the call-site args).
-      if (!isArrow) {
-        logger.log(node.loc.start.line - 1);
-        logger.addFlow(`Entering function ${funcName}`);
+      // ⭐ For ARROWS, the step is created at the BODY line.
+      // The "Entering closure" narration is attached by evalCall.
+      if (isArrow && node.body?.loc) {
+         logger.log(node.body.loc.start.line - 1);
+      } else if (!isArrow) {
+         logger.log(node.loc.start.line - 1);
+         logger.addFlow(`Entering function ${funcName}`);
       }
     }
 
     const body = node.body;
 
-    // 6. Predict next step *inside block functions* (not arrows with expr body)
+    // 6. Predict next step *inside block functions*
     if (body && body.type === "BlockStatement") {
       const firstStmt = getFirstMeaningfulStatement(body);
       if (firstStmt?.loc) {
@@ -158,31 +160,29 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       // ────────────────────────────────────
       // Arrow with EXPRESSION body (like a + b)
       // ────────────────────────────────────
+      const entry = logger.peekLastStep(); // NO new step here
       if (body?.loc && body.range) {
         const slice = logger
           .getCode()
           .slice(body.range[0], body.range[1])
           .trim();
-
-        // Narration on the SAME step (the closure step)
         logger.addFlow(`Evaluating arrow body: ${slice}`);
       }
 
       const value = evaluateExpression(body, innerCtx);
 
       if (body) {
-        // Show detailed breakdown for a + b
         logger.addExpressionEval(body, value);
         logger.addExpressionContext(body, "Arrow function body");
         logger.addFlow(
           `Arrow body result → ${JSON.stringify(value)}`
         );
+        logger.addFlow("Arrow function complete → returning result");
       }
 
       // After evaluating arrow body, the next step is: return to caller
-      logger.setNext(null, "Return: control returns to caller");
+      logger.setNext(null, "Return: control returns to caller", entry);
 
-      // Use a REAL ReturnSignal so the rest of the engine sees it
       result = makeReturn(value);
     }
 

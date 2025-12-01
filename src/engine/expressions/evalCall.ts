@@ -1,3 +1,4 @@
+
 // src/engine/expressions/evalCall.ts
 import type { EvalContext } from "../types";
 import { evaluateExpression } from "../evaluator";
@@ -64,76 +65,54 @@ export function evalCall(node: any, ctx: EvalContext): any {
     `Calling function ${calleeName}(${args.map((a) => JSON.stringify(a)).join(", ")})`
   );
 
-  // If callee is a user arrow closure -> create a dedicated "enter closure" step at the arrow body line
+  // ---- ENTRY LOG FOR ARROW CLOSURES ----
   if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
-    const arrowNode = calleeVal.__node;
-    const body = arrowNode.body;
-    const bodyLine = body?.loc?.start?.line ? body.loc.start.line - 1 : null;
+    const params = calleeVal.__params.map((p: any) => p.name);
+    const paramPairs = params.map((p: any, i: number) =>
+        `${p} = ${JSON.stringify(args[i])}`
+    );
 
-    // Create a step at the arrow body line (so UI shows entry at the closure's location)
-    if (bodyLine !== null) {
-      ctx.logger.log(bodyLine);
-    }
-
-    // Build parameter pairs
-    const params = (calleeVal.__params ?? []).map((p: any) => p.name);
-    const paramPairs = params.map((p: string, i: number) => `${p} = ${JSON.stringify(args[i])}`);
-
-    // Collect captured variables from the closure's defining env chain (outer frames)
-    const captured: Record<string, any> = {};
+    // --- Capture outer variables ---
+    let capturedPairs: string[] = [];
     try {
-      let env = calleeVal.__env;
-      // Move one step outward: the closure's own env typically has its params; we want defining outer scopes
-      if (env && env.outer) env = env.outer;
-      while (env) {
-        // env.record.bindings or env.bindings or env.record?.bindings
-        const recordLike = (env.record && (env.record as any).bindings) ?? (env as any).bindings ?? null;
-        const frameBindings = readBindingsFromRecord(recordLike);
-        for (const k of Object.keys(frameBindings)) {
-          if (params.indexOf(k) !== -1) continue; // skip params
-          if (!(k in captured)) {
-            captured[k] = frameBindings[k];
-          }
+        let env = calleeVal.__env;
+        while (env && env.outer) {
+            const rec = env.outer.record?.bindings;
+            if (rec) {
+                if (typeof rec.keys === "function") { // Map-like
+                    for (const key of rec.keys()) {
+                        if (!params.includes(key))
+                            capturedPairs.push(`${key} = ${JSON.stringify(rec.get(key)?.value)}`);
+                    }
+                } else { // Object-like
+                    for (const key of Object.keys(rec)) {
+                        if (!params.includes(key))
+                            capturedPairs.push(`${key} = ${JSON.stringify(rec[key])}`);
+                    }
+                }
+            }
+            env = env.outer;
         }
-        env = env.outer;
-      }
-    } catch (e) {
-      // swallow — capturing best-effort
-    }
+    } catch {}
 
-    // Narrate entering closure + params + captured
-    if (paramPairs.length > 0) {
-      ctx.logger.addFlow(`Entering closure (${paramPairs.join(", ")})`);
-    } else {
-      ctx.logger.addFlow(`Entering closure`);
-    }
+    // Attach flow messages to the *next* step that will be created
+    ctx.logger.addFlow(`Entering closure (${paramPairs.join(", ")})`);
+    if (capturedPairs.length > 0)
+        ctx.logger.addFlow(`Captured: ${capturedPairs.join(", ")}`);
+  }
 
-    const capturedPairs = Object.entries(captured)
-      .map(([k, v]) => `${k} = ${JSON.stringify(v)}`);
-    if (capturedPairs.length > 0) {
-      ctx.logger.addFlow(`Captured: ${capturedPairs.join(", ")}`);
-    }
 
-    // Predict next step: evaluate arrow body (line of body)
-    if (bodyLine !== null) {
+  // For non-arrow functions, predict next meaningful statement inside function if possible
+  if (calleeVal?.__node && calleeVal.__node.type !== "ArrowFunctionExpression") {
+    const body = calleeVal.__node.body;
+    if (body?.loc) {
+      const line = body.type === "BlockStatement"
+        ? getFirstMeaningfulStatement(body)?.loc?.start.line - 1
+        : body.loc.start.line - 1;
       ctx.logger.setNext(
-        bodyLine,
-        `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`
+        line,
+        `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
       );
-    }
-  } else {
-    // For non-arrow functions, predict next meaningful statement inside function if possible
-    if (calleeVal?.__node) {
-      const body = calleeVal.__node.body;
-      if (body?.loc) {
-        const line = body.type === "BlockStatement"
-          ? getFirstMeaningfulStatement(body)?.loc?.start.line - 1
-          : body.loc.start.line - 1;
-        ctx.logger.setNext(
-          line,
-          `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
-        );
-      }
     }
   }
 
