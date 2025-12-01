@@ -111,44 +111,10 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // 5. Log function entry as its own step
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
-      // This creates the "Step: N | Line: X" for the function / closure
-      logger.log(node.loc.start.line - 1);
-
-      if (isArrow) {
-        // 🔹 Arrow closure entry narration on THIS step
-        const paramPairs = (node.params ?? [])
-          .filter((p: any) => p.type === "Identifier")
-          .map(
-            (p: any, index: number) =>
-              `${p.name} = ${JSON.stringify(args[index])}`
-          );
-
-        const paramText =
-          paramPairs.length > 0
-            ? paramPairs.join(", ")
-            : "no parameters";
-        
-        logger.addFlow(`Entering closure (${paramText})`);
-
-        // ✨ ADDED: Log captured variables
-        let capturedPairs: string[] = [];
-        try {
-            // @ts-ignore
-            const capturedBindings = this.__env?.outer?.record?.bindings;
-            if (capturedBindings) {
-                for (const [key, binding] of capturedBindings.entries()) {
-                     if (!(node.params.some((p:any) => p.name === key))) {
-                        capturedPairs.push(`${key} = ${JSON.stringify(binding.value)}`);
-                    }
-                }
-            }
-        } catch {}
-
-        if (capturedPairs.length > 0) {
-            logger.addFlow(`Captured: ${capturedPairs.join(", ")}`);
-        }
-
-      } else {
+      // NOTE: for arrow functions we DO NOT create the entry step here.
+      // evalCall handles arrow closure entry logging (it has the call-site args).
+      if (!isArrow) {
+        logger.log(node.loc.start.line - 1);
         logger.addFlow(`Entering function ${funcName}`);
       }
     }
