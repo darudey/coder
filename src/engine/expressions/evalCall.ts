@@ -6,6 +6,16 @@ import { isReturnSignal } from "../signals";
 import { evalMemberTarget } from "./evalMember";
 import { getFirstMeaningfulStatement, displayHeader } from "../next-step-helpers";
 
+function getCalleeName(node: any, value: any): string {
+  if (node.type === "Identifier") return node.name;
+  if (node.type === "MemberExpression") return node.property.name;
+
+  if (value?.__node?.type === "ArrowFunctionExpression")
+    return "(arrow function)";
+
+  return "<function>";
+}
+
 export function evalCall(node: any, ctx: EvalContext): any {
   const calleeVal = evaluateExpression(node.callee, ctx);
   const args = node.arguments.map((arg: any) =>
@@ -20,12 +30,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
     thisArg = ctx.thisValue ?? undefined;
   }
 
-  const calleeName =
-    node.callee.type === "Identifier"
-      ? node.callee.name
-      : node.callee.type === "MemberExpression"
-      ? node.callee.property.name
-      : "<call>";
+  const calleeName = getCalleeName(node.callee, calleeVal);
       
   ctx.logger.addFlow(
     `Calling function ${calleeName}(${args
@@ -33,22 +38,21 @@ export function evalCall(node: any, ctx: EvalContext): any {
       .join(", ")})`
   );
 
-  // PREDICT NEXT-STEP for ARROW FUNCTION EXPRESSION
-  if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
+  // PREDICT NEXT-STEP for ALL function types
+  if (calleeVal?.__node) {
     const body = calleeVal.__node.body;
-
     if (body?.loc) {
-      const preview =
-        body.type === "BlockStatement"
-          ? getFirstMeaningfulStatement(body)?.loc?.start.line - 1
+      const line = body.type === "BlockStatement"
+          ? getFirstMeaningfulStatement(body)?.loc.start.line - 1
           : body.loc.start.line - 1;
 
       ctx.logger.setNext(
-        preview,
-        `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
+        line,
+        `Next Step → ${displayHeader(calleeVal.__node, ctx.logger.getCode())}`
       );
     }
   }
+
 
   if (calleeVal && (calleeVal as any).__builtin === "console.log") {
     const formattedArgs = args.join(" ");
