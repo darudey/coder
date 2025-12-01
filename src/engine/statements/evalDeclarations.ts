@@ -4,6 +4,7 @@ import type { EvalContext } from '../types';
 import { evaluateExpression } from '../expressions';
 import { createClassConstructor } from './evalClass';
 import { displayHeader } from '../next-step-helpers';
+import { formatForFlow } from '../utils/formatForFlow';
 
 export function evalVariableDeclaration(node: any, ctx: EvalContext) {
   const kind: "var" | "let" | "const" = node.kind;
@@ -37,7 +38,7 @@ export function evalVariableDeclaration(node: any, ctx: EvalContext) {
       ctx.logger.addExpressionEval(decl.init, initValue);
       ctx.logger.addExpressionContext(decl.init, "Variable initializer");
       ctx.logger.addFlow(
-        `Initializer result → ${JSON.stringify(initValue)}`
+        `Initializer result → ${formatForFlow(initValue)}`
       );
     }
 

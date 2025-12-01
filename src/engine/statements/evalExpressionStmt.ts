@@ -1,8 +1,8 @@
-
 // src/engine/statements/evalExpressionStmt.ts
 import type { EvalContext } from "../types";
 import { evaluateExpression } from "../expressions";
 import { displayHeader } from "../next-step-helpers";
+import { formatForFlow } from "../utils/formatForFlow";
 
 export function evalExpressionStatement(
   node: any,
@@ -25,7 +25,7 @@ export function evalExpressionStatement(
 
   // Add expression breakdown & friendly text
   logger.addExpressionEval(node.expression, value);
-  logger.addFlow(`Expression result → ${JSON.stringify(value)}`);
+  logger.addFlow(`Expression result → ${formatForFlow(value)}`);
 
   // Fix the "..." next-step on THIS statement only
   if (statementStep && statementStep.nextStep?.message === "...") {
