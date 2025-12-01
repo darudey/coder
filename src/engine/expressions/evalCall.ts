@@ -49,23 +49,26 @@ export function evalCall(node: any, ctx: EvalContext): any {
         // captured values
         let capturedPairs: string[] = [];
         try {
-            const captured: {[key: string]: any} = {};
-            let currentEnv = calleeVal.__env;
-            while(currentEnv && currentEnv.outer) {
-                const bindings = (currentEnv.outer.record as any).bindings;
-                if (bindings) {
-                    for (const key of bindings.keys()) {
-                        if (!(key in captured)) {
-                           captured[key] = bindings.get(key)?.value;
+            const bindings = calleeVal?.__env?.outer?.record?.bindings;
+            if (bindings) {
+                const captured: {[key: string]: any} = {};
+                let currentEnv = calleeVal.__env;
+                while(currentEnv && currentEnv.outer) {
+                    const envBindings = (currentEnv.outer.record as any).bindings;
+                    if (envBindings) {
+                        for (const key of envBindings.keys()) {
+                            if (!(key in captured)) {
+                               captured[key] = envBindings.get(key)?.value;
+                            }
                         }
                     }
+                    currentEnv = currentEnv.outer;
                 }
-                currentEnv = currentEnv.outer;
-            }
 
-            capturedPairs = Object.entries(captured)
-                .filter(([key]) => params.indexOf(key) === -1) // Exclude params from captured
-                .map(([k, v]) => `${k} = ${JSON.stringify(v)}`);
+                capturedPairs = Object.entries(captured)
+                    .filter(([key]) => params.indexOf(key) === -1) // Exclude params from captured
+                    .map(([k, v]) => `${k} = ${JSON.stringify(v)}`);
+            }
 
         } catch(e) {
             console.error("Error capturing closure values", e);
@@ -80,19 +83,9 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
 
   // PREDICT NEXT-STEP for ALL function types
-    if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
+    if (calleeVal?.__node) {
         const body = calleeVal.__node.body;
 
-        const line = body.loc?.start?.line
-            ? body.loc.start.line - 1
-            : null;
-
-        ctx.logger.setNext(
-            line,
-            `Evaluate arrow body: ${displayHeader(body, ctx.logger.getCode())}`
-        );
-    } else if (calleeVal?.__node) {
-        const body = calleeVal.__node.body;
         if (body?.loc) {
             const line = body.type === "BlockStatement"
                 ? getFirstMeaningfulStatement(body)?.loc.start.line - 1
