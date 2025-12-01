@@ -1,10 +1,10 @@
-
 // src/engine/expressions/evalCall.ts
 import type { EvalContext } from "../types";
 import { evaluateExpression } from "../evaluator";
 import { isUserFunction, FunctionValue } from "../values";
 import { isReturnSignal } from "../signals";
 import { evalMemberTarget } from "./evalMember";
+import { getFirstMeaningfulStatement, displayHeader } from "../next-step-helpers";
 
 export function evalCall(node: any, ctx: EvalContext): any {
   const calleeVal = evaluateExpression(node.callee, ctx);
@@ -26,12 +26,29 @@ export function evalCall(node: any, ctx: EvalContext): any {
       : node.callee.type === "MemberExpression"
       ? node.callee.property.name
       : "<call>";
-
+      
   ctx.logger.addFlow(
     `Calling function ${calleeName}(${args
       .map((a) => JSON.stringify(a))
       .join(", ")})`
   );
+
+  // PREDICT NEXT-STEP for ARROW FUNCTION EXPRESSION
+  if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
+    const body = calleeVal.__node.body;
+
+    if (body?.loc) {
+      const preview =
+        body.type === "BlockStatement"
+          ? getFirstMeaningfulStatement(body)?.loc?.start.line - 1
+          : body.loc.start.line - 1;
+
+      ctx.logger.setNext(
+        preview,
+        `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
+      );
+    }
+  }
 
   if (calleeVal && (calleeVal as any).__builtin === "console.log") {
     const formattedArgs = args.join(" ");
