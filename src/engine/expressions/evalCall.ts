@@ -1,4 +1,3 @@
-
 // src/engine/expressions/evalCall.ts
 import type { EvalContext } from "../types";
 import { evaluateExpression } from "../evaluator";
@@ -6,6 +5,14 @@ import { isUserFunction, FunctionValue } from "../values";
 import { isReturnSignal } from "../signals";
 import { evalMemberTarget } from "./evalMember";
 import { getFirstMeaningfulStatement, displayHeader } from "../next-step-helpers";
+
+/**
+ * Phase-2: teaching-friendly call logger.
+ * - CALL_COUNTER: numbers calls so multi-call sequences are separated.
+ * - Friendly strings for values (safe printing).
+ * - Entry narration for arrow closures, including captured variable summary.
+ * - End-of-call narration showing returned value.
+ */
 
 let CALL_COUNTER = 0;
 
@@ -17,7 +24,9 @@ function safeString(v: any): string {
     if (typeof v === "number" || typeof v === "boolean") return String(v);
     if (typeof v === "function") return "[Function]";
     if (v && typeof v === "object" && v.__isFunctionValue) return "[Function]";
-    try { return JSON.stringify(v); } catch {
+    try {
+      return JSON.stringify(v);
+    } catch {
       if (Array.isArray(v)) return `[Array(${v.length})]`;
       if (v && typeof v === "object") return `[Object:${v.constructor?.name || "Object"}]`;
       return String(v);
@@ -45,21 +54,29 @@ function readBindingsFromRecord(recordLike: any): Record<string, any> {
   try {
     if (!recordLike) return out;
     if (typeof recordLike.keys === "function" && typeof recordLike.get === "function") {
+      // Map-like
       for (const k of recordLike.keys()) {
         try {
           const entry = recordLike.get(k);
           out[k] = entry && typeof entry === "object" && "value" in entry ? entry.value : entry;
-        } catch { out[k] = "[Unreadable]"; }
+        } catch {
+          out[k] = "[Unreadable]";
+        }
       }
     } else {
+      // plain object
       for (const k of Object.keys(recordLike)) {
         try {
           const v = (recordLike as any)[k];
           out[k] = v && typeof v === "object" && "value" in v ? v.value : v;
-        } catch { out[k] = "[Unreadable]"; }
+        } catch {
+          out[k] = "[Unreadable]";
+        }
       }
     }
-  } catch {}
+  } catch {
+    // ignore
+  }
   return out;
 }
 
@@ -86,6 +103,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
     const params = (calleeVal.__params ?? []).map((p: any) => p.name ?? "<param>");
     const paramPairs = params.map((p: any, i: number) => `${p} = ${safeString(args[i])}`);
 
+    // collect captured variables from outer envs (robust against Map/object shapes)
     const capturedPairs: string[] = [];
     try {
       let env = calleeVal.__env;
@@ -99,43 +117,22 @@ export function evalCall(node: any, ctx: EvalContext): any {
         }
         env = env.outer;
       }
-    } catch {}
-
-    ctx.logger.addFlow(`Entering closure (${paramPairs.join(", ")})`);
-    
-    // Teaching: Closure explanation (only once per call)
-    if (calleeVal.__env && calleeVal.__node?.type === "ArrowFunctionExpression") {
-      const capturedVars: string[] = [];
-      let env = calleeVal.__env.outer;
-
-      while (env) {
-        const rec = env.record?.bindings;
-        if (rec) {
-          const names =
-            typeof rec.keys === "function" ? Array.from(rec.keys()) : Object.keys(rec);
-          for (const key of names) {
-            if (!params.includes(key)) {
-              const v = typeof rec.get === "function" ? rec.get(key)?.value : rec[key];
-              capturedVars.push(`${key} = ${JSON.stringify(v)}`);
-            }
-          }
-        }
-        env = env.outer;
-      }
-
-      if (capturedVars.length > 0) {
-        ctx.logger.addFlow(
-          `A closure was created.\nIt remembers: ${capturedVars.join(", ")}`
-        );
-      }
+    } catch {
+      // swallow
     }
 
-    // create step at arrow body line (so UI focuses body)
+    ctx.logger.addFlow(`Entering closure (${paramPairs.join(", ")})`);
+    if (capturedPairs.length > 0) ctx.logger.addFlow(`Captured: ${capturedPairs.join(", ")}`);
+
+    // Create a focused step at the arrow body line so UI centers on body evaluation
     if (calleeVal.__node.body?.loc) {
       const body = calleeVal.__node.body;
-      const line = body.type === "BlockStatement" ? (getFirstMeaningfulStatement(body)?.loc?.start.line - 1 ?? null) : (body.loc.start.line - 1);
+      const bodyLine = body.type === "BlockStatement"
+        ? (getFirstMeaningfulStatement(body)?.loc?.start.line - 1 ?? null)
+        : (body.loc.start.line - 1);
+      // Create a step at the body line (helps arrow UX). We create a log step and clear any stale next.
       ctx.logger.log(body.loc.start.line - 1);
-      ctx.logger.setNext(line, "", ctx.logger.peekLastStep());
+      ctx.logger.setNext(bodyLine, "", ctx.logger.peekLastStep());
     }
   }
 
@@ -158,11 +155,14 @@ export function evalCall(node: any, ctx: EvalContext): any {
     const formattedArgs = args.map(a => safeString(a)).join(" ");
     ctx.logger.logOutput(formattedArgs);
     ctx.logger.addFlow(`console.log → ${formattedArgs}`);
+    ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned undefined) ──`);
     return undefined;
   }
 
   if (typeof calleeVal === "function" && !isUserFunction(calleeVal)) {
-    return calleeVal.apply(thisArg, args);
+    const res = calleeVal.apply(thisArg, args);
+    ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned ${safeString(res)}) ──`);
+    return res;
   }
 
   if (isUserFunction(calleeVal)) {
@@ -170,11 +170,14 @@ export function evalCall(node: any, ctx: EvalContext): any {
     if (!fn.__ctx) fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
 
     const result = fn.call(thisArg, args);
+
     if (isReturnSignal(result)) {
-        ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned ${JSON.stringify(result.value)}) ──`);
-        return result.value;
+      const returned = result.value;
+      ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned ${safeString(returned)}) ──`);
+      return returned;
     }
-    ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned ${JSON.stringify(result)}) ──`);
+
+    ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned ${safeString(result)}) ──`);
     return result;
   }
 
