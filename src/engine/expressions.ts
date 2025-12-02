@@ -111,19 +111,22 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // 5. Log function entry as its own step
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
-      // ⭐ For ARROWS, the step is created at the BODY line.
-      // The "Entering closure" narration is attached by evalCall.
       if (isArrow && node.body?.loc) {
-         logger.log(node.body.loc.start.line - 1);
+        // For arrows, DO NOT create a new step.
+        // evalCall already created the step at the arrow body line.
+        // We just reuse it to prevent drift and clear stale predictions.
+        const entry = logger.peekLastStep();
+        logger.setNext(null, "", entry);
       } else if (!isArrow) {
-         logger.log(node.loc.start.line - 1);
-         logger.addFlow(`Entering function ${funcName}`);
+        // Normal functions create their own entry step.
+        logger.log(node.loc.start.line - 1);
+        logger.addFlow(`Entering function ${funcName}`);
       }
     }
 
     const body = node.body;
 
-    // 6. Predict next step *inside block functions*
+    // 6. Predict next step *inside block functions* (not arrows with expr body)
     if (body && body.type === "BlockStatement") {
       const firstStmt = getFirstMeaningfulStatement(body);
       if (firstStmt?.loc) {
@@ -160,13 +163,15 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       // ────────────────────────────────────
       // Arrow with EXPRESSION body (like a + b)
       // ────────────────────────────────────
-      const entry = logger.peekLastStep(); // NO new step here
+      const entry = logger.peekLastStep(); // reuse existing step
       if (body?.loc && body.range) {
         const slice = logger
           .getCode()
           .slice(body.range[0], body.range[1])
           .trim();
+
         logger.addFlow(`Evaluating arrow body: ${slice}`);
+        logger.setNext(null, "Evaluate arrow body", entry);
       }
 
       const value = evaluateExpression(body, innerCtx);
@@ -180,9 +185,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
         logger.addFlow("Arrow function complete → returning result");
       }
 
-      // After evaluating arrow body, the next step is: return to caller
-      logger.setNext(null, "Return: control returns to caller", entry);
-
+      logger.setNext(null, "Return: control returns to caller");
       result = makeReturn(value);
     }
 
