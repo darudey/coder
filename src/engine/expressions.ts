@@ -58,6 +58,7 @@ export function resolveMember(node: any, ctx: EvalContext) {
 //   Used by FunctionExpression & ArrowFunctionExpression
 // ──────────────────────────────────────────────
 //
+// Shared helper: build function value (normal + arrow)
 function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   const definingEnv = ctx.env;
 
@@ -185,6 +186,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
   return fn;
 }
+
 
 //
 // ──────────────────────────────────────────────
