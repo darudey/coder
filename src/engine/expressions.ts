@@ -72,7 +72,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       node.id?.name ||
       (isArrow ? "(arrow closure)" : "Function");
 
-    // 1. Create execution environment for this call
+    // Create execution environment
     const fnEnv = new LexicalEnvironment(
       funcName,
       "function",
@@ -80,7 +80,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       this.__env
     );
 
-    // 2. Bind parameters
+    // Bind parameters
     (node.params ?? []).forEach((param: any, index: number) => {
       if (param.type === "Identifier") {
         fnEnv.record.createMutableBinding(
@@ -90,17 +90,14 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
           true
         );
       }
-      // (You can extend later for patterns, defaults, rest, etc.)
     });
 
-    // 3. Logger + stack from call context
     const logger = this.__ctx?.logger || ctx.logger;
     const stack = this.__ctx?.stack || ctx.stack;
 
-    // 4. Determine `this` value
+    // Determine lexical `this` for arrow functions
     let callThisValue = thisArg;
     if (isArrow) {
-      // Arrow functions capture lexical this
       try {
         callThisValue = this.__env.get("this");
       } catch {
@@ -108,34 +105,28 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       }
     }
 
-    // 5. Log function entry as its own step
+    // Mark env
     logger.setCurrentEnv(fnEnv);
-    if (node.loc) {
-      // NOTE: for arrow functions we DO NOT create the entry step here.
-      // evalCall handles arrow closure entry logging (it has the call-site args).
-      if (!isArrow) {
-        logger.log(node.loc.start.line - 1);
-        logger.addFlow(`Entering function ${funcName}`);
-      }
-    }
 
     const body = node.body;
 
-    // 6. Predict next step *inside block functions* (not arrows with expr body)
+    // Normal functions create an entry step
+    if (!isArrow && node.loc) {
+      logger.log(node.loc.start.line - 1);
+      logger.addFlow(`Entering function ${funcName}`);
+    }
+
+    // Predict next step inside blocks
     if (body?.type === "BlockStatement") {
       const firstStmt = getFirstMeaningfulStatement(body);
       if (firstStmt?.loc) {
         logger.setNext(
           firstStmt.loc.start.line - 1,
-          `Next Step → ${displayHeader(
-            firstStmt,
-            logger.getCode()
-          )}`
+          `Next Step → ${displayHeader(firstStmt, logger.getCode())}`
         );
       }
     }
 
-    // 7. Build inner EvalContext
     const innerCtx: EvalContext = {
       ...ctx,
       env: fnEnv,
@@ -145,19 +136,15 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       nextStatement: undefined,
     };
 
-    // 8. Push to callstack
     stack.push(funcName);
 
     let result: any = undefined;
 
     if (body?.type === "BlockStatement") {
-      // Classic function / arrow with block body
       hoistProgram({ body: body.body }, fnEnv);
       result = evaluateBlockBody(body.body, innerCtx);
     } else {
-      // ────────────────────────────────────
-      // Arrow with EXPRESSION body (like a + b)
-      // ────────────────────────────────────
+      // Arrow with expression body
       const slice = logger
         .getCode()
         .slice(body.range[0], body.range[1])
@@ -181,22 +168,13 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       result = makeReturn(value);
     }
 
-    // 9. Pop from callstack
     stack.pop();
-
-    // Restore outer env for logger
     logger.setCurrentEnv(this.__env);
 
-    // 10. Unwrap ReturnSignal to actual value
-    if (isReturnSignal(result)) {
-      return result.value;
-    }
-
-    // No explicit return → undefined
+    if (isReturnSignal(result)) return result.value;
     return undefined;
   };
 
-  // Create the actual function value object
   const fn = createFunction(
     definingEnv,
     node.params ?? [],
