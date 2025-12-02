@@ -1,36 +1,36 @@
 // src/engine/expressions.ts
 // Pure expression evaluator — no statement logic.
 
-import type { EvalContext } from './types';
+import type { EvalContext } from "./types";
 import {
   getProperty,
   setProperty,
   isUserFunction,
   createFunction,
   FunctionValue,
-} from './values';
+} from "./values";
 
-import { evalArray } from './expressions/evalArray';
-import { evalAssignment } from './expressions/evalAssignment';
-import { evalBinary } from './expressions/evalBinary';
-import { evalCall } from './expressions/evalCall';
-import { evalConditional } from './expressions/evalConditional';
-import { evalIdentifier } from './expressions/evalIdentifier';
-import { evalLogical } from './expressions/evalLogical';
-import { evalMember } from './expressions/evalMember';
-import { evalNew } from './expressions/evalNew';
-import { evalObject } from './expressions/evalObject';
-import { evalUnary } from './expressions/evalUnary';
-import { evalUpdateExpression } from './expressions/evalUpdate';
+import { evalArray } from "./expressions/evalArray";
+import { evalAssignment } from "./expressions/evalAssignment";
+import { evalBinary } from "./expressions/evalBinary";
+import { evalCall } from "./expressions/evalCall";
+import { evalConditional } from "./expressions/evalConditional";
+import { evalIdentifier } from "./expressions/evalIdentifier";
+import { evalLogical } from "./expressions/evalLogical";
+import { evalMember } from "./expressions/evalMember";
+import { evalNew } from "./expressions/evalNew";
+import { evalObject } from "./expressions/evalObject";
+import { evalUnary } from "./expressions/evalUnary";
+import { evalUpdateExpression } from "./expressions/evalUpdate";
 
-import { EnvironmentRecord, LexicalEnvironment } from './environment';
-import { hoistProgram } from './hoist';
-import { evaluateBlockBody } from './evaluator';
-import { isReturnSignal, makeReturn } from './signals';
+import { EnvironmentRecord, LexicalEnvironment } from "./environment";
+import { hoistProgram } from "./hoist";
+import { evaluateBlockBody } from "./evaluator";
+import { isReturnSignal, makeReturn } from "./signals";
 import {
   getFirstMeaningfulStatement,
   displayHeader,
-} from './next-step-helpers';
+} from "./next-step-helpers";
 
 //
 // Helper: resolve MemberExpression target
@@ -59,26 +59,26 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     thisArg: any,
     args: any[]
   ) {
-    const isArrow = node.type === 'ArrowFunctionExpression';
+    const isArrow = node.type === "ArrowFunctionExpression";
 
     const funcName =
       node.id?.name ||
-      (isArrow ? '(arrow closure)' : 'Function');
+      (isArrow ? "(arrow closure)" : "Function");
 
     // 1. Create execution environment for this call
     const fnEnv = new LexicalEnvironment(
       funcName,
-      'function',
+      "function",
       new EnvironmentRecord(),
       this.__env
     );
 
     // 2. Bind parameters
     (node.params ?? []).forEach((param: any, index: number) => {
-      if (param.type === 'Identifier') {
+      if (param.type === "Identifier") {
         fnEnv.record.createMutableBinding(
           param.name,
-          'var',
+          "var",
           args[index],
           true
         );
@@ -93,7 +93,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     let callThisValue = thisArg;
     if (isArrow) {
       try {
-        callThisValue = this.__env.get('this');
+        callThisValue = this.__env.get("this");
       } catch {
         callThisValue = undefined;
       }
@@ -105,11 +105,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       if (isArrow && node.body?.loc) {
         // DO NOT create a new arrow step to avoid duplicate steps.
         // evalCall created a step at the arrow body line; here we ensure we don't create a second.
-        const entry = logger.peekLastStep();
-        if (entry) {
-          // clear any stale predictions that might exist for this entry
-          logger.setNext(null, '', entry);
-        }
+        // do nothing — evaluateCall handles next-step for arrows
       } else if (!isArrow) {
         // Normal functions create their own entry step.
         logger.log(node.loc.start.line - 1);
@@ -120,7 +116,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     const body = node.body;
 
     // 6. Predict next step inside block functions
-    if (body && body.type === 'BlockStatement') {
+    if (body && body.type === "BlockStatement") {
       const firstStmt = getFirstMeaningfulStatement(body);
       if (firstStmt?.loc) {
         logger.setNext(
@@ -145,14 +141,17 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     let result: any = undefined;
 
-    if (body && body.type === 'BlockStatement') {
+    if (body && body.type === "BlockStatement") {
       // Classic function
       hoistProgram({ body: body.body }, fnEnv);
       result = evaluateBlockBody(body.body, innerCtx);
     } else {
       // Arrow with EXPRESSION body (only logged here, NEVER in evalCall)
       if (body?.loc && body.range) {
-        const slice = logger.getCode().slice(body.range[0], body.range[1]).trim();
+        const slice = logger
+          .getCode()
+          .slice(body.range[0], body.range[1])
+          .trim();
         logger.addFlow(`Evaluating arrow body: ${slice}`);
       }
 
@@ -175,10 +174,6 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     // 10. Unwrap ReturnSignal to actual value (and print small post-return narration)
     if (isReturnSignal(result)) {
-      // Teaching-friendly narration for block functions
-      if (body && body.type === 'BlockStatement') {
-         logger.addFlow(`Function complete → returned ${JSON.stringify(result.value)}`);
-      }
       try {
         logger.addFlow(`(callsite) returned → ${JSON.stringify(result.value)}`);
       } catch {
@@ -232,7 +227,7 @@ const expressionEvaluators: {
   NewExpression: evalNew,
 
   TemplateLiteral: (node: any, ctx: EvalContext) => {
-    let out = '';
+    let out = "";
     for (let i = 0; i < node.quasis.length; i++) {
       out += node.quasis[i].value.raw;
       if (node.expressions[i]) {
@@ -254,18 +249,18 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
   // SAFE MODE: preview only (used for Next-Step prediction)
   if (ctx.safe) {
     switch (node.type) {
-      case 'Identifier':
-      case 'Literal':
-      case 'BinaryExpression':
-      case 'LogicalExpression':
+      case "Identifier":
+      case "Literal":
+      case "BinaryExpression":
+      case "LogicalExpression":
         break;
 
-      case 'CallExpression':
-        return '[Side Effect]';
+      case "CallExpression":
+        return "[Side Effect]";
 
-      case 'AssignmentExpression':
-      case 'UpdateExpression':
-        if ((node as any).argument?.type === 'Identifier') {
+      case "AssignmentExpression":
+      case "UpdateExpression":
+        if ((node as any).argument?.type === "Identifier") {
           return ctx.env.get((node as any).argument.name);
         }
         return undefined;

@@ -20,7 +20,7 @@ export function generateTimeline(
 ): TimelineEntry[] {
   const maxSteps = options.maxSteps ?? 2000;
   
-  // PATCH: Reset call counter before each program run
+  // RESET call counter before each program run
   resetCallCounter();
 
   let ast;
