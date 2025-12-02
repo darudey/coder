@@ -1,3 +1,4 @@
+
 // src/engine/expressions/evalCall.ts
 import type { EvalContext } from "../types";
 import { evaluateExpression } from "../evaluator";
@@ -137,7 +138,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
     const body = calleeVal.__node.body;
     if (body?.loc) {
       const line = body.type === "BlockStatement"
-        ? getFirstMeaningfulStatement(body)?.loc?.start.line - 1
+        ? getFirstMeaningfulStatement(body)?.loc.start.line - 1
         : body.loc.start.line - 1;
 
       ctx.logger.setNext(
