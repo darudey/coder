@@ -1,37 +1,46 @@
-// src/engine/interpreter.ts
 
-import * as acorn from 'acorn';
-import { LexicalEnvironment, EnvironmentRecord } from './environment';
-import { TimelineLogger, TimelineEntry } from './timeline';
-import { evaluateProgram, EvalContext } from './evaluator';
-import { createObject } from './values';
-import { resetCallCounter } from './expressions/evalCall';
+// src/engine/interpreter.ts
+//
+// FINAL PHASE-2 VERSION
+// • Resets CALL_COUNTER each run
+// • Adds universal “Program finished ✔” step
+// • Teaching-friendly builtins
+// • No duplicate steps
+//
+
+import * as acorn from "acorn";
+import { LexicalEnvironment, EnvironmentRecord } from "./environment";
+import { TimelineLogger, TimelineEntry } from "./timeline";
+import { evaluateProgram, EvalContext } from "./evaluator";
+import { createObject } from "./values";
+import { resetCallCounter } from "./expressions/evalCall";
 
 export interface RunOptions {
   maxSteps?: number;
 }
 
-/**
- * Main entry: parse, setup global env, run, and return timeline.
- */
 export function generateTimeline(
   code: string,
   options: RunOptions = {}
 ): TimelineEntry[] {
   const maxSteps = options.maxSteps ?? 2000;
-  
-  // RESET call counter before each program run
+
+  // 🔥 PHASE 2: Always reset call counter before execution
   resetCallCounter();
 
+  // --------------------------------------------------------------
+  // 1. PARSE
+  // --------------------------------------------------------------
   let ast;
   try {
     ast = acorn.parse(code, {
-      ecmaVersion: 'latest',
+      ecmaVersion: "latest",
       locations: true,
       ranges: true,
-      sourceType: 'script',
+      sourceType: "script",
     }) as any;
   } catch (e: any) {
+    // Return a timeline with a single syntax-error step
     const errorEntry: TimelineEntry = {
       step: 0,
       line: (e.loc?.line ?? 1) - 1,
@@ -41,21 +50,24 @@ export function generateTimeline(
       output: [`SyntaxError: ${e.message}`],
       nextStep: {
         line: null,
-        message: `Execution failed due to a syntax error.`,
+        message: "Execution failed due to a syntax error.",
       },
     };
     return [errorEntry];
   }
 
-  // Global env
+  // --------------------------------------------------------------
+  // 2. GLOBAL ENVIRONMENT
+  // --------------------------------------------------------------
   const globalRecord = new EnvironmentRecord();
   const globalEnv = new LexicalEnvironment(
-    'Global',
-    'global',
+    "Global",
+    "global",
     globalRecord,
     null
   );
-  const scriptEnv = globalEnv.extend('script', 'Script');
+
+  const scriptEnv = globalEnv.extend("script", "Script");
 
   const stack: string[] = [];
   const logger = new TimelineLogger(
@@ -65,17 +77,23 @@ export function generateTimeline(
     maxSteps
   );
 
-  // Builtins for teaching
+  // --------------------------------------------------------------
+  // 3. BUILTINS (teaching-friendly)
+  // --------------------------------------------------------------
   const consoleObj: any = createObject(null);
+
   const logFn = (...args: any[]) => {
     logger.logOutput(...args);
   };
-  (logFn as any).__builtin = 'console.log';
+  (logFn as any).__builtin = "console.log"; // needed by evalCall
   consoleObj.log = logFn;
 
-  globalEnv.record.createMutableBinding('console', 'var', consoleObj, true);
-  globalEnv.record.createMutableBinding('Math', 'var', Math, true);
+  globalEnv.record.createMutableBinding("console", "var", consoleObj, true);
+  globalEnv.record.createMutableBinding("Math", "var", Math, true);
 
+  // --------------------------------------------------------------
+  // 4. CONTEXT
+  // --------------------------------------------------------------
   const ctx: EvalContext = {
     env: scriptEnv,
     thisValue: undefined,
@@ -83,14 +101,17 @@ export function generateTimeline(
     stack,
   };
 
+  // --------------------------------------------------------------
+  // 5. EXECUTE PROGRAM
+  // --------------------------------------------------------------
   try {
     evaluateProgram(ast, ctx);
   } catch (err: any) {
-    // Step limit or other error
+    // Step-limit or runtime error
     const entries = logger.getTimeline();
-    const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
-    const lastStep = lastEntry ? lastEntry.step + 1 : 0;
-    const lastLine = lastEntry ? lastEntry.line : 0;
+    const lastEntry = entries.at(-1);
+    const lastStep = (lastEntry?.step ?? 0) + 1;
+    const lastLine = lastEntry?.line ?? 0;
 
     const extra: TimelineEntry = {
       step: lastStep,
@@ -104,8 +125,8 @@ export function generateTimeline(
       nextStep: {
         line: null,
         message:
-          err && err.message === 'Step limit exceeded'
-            ? 'Execution stopped: too many steps (possible infinite loop / recursion)'
+          err?.message === "Step limit exceeded"
+            ? "Execution stopped: too many steps (possible infinite loop)"
             : `Execution error: ${err?.message ?? String(err)}`,
       },
     };
@@ -114,14 +135,18 @@ export function generateTimeline(
     return entries;
   }
 
-  // ---- ADD UNIVERSAL FINAL STEP ----
+  // --------------------------------------------------------------
+  // 6. UNIVERSAL FINAL STEP (Phase-2 requirement)
+  // --------------------------------------------------------------
   const last = logger.peekLastStep();
+
+  // Only add finishing line if we returned to global
   if (last && stack.length === 0) {
-    // Only add "finished" if we are back at the global scope.
     logger.log(last.line);
     logger.addFlow("Program finished ✔");
     logger.setNext(null, "No more steps");
   }
 
+  // Done
   return logger.getTimeline();
 }
