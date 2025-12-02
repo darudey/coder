@@ -3,25 +3,15 @@ import type { EvalContext } from "../types";
 import { evaluateExpression } from "../expressions";
 import { makeReturn } from "../signals";
 
-/**
- * Small helper to keep Control Flow logs readable.
- * We don't want to dump the entire internal FunctionValue structure.
- */
 function formatValueForLog(value: any): string {
-  if (value && typeof value === "object" && (value as any).__isFunctionValue) {
-    return "[Function]";
-  }
-  if (typeof value === "function") return "[NativeFunction]";
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    try {
-      return String(value);
-    } catch {
-      return "[Unprintable]";
-    }
-  }
+  if (value === null || value === undefined) return String(value);
+  const t = typeof value;
+  if (t === "string") return JSON.stringify(value);
+  if (t === "number" || t === "boolean") return String(value);
+  if (value && t === "object" && (value as any).__isFunctionValue) return "[Function]";
+  if (t === "function") return "[NativeFunction]";
+  if (Array.isArray(value)) return `[Array(${value.length})]`;
+  return "[Object]";
 }
 
 export function evalReturnStatement(node: any, ctx: EvalContext): any {
@@ -34,21 +24,17 @@ export function evalReturnStatement(node: any, ctx: EvalContext): any {
 
   if (arg) {
     value = evaluateExpression(arg, ctx);
-
-    // mark this expression as "return value" for the Expression Evaluation panel
     logger.addExpressionContext(arg, "Return value expression");
     logger.addExpressionEval(arg, value);
   }
 
   const pretty = formatValueForLog(value);
 
-  // Clean, short messages instead of giant JSON blobs
   logger.addFlow(`Return encountered → value: ${pretty}`);
 
   const funcName = ctx.stack[ctx.stack.length - 1] || "<anonymous>";
   logger.addFlow(`Return → ${funcName} returns ${pretty}`);
 
-  // After return, control goes back to caller
   logger.setNext(null, "Return: control returns to caller");
 
   return makeReturn(value);
