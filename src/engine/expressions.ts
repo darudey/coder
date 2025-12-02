@@ -111,14 +111,9 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // 5. Log function entry as its own step
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
-      if (isArrow && node.body?.loc) {
-        // For arrows, DO NOT create a new step.
-        // evalCall already created the step at the arrow body line.
-        // We just reuse it to prevent drift and clear stale predictions.
-        const entry = logger.peekLastStep();
-        logger.setNext(null, "", entry);
-      } else if (!isArrow) {
-        // Normal functions create their own entry step.
+      // NOTE: for arrow functions we DO NOT create the entry step here.
+      // evalCall handles arrow closure entry logging (it has the call-site args).
+      if (!isArrow) {
         logger.log(node.loc.start.line - 1);
         logger.addFlow(`Entering function ${funcName}`);
       }
@@ -127,7 +122,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     const body = node.body;
 
     // 6. Predict next step *inside block functions* (not arrows with expr body)
-    if (body && body.type === "BlockStatement") {
+    if (body?.type === "BlockStatement") {
       const firstStmt = getFirstMeaningfulStatement(body);
       if (firstStmt?.loc) {
         logger.setNext(
@@ -155,7 +150,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     let result: any = undefined;
 
-    if (body && body.type === "BlockStatement") {
+    if (body?.type === "BlockStatement") {
       // Classic function / arrow with block body
       hoistProgram({ body: body.body }, fnEnv);
       result = evaluateBlockBody(body.body, innerCtx);
@@ -163,29 +158,26 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
       // ────────────────────────────────────
       // Arrow with EXPRESSION body (like a + b)
       // ────────────────────────────────────
-      const entry = logger.peekLastStep(); // reuse existing step
-      if (body?.loc && body.range) {
-        const slice = logger
-          .getCode()
-          .slice(body.range[0], body.range[1])
-          .trim();
+      const slice = logger
+        .getCode()
+        .slice(body.range[0], body.range[1])
+        .trim();
 
-        logger.addFlow(`Evaluating arrow body: ${slice}`);
-        logger.setNext(null, "Evaluate arrow body", entry);
-      }
+      logger.addFlow(`Evaluating arrow body: ${slice}`);
 
       const value = evaluateExpression(body, innerCtx);
 
-      if (body) {
-        logger.addExpressionEval(body, value);
-        logger.addExpressionContext(body, "Arrow function body");
-        logger.addFlow(
-          `Arrow body result → ${JSON.stringify(value)}`
-        );
-        logger.addFlow("Arrow function complete → returning result");
-      }
+      logger.addExpressionEval(body, value);
+      logger.addExpressionContext(body, "Arrow function body");
+      logger.addFlow(`Arrow body result → ${JSON.stringify(value)}`);
+      logger.addFlow("Arrow function complete → returning result");
 
-      logger.setNext(null, "Return: control returns to caller");
+      // Predict return back to caller
+      logger.setNext(
+        null,
+        "Return: control returns to caller"
+      );
+
       result = makeReturn(value);
     }
 
