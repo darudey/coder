@@ -98,8 +98,11 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
         logger.addExpressionEval(body, value);
         logger.addExpressionContext(body, "Arrow function body");
         logger.addFlow(`Arrow body result → ${JSON.stringify(value)}`);
-        logger.addFlow("Arrow function complete → returning result");
       }
+      
+      logger.addFlow(
+        `The function finished running.\nReturned → ${JSON.stringify(value)}`
+      );
 
       logger.setNext(null, "Return: control returns to caller");
       result = makeReturn(value);
@@ -108,7 +111,12 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     stack.pop();
     logger.setCurrentEnv(this.__env);
 
-    if (isReturnSignal(result)) return result.value;
+    if (isReturnSignal(result)) {
+        logger.addFlow(
+            `The function finished running.\nReturned → ${JSON.stringify(result.value)}`
+        );
+        return result.value;
+    }
     return undefined;
   };
 

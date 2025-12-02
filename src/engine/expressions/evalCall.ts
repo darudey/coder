@@ -7,6 +7,8 @@ import { isReturnSignal } from "../signals";
 import { evalMemberTarget } from "./evalMember";
 import { getFirstMeaningfulStatement, displayHeader } from "../next-step-helpers";
 
+let CALL_COUNTER = 0;
+
 function safeString(v: any): string {
   try {
     if (v === null) return "null";
@@ -62,6 +64,9 @@ function readBindingsFromRecord(recordLike: any): Record<string, any> {
 }
 
 export function evalCall(node: any, ctx: EvalContext): any {
+  CALL_COUNTER++;
+  ctx.logger.addFlow(`── Call #${CALL_COUNTER} start ──`);
+
   const calleeVal = evaluateExpression(node.callee, ctx);
   const args = node.arguments.map((arg: any) => evaluateExpression(arg, ctx));
 
@@ -96,6 +101,35 @@ export function evalCall(node: any, ctx: EvalContext): any {
       }
     } catch {}
 
+    ctx.logger.addFlow(`Entering closure (${paramPairs.join(", ")})`);
+    
+    // Teaching: Closure explanation (only once per call)
+    if (calleeVal.__env && calleeVal.__node?.type === "ArrowFunctionExpression") {
+      const capturedVars: string[] = [];
+      let env = calleeVal.__env.outer;
+
+      while (env) {
+        const rec = env.record?.bindings;
+        if (rec) {
+          const names =
+            typeof rec.keys === "function" ? Array.from(rec.keys()) : Object.keys(rec);
+          for (const key of names) {
+            if (!params.includes(key)) {
+              const v = typeof rec.get === "function" ? rec.get(key)?.value : rec[key];
+              capturedVars.push(`${key} = ${JSON.stringify(v)}`);
+            }
+          }
+        }
+        env = env.outer;
+      }
+
+      if (capturedVars.length > 0) {
+        ctx.logger.addFlow(
+          `A closure was created.\nIt remembers: ${capturedVars.join(", ")}`
+        );
+      }
+    }
+
     // create step at arrow body line (so UI focuses body)
     if (calleeVal.__node.body?.loc) {
       const body = calleeVal.__node.body;
@@ -103,9 +137,6 @@ export function evalCall(node: any, ctx: EvalContext): any {
       ctx.logger.log(body.loc.start.line - 1);
       ctx.logger.setNext(line, "", ctx.logger.peekLastStep());
     }
-
-    ctx.logger.addFlow(`Entering closure (${paramPairs.join(", ")})`);
-    if (capturedPairs.length > 0) ctx.logger.addFlow(`Captured: ${capturedPairs.join(", ")}`);
   }
 
   // ---- Predict next-step for non-arrow functions (block bodies) ----
@@ -139,7 +170,11 @@ export function evalCall(node: any, ctx: EvalContext): any {
     if (!fn.__ctx) fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
 
     const result = fn.call(thisArg, args);
-    if (isReturnSignal(result)) return result.value;
+    if (isReturnSignal(result)) {
+        ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned ${JSON.stringify(result.value)}) ──`);
+        return result.value;
+    }
+    ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned ${JSON.stringify(result)}) ──`);
     return result;
   }
 
