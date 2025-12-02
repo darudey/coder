@@ -1,17 +1,8 @@
 
 // src/engine/expressions.ts
-// Pure expression evaluator — no statement logic.
-// This file is imported by evaluator.ts and next-step-helpers.ts.
-
+// (only the relevant function portion shown -- replace your current file with this full content)
 import type { EvalContext } from "./types";
-import {
-  getProperty,
-  setProperty,
-  isUserFunction,
-  createFunction,
-  FunctionValue,
-} from "./values";
-
+import { getProperty, setProperty, isUserFunction, createFunction, FunctionValue } from "./values";
 import { evalArray } from "./expressions/evalArray";
 import { evalAssignment } from "./expressions/evalAssignment";
 import { evalBinary } from "./expressions/evalBinary";
@@ -24,148 +15,93 @@ import { evalNew } from "./expressions/evalNew";
 import { evalObject } from "./expressions/evalObject";
 import { evalUnary } from "./expressions/evalUnary";
 import { evalUpdateExpression } from "./expressions/evalUpdate";
-
 import { EnvironmentRecord, LexicalEnvironment } from "./environment";
 import { hoistProgram } from "./hoist";
 import { evaluateBlockBody } from "./evaluator";
 import { isReturnSignal, makeReturn } from "./signals";
-import {
-  getFirstMeaningfulStatement,
-  displayHeader,
-} from "./next-step-helpers";
+import { getFirstMeaningfulStatement, displayHeader } from "./next-step-helpers";
 
-//
-// ──────────────────────────────────────────────
-//   Helper: resolve MemberExpression target
-// ──────────────────────────────────────────────
-//
 export function resolveMember(node: any, ctx: EvalContext) {
   const obj = evaluateExpression(node.object, ctx);
-
   let prop: any;
-  if (node.computed) {
-    prop = evaluateExpression(node.property, ctx);
-  } else {
-    prop = node.property.name;
-  }
-
+  if (node.computed) prop = evaluateExpression(node.property, ctx);
+  else prop = node.property.name;
   return { obj, prop };
 }
 
-//
-// ──────────────────────────────────────────────
-//   Shared helper: build function value
-//   Used by FunctionExpression & ArrowFunctionExpression
-// ──────────────────────────────────────────────
-//
-// Shared helper: build function value (normal + arrow)
 function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   const definingEnv = ctx.env;
-
-  const impl = function (
-    this: FunctionValue,
-    thisArg: any,
-    args: any[]
-  ) {
+  const impl = function (this: FunctionValue, thisArg: any, args: any[]) {
     const isArrow = node.type === "ArrowFunctionExpression";
+    const funcName = node.id?.name || (isArrow ? "(arrow closure)" : "Function");
 
-    const funcName =
-      node.id?.name ||
-      (isArrow ? "(arrow closure)" : "Function");
+    const fnEnv = new LexicalEnvironment(funcName, "function", new EnvironmentRecord(), this.__env);
 
-    // Create execution environment
-    const fnEnv = new LexicalEnvironment(
-      funcName,
-      "function",
-      new EnvironmentRecord(),
-      this.__env
-    );
-
-    // Bind parameters
     (node.params ?? []).forEach((param: any, index: number) => {
       if (param.type === "Identifier") {
-        fnEnv.record.createMutableBinding(
-          param.name,
-          "var",
-          args[index],
-          true
-        );
+        fnEnv.record.createMutableBinding(param.name, "var", args[index], true);
       }
     });
 
     const logger = this.__ctx?.logger || ctx.logger;
     const stack = this.__ctx?.stack || ctx.stack;
 
-    // Determine lexical `this` for arrow functions
     let callThisValue = thisArg;
     if (isArrow) {
-      try {
-        callThisValue = this.__env.get("this");
-      } catch {
-        callThisValue = undefined;
-      }
+      try { callThisValue = this.__env.get("this"); } catch { callThisValue = undefined; }
     }
 
-    // Mark env
     logger.setCurrentEnv(fnEnv);
 
-    const body = node.body;
-
-    // Normal functions create an entry step
-    if (!isArrow && node.loc) {
-      logger.log(node.loc.start.line - 1);
-      logger.addFlow(`Entering function ${funcName}`);
-    }
-
-    // Predict next step inside blocks
-    if (body?.type === "BlockStatement") {
-      const firstStmt = getFirstMeaningfulStatement(body);
-      if (firstStmt?.loc) {
-        logger.setNext(
-          firstStmt.loc.start.line - 1,
-          `Next Step → ${displayHeader(firstStmt, logger.getCode())}`
-        );
+    // Coordination with evalCall: arrows may rely on evalCall to create the initial step.
+    if (node.loc) {
+      if (isArrow && node.body?.loc) {
+        // Do not create a separate arrow step; keep step created by evalCall to avoid duplication.
+        // However clear stale next-step if any:
+        const entry = logger.peekLastStep();
+        if (entry) logger.setNext(null, "", entry);
+      } else if (!isArrow) {
+        logger.log(node.loc.start.line - 1);
+        logger.addFlow(`Entering function ${funcName}`);
       }
     }
 
-    const innerCtx: EvalContext = {
-      ...ctx,
-      env: fnEnv,
-      thisValue: callThisValue,
-      logger,
-      stack,
-      nextStatement: undefined,
-    };
+    const body = node.body;
+    if (body && body.type === "BlockStatement") {
+      const firstStmt = getFirstMeaningfulStatement(body);
+      if (firstStmt?.loc) {
+        logger.setNext(firstStmt.loc.start.line - 1, `Next Step → ${displayHeader(firstStmt, logger.getCode())}`);
+      }
+    }
+
+    const innerCtx: EvalContext = { ...ctx, env: fnEnv, thisValue: callThisValue, logger, stack, nextStatement: undefined };
 
     stack.push(funcName);
 
     let result: any = undefined;
 
-    if (body?.type === "BlockStatement") {
+    if (body && body.type === "BlockStatement") {
       hoistProgram({ body: body.body }, fnEnv);
       result = evaluateBlockBody(body.body, innerCtx);
     } else {
-      // Arrow with expression body
-      const slice = logger
-        .getCode()
-        .slice(body.range[0], body.range[1])
-        .trim();
-
-      logger.addFlow(`Evaluating arrow body: ${slice}`);
+      // Arrow expression body
+      const entry = logger.peekLastStep();
+      if (body?.loc && body.range) {
+        const slice = logger.getCode().slice(body.range[0], body.range[1]).trim();
+        logger.addFlow(`Evaluating arrow body: ${slice}`);
+        logger.setNext(null, "Evaluate arrow body", entry);
+      }
 
       const value = evaluateExpression(body, innerCtx);
 
-      logger.addExpressionEval(body, value);
-      logger.addExpressionContext(body, "Arrow function body");
-      logger.addFlow(`Arrow body result → ${JSON.stringify(value)}`);
-      logger.addFlow("Arrow function complete → returning result");
+      if (body) {
+        logger.addExpressionEval(body, value);
+        logger.addExpressionContext(body, "Arrow function body");
+        logger.addFlow(`Arrow body result → ${JSON.stringify(value)}`);
+        logger.addFlow("Arrow function complete → returning result");
+      }
 
-      // Predict return back to caller
-      logger.setNext(
-        null,
-        "Return: control returns to caller"
-      );
-
+      logger.setNext(null, "Return: control returns to caller");
       result = makeReturn(value);
     }
 
@@ -176,41 +112,20 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     return undefined;
   };
 
-  const fn = createFunction(
-    definingEnv,
-    node.params ?? [],
-    node.body,
-    impl
-  );
+  const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
   (fn as any).__node = node;
-
   return fn;
 }
 
-
-//
-// ──────────────────────────────────────────────
-//   MAIN evaluateExpression
-// ──────────────────────────────────────────────
-//
-
-const expressionEvaluators: {
-  [type: string]: (node: any, ctx: EvalContext) => any;
-} = {
+// expressionEvaluators and evaluateExpression remain the same — make sure CallExpression points to evalCall
+const expressionEvaluators: { [type: string]: (node: any, ctx: EvalContext) => any } = {
   Identifier: evalIdentifier,
   Literal: (node: any) => node.value,
   ThisExpression: (node: any, ctx: EvalContext) => ctx.thisValue,
-
   ArrayExpression: evalArray,
   ObjectExpression: evalObject,
-
-  // Now use proper function value with closure + logging
-  FunctionExpression: (node: any, ctx: EvalContext) =>
-    buildFunctionValue(node, ctx),
-
-  ArrowFunctionExpression: (node: any, ctx: EvalContext) =>
-    buildFunctionValue(node, ctx),
-
+  FunctionExpression: (node: any, ctx: EvalContext) => buildFunctionValue(node, ctx),
+  ArrowFunctionExpression: (node: any, ctx: EvalContext) => buildFunctionValue(node, ctx),
   UnaryExpression: evalUnary,
   UpdateExpression: evalUpdateExpression,
   BinaryExpression: evalBinary,
@@ -220,7 +135,6 @@ const expressionEvaluators: {
   ConditionalExpression: evalConditional,
   CallExpression: evalCall,
   NewExpression: evalNew,
-
   TemplateLiteral: (node: any, ctx: EvalContext) => {
     let out = "";
     for (let i = 0; i < node.quasis.length; i++) {
@@ -232,46 +146,31 @@ const expressionEvaluators: {
     }
     return out;
   },
-
-  ChainExpression: (node: any, ctx: EvalContext) => {
-    return evaluateExpression(node.expression, ctx);
-  },
+  ChainExpression: (node: any, ctx: EvalContext) => { return evaluateExpression(node.expression, ctx); },
 };
 
 export function evaluateExpression(node: any, ctx: EvalContext): any {
   if (!node) return;
-
-  // SAFE MODE: preview only (used for Next-Step prediction)
   if (ctx.safe) {
     switch (node.type) {
-      // These are safe to evaluate fully
       case "Identifier":
       case "Literal":
       case "BinaryExpression":
       case "LogicalExpression":
         break;
-
-      // These have potential side effects and should be blocked
       case "CallExpression":
         return "[Side Effect]";
-
       case "AssignmentExpression":
       case "UpdateExpression":
-        // NOTE: this is a bit simplified; you can refine later
         if ((node as any).argument?.type === "Identifier") {
           return ctx.env.get((node as any).argument.name);
         }
         return undefined;
-
       default:
         break;
     }
   }
-
   const evaluator = expressionEvaluators[node.type];
-  if (evaluator) {
-    return evaluator(node, ctx);
-  }
-
+  if (evaluator) return evaluator(node, ctx);
   return undefined;
 }
