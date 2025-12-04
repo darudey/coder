@@ -1,4 +1,15 @@
+
 // src/engine/expressions/evalCall.ts
+//
+// FINAL PHASE-2 VERSION
+// • Clean call separators (── Call #N start/complete ──)
+// • Correct arrow closure logging
+// • Closure explanation only ONCE
+// • Teaching-friendly narration
+// • No duplicate steps
+// • No prediction drift
+//
+
 import type { EvalContext } from "../types";
 import { evaluateExpression } from "../evaluator";
 import { isUserFunction, FunctionValue } from "../values";
@@ -12,6 +23,7 @@ export function resetCallCounter() { CALL_COUNTER = 0; }
 // ----------------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------------
+
 function safeString(v: any): string {
   try {
     if (v === null) return "null";
@@ -36,7 +48,10 @@ function getCalleeName(node: any, value: any): string {
   return "<function>";
 }
 
-// Captures only lexical outer function variables (NOT script/global)
+/**
+ * Collect ONLY lexical outer function bindings.
+ * Stops at Script/Global to avoid large captures.
+ */
 function collectCapturedVariables(fn: FunctionValue): string[] {
   const result: string[] = [];
   let env = fn.__env;
@@ -57,8 +72,9 @@ function collectCapturedVariables(fn: FunctionValue): string[] {
 }
 
 // ----------------------------------------------------------------------
-// evalCall
+// evalCall — HEART OF CALL EXECUTION
 // ----------------------------------------------------------------------
+
 export function evalCall(node: any, ctx: EvalContext): any {
   CALL_COUNTER++;
   ctx.logger.addFlow(`── Call #${CALL_COUNTER} start ──`);
@@ -72,12 +88,13 @@ export function evalCall(node: any, ctx: EvalContext): any {
       : ctx.thisValue ?? undefined;
 
   const calleeName = getCalleeName(node.callee, calleeVal);
+
   ctx.logger.addFlow(
     `Calling function ${calleeName}(${args.map(a => safeString(a)).join(", ")})`
   );
 
   // ------------------------------------------------------------------
-  // Arrow closure entry (teaching-friendly)
+  // ✔ Arrow closure entry (teaching-friendly)
   // ------------------------------------------------------------------
   if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
     const params = calleeVal.__params.map((p: any, i: number) =>
@@ -86,27 +103,26 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
     ctx.logger.addFlow(`Entering closure (${params.join(", ")})`);
 
-    // Explain closure ONCE
+    // Explain closure only ONCE
     if (!calleeVal.__closureExplained) {
       const captured = collectCapturedVariables(calleeVal);
       if (captured.length > 0) {
-        ctx.logger.addFlow(`Closure created. It remembers: ${captured.join(", ")}`);
+        ctx.logger.addFlow(
+          `Closure created. It remembers: ${captured.join(", ")}`
+        );
       }
       calleeVal.__closureExplained = true;
     }
 
-    // Only set next-step — do NOT create a new step here
+    // DO NOT create a new timeline step — expressions.ts handles this
     const body = calleeVal.__node.body;
     if (body?.loc) {
-      ctx.logger.setNext(
-        body.loc.start.line - 1,
-        `Evaluate arrow body`
-      );
+      ctx.logger.setNext(body.loc.start.line - 1, `Evaluate arrow body`);
     }
   }
 
   // ------------------------------------------------------------------
-  // Next-step prediction for normal functions
+  // ✔ Next-step prediction for normal functions
   // ------------------------------------------------------------------
   if (calleeVal?.__node && calleeVal.__node.type !== "ArrowFunctionExpression") {
     const body = calleeVal.__node.body;
@@ -124,7 +140,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
   }
 
   // ------------------------------------------------------------------
-  // Builtin console.log
+  // ✔ Builtin console.log
   // ------------------------------------------------------------------
   if (calleeVal && (calleeVal as any).__builtin === "console.log") {
     const formattedArgs = args.map(a => safeString(a)).join(" ");
@@ -135,7 +151,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
   }
 
   // ------------------------------------------------------------------
-  // Native
+  // ✔ Native JS function
   // ------------------------------------------------------------------
   if (typeof calleeVal === "function" && !isUserFunction(calleeVal)) {
     const result = calleeVal.apply(thisArg, args);
@@ -146,17 +162,21 @@ export function evalCall(node: any, ctx: EvalContext): any {
   }
 
   // ------------------------------------------------------------------
-  // User-defined
+  // ✔ User-defined function (function or arrow)
   // ------------------------------------------------------------------
   if (isUserFunction(calleeVal)) {
     const fn = calleeVal as FunctionValue;
+
+    // Provide logger/stack to user function
     if (!fn.__ctx) fn.__ctx = { logger: ctx.logger, stack: ctx.stack };
 
     const result = fn.call(thisArg, args);
 
     if (isReturnSignal(result)) {
       ctx.logger.addFlow(
-        `── Call #${CALL_COUNTER} complete (returned ${safeString(result.value)}) ──`
+        `── Call #${CALL_COUNTER} complete (returned ${safeString(
+          result.value
+        )}) ──`
       );
       return result.value;
     }

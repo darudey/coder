@@ -1,3 +1,4 @@
+
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -149,7 +150,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // CASE 2 — ARROW FUNCTION WITH EXPRESSION BODY
     // -------------------------------------------------
     else {
-      // Logging expression body (no step creation!)
+      // Arrow with EXPRESSION body (only logged here, NEVER in evalCall)
       if (body?.loc && body.range) {
         const slice = logger.getCode().slice(body.range[0], body.range[1]).trim();
         logger.addFlow(`Evaluating arrow body: ${slice}`);
@@ -159,13 +160,11 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
       logger.addExpressionEval(body, value);
       logger.addExpressionContext(body, "Arrow function body");
-
       logger.addFlow(`Arrow body result → ${JSON.stringify(value)}`);
       logger.addFlow(`Function complete → returned ${JSON.stringify(value)}`);
 
       // Next-step goes back to caller
       logger.setNext(null, "Return: control returns to caller");
-
       result = makeReturn(value);
     }
 
