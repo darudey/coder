@@ -1,12 +1,7 @@
+
 // src/engine/expressions/evalCall.ts
 //
-// FINAL PHASE-2 VERSION
-// • Clean call separators (── Call #N start/complete ──)
-// • Correct arrow closure logging
-// • Closure explanation only ONCE
-// • Teaching-friendly narration
-// • No duplicate steps
-// • No prediction drift
+// FINAL PHASE-2 VERSION + metadata for UI
 //
 
 import type { EvalContext } from "../types";
@@ -51,7 +46,7 @@ function getCalleeName(node: any, value: any): string {
  * Collect ONLY lexical outer function bindings.
  * Stops at Script/Global to avoid large captures.
  */
-export function collectCapturedVariables(fn: FunctionValue): string[] {
+function collectCapturedVariables(fn: FunctionValue): string[] {
   const result: string[] = [];
   let env = fn.__env;
 
@@ -70,6 +65,31 @@ export function collectCapturedVariables(fn: FunctionValue): string[] {
   return result;
 }
 
+// Helper to build signature from a function value/node (Option C)
+function buildReadableSignatureFromValue(val: any, loggerCode: string) {
+  try {
+    const node = val.__node;
+    if (!node) return undefined;
+    if (node.type === "FunctionExpression" || node.type === "FunctionDeclaration") {
+      const name = node.id?.name || "(anonymous)";
+      const params = (node.params || []).map((p: any) => (p.type === "Identifier" ? p.name : "")).join(", ");
+      return `function ${name}(${params})`;
+    }
+    if (node.type === "ArrowFunctionExpression") {
+      if (node.range) {
+        try {
+          return loggerCode.substring(node.range[0], node.range[1]);
+        } catch {}
+      }
+      const params = (node.params || []).map((p: any) => (p.type === "Identifier" ? p.name : "")).join(", ");
+      return `(${params}) => (arrow body)`;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ----------------------------------------------------------------------
 // evalCall — HEART OF CALL EXECUTION
 // ----------------------------------------------------------------------
@@ -77,12 +97,6 @@ export function collectCapturedVariables(fn: FunctionValue): string[] {
 export function evalCall(node: any, ctx: EvalContext): any {
   CALL_COUNTER++;
   ctx.logger.addFlow(`── Call #${CALL_COUNTER} start ──`);
-  
-  ctx.logger.updateMeta({
-      kind: 'call',
-      functionName: getCalleeName(node.callee, null),
-      scopeName: ctx.env.name,
-  });
 
   const calleeVal = evaluateExpression(node.callee, ctx);
   const args = node.arguments.map((arg: any) => evaluateExpression(arg, ctx));
@@ -98,6 +112,19 @@ export function evalCall(node: any, ctx: EvalContext): any {
     `Calling function ${calleeName}(${args.map(a => safeString(a)).join(", ")})`
   );
 
+  // Set call metadata (UI)
+  try {
+    const kind = calleeVal?.__node?.type === "ArrowFunctionExpression" ? "ArrowCall" : "FunctionCall";
+    const signature = buildReadableSignatureFromValue(calleeVal, ctx.logger.getCode()) ?? calleeName;
+    ctx.logger.setLastMetadata({
+      kind,
+      functionName: calleeName,
+      signature,
+      callDepth: (ctx.stack?.length ?? 0) + 1,
+      activeScope: ctx.env.name ?? "Unknown",
+    });
+  } catch {}
+
   // ------------------------------------------------------------------
   // ✔ Arrow closure entry (teaching-friendly)
   // ------------------------------------------------------------------
@@ -108,26 +135,12 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
     ctx.logger.addFlow(`Entering closure (${params.join(", ")})`);
 
-    const capturedVars = collectCapturedVariables(calleeVal);
-    const closureVariables = capturedVars.reduce((acc, curr) => {
-        const [key, val] = curr.split(' = ');
-        acc[key] = JSON.parse(val);
-        return acc;
-    }, {} as Record<string, any>);
-
-    ctx.logger.updateMeta({
-        kind: 'closureCalled',
-        functionName: '(arrow closure)',
-        scopeName: ctx.env.name,
-        closureVariables
-    });
-
-
     // Explain closure only ONCE
     if (!calleeVal.__closureExplained) {
-      if (capturedVars.length > 0) {
+      const captured = collectCapturedVariables(calleeVal);
+      if (captured.length > 0) {
         ctx.logger.addFlow(
-          `Closure created. It remembers: ${capturedVars.join(", ")}`
+          `Closure created. It remembers: ${captured.join(", ")}`
         );
       }
       calleeVal.__closureExplained = true;
@@ -166,6 +179,8 @@ export function evalCall(node: any, ctx: EvalContext): any {
     ctx.logger.logOutput(formattedArgs);
     ctx.logger.addFlow(`console.log → ${formattedArgs}`);
     ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned undefined) ──`);
+    // also mark metadata for this step (console output)
+    ctx.logger.setLastMetadata({ kind: "ConsoleOutput", outputText: formattedArgs, callDepth: ctx.stack?.length ?? 0 });
     return undefined;
   }
 
@@ -177,6 +192,8 @@ export function evalCall(node: any, ctx: EvalContext): any {
     ctx.logger.addFlow(
       `── Call #${CALL_COUNTER} complete (returned ${safeString(result)}) ──`
     );
+    // metadata for native function return
+    ctx.logger.setLastMetadata({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
     return result;
   }
 
@@ -197,14 +214,18 @@ export function evalCall(node: any, ctx: EvalContext): any {
           result.value
         )}) ──`
       );
+      ctx.logger.setLastMetadata({ kind: "Return", returnedValue: safeString(result.value), callDepth: ctx.stack?.length ?? 0 });
       return result.value;
     }
 
     ctx.logger.addFlow(
       `── Call #${CALL_COUNTER} complete (returned ${safeString(result)}) ──`
     );
+    ctx.logger.setLastMetadata({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
     return result;
   }
 
   throw new Error("Call of non-function value");
 }
+
+    

@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -19,13 +20,6 @@ export interface DiffSnapshot {
   removed: Record<string, any>;
 }
 
-export interface StepMetadata {
-  kind: "statement" | "call" | "return" | "closureCreated" | "closureCalled";
-  functionName: string | null;
-  scopeName: string | null;
-  closureVariables: Record<string, any> | null;
-}
-
 export interface TimelineEntry {
   step: number;
   line: number;
@@ -37,7 +31,21 @@ export interface TimelineEntry {
   controlFlow?: string[];
   nextStep?: NextStep;
   diff?: DiffSnapshot;
-  meta: StepMetadata;
+  // closure/captured panel (populated when function values are evaluated)
+  captured?: Record<string, any>;
+  // NEW: structured metadata used by UI
+  metadata?: {
+    kind?: string; // "Statement" | "FunctionCall" | "ArrowCall" | "Return" | "ConsoleOutput" | "ClosureCreated"
+    functionName?: string;
+    signature?: string;
+    callDepth?: number;
+    activeScope?: string;
+    capturedAtStep?: number;
+    capturedVariables?: Record<string, any>;
+    returnedValue?: any;
+    outputText?: string;
+    statementText?: string;
+  };
 }
 
 function isUserFunctionValue(value: any) {
@@ -73,7 +81,21 @@ export class TimelineLogger {
       return val;
     }
     if (typeof val === "function") return "[NativeFunction]";
-    if (isUserFunctionValue(val)) return "[Function]";
+    if (isUserFunctionValue(val)) {
+      try {
+        const nodeType = val.__node?.type;
+        const name = val.__node?.id?.name || (val.__node?.type === "FunctionExpression" ? "(anonymous)" : "(arrow)");
+        // prefer full arrow code slice if available
+        if (nodeType === "ArrowFunctionExpression" && val.__node?.range) {
+          try {
+            return this.code.substring(val.__node.range[0], val.__node.range[1]);
+          } catch {}
+        }
+        return nodeType === "ArrowFunctionExpression" ? `[Arrow closure ${name}]` : `[Function ${name}]`;
+      } catch {
+        return "[Function]";
+      }
+    }
     if (depth > 2) return "[Object]";
     if (Array.isArray(val)) return val.map(v => this.safeSerializeValue(v, seen, depth + 1));
     if (typeof val === "object") {
@@ -124,7 +146,7 @@ export class TimelineLogger {
     const HIDDEN_GLOBALS = new Set([
       "Math","JSON","Number","String","Boolean","Object","Array","Function","Date","RegExp","Error","TypeError",
       "ReferenceError","SyntaxError","Promise","Reflect","Proxy","Intl","WeakMap","WeakSet","Set","Map","console",
-      "__proto__","__env","__body","__params","bindings","outer","record",
+      "__proto","__env","__body","__params","bindings","outer","record",
     ]);
 
     const frames = Array.isArray(envSnapshot) ? envSnapshot : Object.values(envSnapshot);
@@ -231,15 +253,23 @@ export class TimelineLogger {
       stack: [...this.getStack()],
       output: [...this.output],
       diff,
-      meta: {
-        kind: "statement",
-        functionName: this.getStack().slice(-1)[0] || null,
-        scopeName: env.name,
-        closureVariables: null,
+      // initialize captured as empty object so UI always has the panel available
+      captured: {},
+      metadata: {
+        kind: "Statement",
+        callDepth: this.getStack().length,
+        activeScope: serializedVars && Object.keys(serializedVars).length ? Object.keys(serializedVars)[0] : "Global",
       },
     };
 
     this.entries.push(entry);
+  }
+
+  // Merge partial metadata into the last entry's metadata
+  setLastMetadata(partial: Partial<TimelineEntry["metadata"]>) {
+    const last = this.entries[this.entries.length - 1];
+    if (!last) return;
+    last.metadata = { ...(last.metadata || {}), ...(partial || {}) };
   }
 
   setNext(line: number | null, message: string, entry?: TimelineEntry) {
@@ -248,13 +278,6 @@ export class TimelineLogger {
     // replace empty messages with nothing; avoid overriding existing message with empty
     if (message === "" && target.nextStep) return;
     target.nextStep = { line, message };
-  }
-
-  updateMeta(data: Partial<StepMetadata>) {
-    const last = this.peekLastStep();
-    if (last) {
-      last.meta = { ...last.meta, ...data };
-    }
   }
 
   hasNext(): boolean {
@@ -310,12 +333,73 @@ export class TimelineLogger {
     }
   }
 
-  // Build breakdown (kept conservative)
-  private buildExpressionBreakdown(expr: any): string[] {
+  // ---------------- NEW: capture extractor ----------------
+  // Returns a map { name: safeValue } of captured bindings for a user function value.
+  private extractCapturedVariables(fnVal: any): Record<string, any> {
+    const out: Record<string, any> = {};
+    try {
+      if (!fnVal || !fnVal.__env) return out;
+      const chain = typeof fnVal.__env.snapshotChain === "function" ? fnVal.__env.snapshotChain() : [];
+
+      // iterate frames until we reach global/script
+      for (const frame of chain) {
+        if (!frame || !frame.kind) continue;
+        if (frame.kind === "global" || frame.kind === "script") break;
+        const bindings = frame.bindings || {};
+        for (const name of Object.keys(bindings)) {
+          // avoid internals
+          if (name.startsWith("__")) continue;
+          try {
+            out[name] = this.safeSerializeValue((bindings as any)[name]);
+          } catch {
+            out[name] = "[ErrorReading]";
+          }
+        }
+      }
+    } catch {
+      // swallow errors — we never want extraction to crash execution
+    }
+    return out;
+  }
+
+  // Build breakdown (upgraded for functions & arrows)
+  private buildExpressionBreakdown(expr: any, evaluatedValue?: any): string[] {
     const lines: string[] = [];
     const walk = (node: any, indent = ""): any => {
       if (!node) { lines.push(indent + "(empty)"); return undefined; }
       const log = (msg: string) => lines.push(indent + msg);
+
+      // Helper to safely slice source code for display
+      const codeSlice = (n: any) => {
+        try {
+          return this.code.substring(n.range?.[0] ?? 0, n.range?.[1] ?? 0).trim();
+        } catch {
+          return "<code>";
+        }
+      };
+
+      // Helper: collect captured variables from a FunctionValue runtime object
+      const collectCaptured = (fnVal: any): string[] => {
+        try {
+          if (!fnVal || !fnVal.__env) return [];
+          const frames = typeof fnVal.__env.snapshotChain === "function" ? fnVal.__env.snapshotChain() : [];
+          const captured: string[] = [];
+
+          // walk outer frames until we hit global/script
+          for (const frame of frames) {
+            if (!frame || !frame.kind) continue;
+            if (frame.kind === "global" || frame.kind === "script") break;
+            const names = Object.keys(frame.bindings || {});
+            for (const name of names) {
+              const val = (frame.bindings || {})[name];
+              captured.push(`${name} = ${JSON.stringify(this.safeSerializeValue(val))}`);
+            }
+          }
+          return captured;
+        } catch {
+          return [];
+        }
+      };
 
       switch (node.type) {
         case "Identifier": {
@@ -328,6 +412,57 @@ export class TimelineLogger {
           log(`Literal → ${JSON.stringify(node.value)}`);
           return node.value;
         }
+
+        // ---------------- NEW: FunctionExpression ----------------
+        case "FunctionExpression": {
+          const name = node.id?.name || "(anonymous)";
+          log(`Function definition: ${name}`);
+          const params = (node.params || []).map((p: any) => p.type === "Identifier" ? p.name : codeSlice(p));
+          if (params.length) log(`${indent}  • Parameters: ${params.join(", ")}`);
+          else log(`${indent}  • Parameters: (none)`);
+
+          const bodySnippet = node.body ? codeSlice(node.body) : "<body>";
+          log(`${indent}  • Body: ${bodySnippet}`);
+
+          // If we have the evaluated function value, show captured variables
+          let fnRuntime = evaluatedValue;
+          if (isUserFunctionValue(fnRuntime)) {
+            const captured = collectCaptured(fnRuntime);
+            if (captured.length) {
+              log(`${indent}  • Captures: ${captured.join(", ")}`);
+            } else {
+              log(`${indent}  • Captures: (none)`);
+            }
+          } else {
+            log(`${indent}  • Captures: (not available in static breakdown)`);
+          }
+          return "[FunctionExpression]";
+        }
+
+        // ---------------- NEW: ArrowFunctionExpression ----------------
+        case "ArrowFunctionExpression": {
+          const params = (node.params || []).map((p: any) => p.type === "Identifier" ? p.name : codeSlice(p));
+          const paramText = params.length ? params.join(", ") : "(none)";
+          const isExprBody = node.body && node.body.type !== "BlockStatement";
+          const bodySnippet = node.body ? codeSlice(node.body) : "<body>";
+
+          log(`Arrow function → (${paramText}) ${isExprBody ? "→ expression" : "→ block"}`);
+          log(`${indent}  • Body: ${bodySnippet}`);
+
+          if (isUserFunctionValue(evaluatedValue)) {
+            const captured = collectCaptured(evaluatedValue);
+            if (captured.length) {
+              log(`${indent}  • Captures: ${captured.join(", ")}`);
+            } else {
+              log(`${indent}  • Captures: (none)`);
+            }
+          } else {
+            log(`${indent}  • Captures: (not available in static breakdown)`);
+          }
+
+          return "[ArrowFunction]";
+        }
+
         case "BinaryExpression": {
           log(`Binary Expression (${node.operator}):`);
           const left = walk(node.left, indent + "  ");
@@ -487,7 +622,8 @@ export class TimelineLogger {
 
     if (!last.expressionEval) last.expressionEval = {};
 
-    const breakdown = (customBreakdown ?? this.buildExpressionBreakdown(expr)).map(line => typeof line === "string" ? line : String(line));
+    // Pass the evaluated value to the breakdown builder so we can show captures for functions.
+    const breakdown = (customBreakdown ?? this.buildExpressionBreakdown(expr, value)).map(line => typeof line === "string" ? line : String(line));
 
     let friendly: string[];
     try {
@@ -501,6 +637,24 @@ export class TimelineLogger {
       breakdown,
       friendly,
     };
+
+    // NEW: If the evaluated value is a user function, record its captured variables + signature + step index in metadata
+    try {
+      if (isUserFunctionValue(value)) {
+        const captured = this.extractCapturedVariables(value);
+        last.captured = captured;
+        last.metadata = { ...(last.metadata || {}), capturedVariables: captured, capturedAtStep: last.step, kind: "ClosureCreated" };
+
+        // Try set readable signature
+        try {
+          const sig = value && value.__node ? (value.__node.range ? this.code.substring(value.__node.range[0], value.__node.range[1]) : (value.__node.id?.name ? `function ${value.__node.id.name}` : "(arrow closure)")) : undefined;
+          if (sig) last.metadata.signature = sig;
+          last.metadata.functionName = value.__node?.id?.name || (value.__node?.type === "ArrowFunctionExpression" ? "(arrow closure)" : undefined);
+        } catch {}
+      }
+    } catch {
+      // ignore extraction errors
+    }
   }
 
   addExpressionContext(expr: any, context: string) {
@@ -524,10 +678,16 @@ export class TimelineLogger {
 
     this.output.push(text);
     const last = this.entries[this.entries.length - 1];
-    if (last) last.output = [...this.output];
+    if (last) {
+      last.output = [...this.output];
+      // mark console output metadata
+      last.metadata = { ...(last.metadata || {}), kind: "ConsoleOutput", outputText: text, callDepth: this.getStack().length };
+    }
   }
 
   getTimeline(): TimelineEntry[] {
     return this.entries;
   }
 }
+
+    

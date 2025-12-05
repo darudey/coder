@@ -1,6 +1,7 @@
+
 // src/engine/interpreter.ts
 //
-// FINAL PHASE-2 + STEP INDEX SUPPORT
+// FINAL PHASE-2 + UI metadata support (compatibility safe)
 //
 
 import * as acorn from "acorn";
@@ -21,12 +22,15 @@ export interface RunMetadata {
 export function generateTimeline(
   code: string,
   options: RunOptions = {}
-): TimelineEntry[] & { meta: RunMetadata } {
+): TimelineEntry[] & { meta?: RunMetadata } {
   const maxSteps = options.maxSteps ?? 2000;
 
+  // Always reset call counter before execution (Phase 2 rule)
   resetCallCounter();
 
-  // --- PARSE ---
+  // --------------------------------------------------------------
+  // 1. PARSE
+  // --------------------------------------------------------------
   let ast;
   try {
     ast = acorn.parse(code, {
@@ -36,25 +40,28 @@ export function generateTimeline(
       sourceType: "script",
     }) as any;
   } catch (e: any) {
-    const arr: any = [
-      {
-        step: 0,
-        line: (e.loc?.line ?? 1) - 1,
-        variables: {},
-        heap: {},
-        stack: [],
-        output: [`SyntaxError: ${e.message}`],
-        nextStep: {
-          line: null,
-          message: "Execution failed due to a syntax error.",
-        },
-      }
-    ];
+    // Return a timeline with a single syntax-error step
+    const errorEntry: TimelineEntry = {
+      step: 0,
+      line: (e.loc?.line ?? 1) - 1,
+      variables: {},
+      heap: {},
+      stack: [],
+      output: [`SyntaxError: ${e.message}`],
+      nextStep: {
+        line: null,
+        message: "Execution failed due to a syntax error.",
+      },
+    };
+
+    const arr: any = [errorEntry];
     arr.meta = { indexByStep: { 0: 0 } };
     return arr;
   }
 
-  // --- GLOBAL ENV ---
+  // --------------------------------------------------------------
+  // 2. GLOBAL ENVIRONMENT
+  // --------------------------------------------------------------
   const globalRecord = new EnvironmentRecord();
   const globalEnv = new LexicalEnvironment("Global", "global", globalRecord, null);
   const scriptEnv = globalEnv.extend("script", "Script");
@@ -67,14 +74,23 @@ export function generateTimeline(
     maxSteps
   );
 
-  // --- BUILTINS ---
+  // --------------------------------------------------------------
+  // 3. BUILTINS (teaching-friendly)
+  // --------------------------------------------------------------
   const consoleObj: any = createObject(null);
-  const logFn = (...args: any[]) => logger.logOutput(...args);
-  (logFn as any).__builtin = "console.log";
+
+  const logFn = (...args: any[]) => {
+    logger.logOutput(...args);
+  };
+  (logFn as any).__builtin = "console.log"; // needed by evalCall
   consoleObj.log = logFn;
+
   globalEnv.record.createMutableBinding("console", "var", consoleObj, true);
   globalEnv.record.createMutableBinding("Math", "var", Math, true);
 
+  // --------------------------------------------------------------
+  // 4. CONTEXT
+  // --------------------------------------------------------------
   const ctx: EvalContext = {
     env: scriptEnv,
     thisValue: undefined,
@@ -82,21 +98,25 @@ export function generateTimeline(
     stack,
   };
 
-  // --- EXECUTE ---
+  // --------------------------------------------------------------
+  // 5. EXECUTE PROGRAM
+  // --------------------------------------------------------------
   try {
     evaluateProgram(ast, ctx);
   } catch (err: any) {
+    // Step-limit or runtime error
     const entries = logger.getTimeline();
-    const last = entries.at(-1);
-    const lastStep = (last?.step ?? 0) + 1;
+    const lastEntry = entries.at(-1);
+    const lastStep = (lastEntry?.step ?? 0) + 1;
+    const lastLine = lastEntry?.line ?? 0;
 
-    entries.push({
+    const extra: TimelineEntry = {
       step: lastStep,
-      line: last?.line ?? 0,
+      line: lastLine,
       variables: globalEnv.snapshotChain(),
       heap: {},
       stack: [...stack],
-      output: last ? [...last.output] : [],
+      output: lastEntry ? [...lastEntry.output] : [],
       controlFlow: [],
       expressionEval: {},
       nextStep: {
@@ -106,28 +126,39 @@ export function generateTimeline(
             ? "Execution stopped: too many steps (possible infinite loop)"
             : `Execution error: ${err?.message ?? String(err)}`,
       },
-    } as TimelineEntry);
+    };
+
+    entries.push(extra);
 
     const arr: any = [...entries];
-    const index: Record<number, number> = {};
-    arr.forEach((e: any, idx: number) => (index[e.step] = idx));
-    arr.meta = { indexByStep: index };
+    const indexByStep: Record<number, number> = {};
+    arr.forEach((e: any, idx: number) => (indexByStep[e.step] = idx));
+    arr.meta = { indexByStep };
 
     return arr;
   }
 
-  // --- FINAL STEP ---
+  // --------------------------------------------------------------
+  // 6. UNIVERSAL FINAL STEP (Phase-2 requirement)
+  // --------------------------------------------------------------
   const last = logger.peekLastStep();
+
+  // Only add finishing line if we returned to global
   if (last && stack.length === 0) {
     logger.log(last.line);
     logger.addFlow("Program finished ✔");
     logger.setNext(null, "No more steps");
   }
 
-  const arr: any = logger.getTimeline();
-  const index: Record<number, number> = {};
-  arr.forEach((e: any, idx: number) => (index[e.step] = idx));
-  arr.meta = { indexByStep: index };
+  const timeline = logger.getTimeline();
+  const arr: any = [...timeline];
+
+  // Build step-index map
+  const indexByStep: Record<number, number> = {};
+  arr.forEach((e: any, idx: number) => (indexByStep[e.step] = idx));
+  arr.meta = { indexByStep };
 
   return arr;
 }
+
+    
