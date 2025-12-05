@@ -19,6 +19,13 @@ export interface DiffSnapshot {
   removed: Record<string, any>;
 }
 
+export interface StepMetadata {
+  kind: "statement" | "call" | "return" | "closureCreated" | "closureCalled";
+  functionName: string | null;
+  scopeName: string | null;
+  closureVariables: Record<string, any> | null;
+}
+
 export interface TimelineEntry {
   step: number;
   line: number;
@@ -30,6 +37,7 @@ export interface TimelineEntry {
   controlFlow?: string[];
   nextStep?: NextStep;
   diff?: DiffSnapshot;
+  meta: StepMetadata;
 }
 
 function isUserFunctionValue(value: any) {
@@ -223,6 +231,12 @@ export class TimelineLogger {
       stack: [...this.getStack()],
       output: [...this.output],
       diff,
+      meta: {
+        kind: "statement",
+        functionName: this.getStack().slice(-1)[0] || null,
+        scopeName: env.name,
+        closureVariables: null,
+      },
     };
 
     this.entries.push(entry);
@@ -234,6 +248,13 @@ export class TimelineLogger {
     // replace empty messages with nothing; avoid overriding existing message with empty
     if (message === "" && target.nextStep) return;
     target.nextStep = { line, message };
+  }
+
+  updateMeta(data: Partial<StepMetadata>) {
+    const last = this.peekLastStep();
+    if (last) {
+      last.meta = { ...last.meta, ...data };
+    }
   }
 
   hasNext(): boolean {

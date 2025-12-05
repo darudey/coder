@@ -51,7 +51,7 @@ function getCalleeName(node: any, value: any): string {
  * Collect ONLY lexical outer function bindings.
  * Stops at Script/Global to avoid large captures.
  */
-function collectCapturedVariables(fn: FunctionValue): string[] {
+export function collectCapturedVariables(fn: FunctionValue): string[] {
   const result: string[] = [];
   let env = fn.__env;
 
@@ -77,6 +77,12 @@ function collectCapturedVariables(fn: FunctionValue): string[] {
 export function evalCall(node: any, ctx: EvalContext): any {
   CALL_COUNTER++;
   ctx.logger.addFlow(`── Call #${CALL_COUNTER} start ──`);
+  
+  ctx.logger.updateMeta({
+      kind: 'call',
+      functionName: getCalleeName(node.callee, null),
+      scopeName: ctx.env.name,
+  });
 
   const calleeVal = evaluateExpression(node.callee, ctx);
   const args = node.arguments.map((arg: any) => evaluateExpression(arg, ctx));
@@ -102,12 +108,26 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
     ctx.logger.addFlow(`Entering closure (${params.join(", ")})`);
 
+    const capturedVars = collectCapturedVariables(calleeVal);
+    const closureVariables = capturedVars.reduce((acc, curr) => {
+        const [key, val] = curr.split(' = ');
+        acc[key] = JSON.parse(val);
+        return acc;
+    }, {} as Record<string, any>);
+
+    ctx.logger.updateMeta({
+        kind: 'closureCalled',
+        functionName: '(arrow closure)',
+        scopeName: ctx.env.name,
+        closureVariables
+    });
+
+
     // Explain closure only ONCE
     if (!calleeVal.__closureExplained) {
-      const captured = collectCapturedVariables(calleeVal);
-      if (captured.length > 0) {
+      if (capturedVars.length > 0) {
         ctx.logger.addFlow(
-          `Closure created. It remembers: ${captured.join(", ")}`
+          `Closure created. It remembers: ${capturedVars.join(", ")}`
         );
       }
       calleeVal.__closureExplained = true;

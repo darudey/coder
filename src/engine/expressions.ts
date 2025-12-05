@@ -1,4 +1,3 @@
-
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -18,7 +17,7 @@ import {
 import { evalArray } from "./expressions/evalArray";
 import { evalAssignment } from "./expressions/evalAssignment";
 import { evalBinary } from "./expressions/evalBinary";
-import { evalCall } from "./expressions/evalCall";
+import { evalCall, collectCapturedVariables } from "./expressions/evalCall";
 import { evalConditional } from "./expressions/evalConditional";
 import { evalIdentifier } from "./expressions/evalIdentifier";
 import { evalLogical } from "./expressions/evalLogical";
@@ -150,7 +149,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     // CASE 2 — ARROW FUNCTION WITH EXPRESSION BODY
     // -------------------------------------------------
     else {
-      // Arrow with EXPRESSION body (only logged here, NEVER in evalCall)
+      // Logging expression body (no step creation!)
       if (body?.loc && body.range) {
         const slice = logger.getCode().slice(body.range[0], body.range[1]).trim();
         logger.addFlow(`Evaluating arrow body: ${slice}`);
@@ -160,11 +159,13 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
       logger.addExpressionEval(body, value);
       logger.addExpressionContext(body, "Arrow function body");
+
       logger.addFlow(`Arrow body result → ${JSON.stringify(value)}`);
       logger.addFlow(`Function complete → returned ${JSON.stringify(value)}`);
 
       // Next-step goes back to caller
       logger.setNext(null, "Return: control returns to caller");
+
       result = makeReturn(value);
     }
 
@@ -176,6 +177,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     // Return value handling
     if (isReturnSignal(result)) {
+      logger.updateMeta({ kind: 'return' });
       logger.addFlow(`(callsite) returned → ${JSON.stringify(result.value)}`);
       return result.value;
     }
@@ -186,6 +188,21 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   // Construct and return the function value object
   const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
   (fn as any).__node = node;
+
+  const capturedVars = collectCapturedVariables(fn);
+  const closureVariables = capturedVars.reduce((acc, curr) => {
+    const [key, val] = curr.split(' = ');
+    acc[key] = JSON.parse(val);
+    return acc;
+  }, {} as Record<string, any>);
+
+  ctx.logger.updateMeta({
+      kind: 'closureCreated',
+      functionName: node.id?.name || '(arrow closure)',
+      scopeName: definingEnv.name,
+      closureVariables
+  });
+
   return fn;
 }
 
