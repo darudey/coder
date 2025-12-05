@@ -200,18 +200,8 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
   // When a function value is built during expression evaluation, record its creation metadata
   try {
-    // collect captured variables shallowly (use evalCall helper)
-    const capturedList = collectCapturedVariables(fn);
-    const capturedObj: Record<string, any> = {};
-    for (const kv of capturedList) {
-      const [k, v] = kv.split(" = ");
-      try {
-        capturedObj[k] = JSON.parse(v);
-      } catch {
-        capturedObj[k] = v;
-      }
-    }
-
+    const capturedObj = collectCapturedVariables(fn);
+    
     ctx.logger.updateMeta({
       kind: "ClosureCreated",
       functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),

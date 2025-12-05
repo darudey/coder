@@ -45,8 +45,8 @@ function getCalleeName(node: any, value: any): string {
  * Collect ONLY lexical outer function bindings.
  * Stops at Script/Global to avoid large captures.
  */
-export function collectCapturedVariables(fn: FunctionValue): string[] {
-  const result: string[] = [];
+export function collectCapturedVariables(fn: FunctionValue): Record<string, any> {
+  const result: Record<string, any> = {};
   let env = fn.__env;
 
   while (env && env.outer && env.outer.kind === "function") {
@@ -56,7 +56,7 @@ export function collectCapturedVariables(fn: FunctionValue): string[] {
       for (const name of names) {
         const binding = typeof rec.get === "function" ? rec.get(name) : rec[name];
         const val = binding?.value ?? binding;
-        result.push(`${name} = ${safeString(val)}`);
+        result[name] = safeString(val);
       }
     }
     env = env.outer;
@@ -136,10 +136,10 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
     // Explain closure only ONCE
     if (!calleeVal.__closureExplained) {
-      const captured = collectCapturedVariables(calleeVal);
+      const captured = Object.entries(collectCapturedVariables(calleeVal)).map(([k,v]) => `${k} = ${v}`).join(', ');
       if (captured.length > 0) {
         ctx.logger.addFlow(
-          `Closure created. It remembers: ${captured.join(", ")}`
+          `Closure created. It remembers: ${captured}`
         );
       }
       calleeVal.__closureExplained = true;
