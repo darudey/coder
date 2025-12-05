@@ -46,7 +46,7 @@ function getCalleeName(node: any, value: any): string {
  * Collect ONLY lexical outer function bindings.
  * Stops at Script/Global to avoid large captures.
  */
-function collectCapturedVariables(fn: FunctionValue): string[] {
+export function collectCapturedVariables(fn: FunctionValue): string[] {
   const result: string[] = [];
   let env = fn.__env;
 
@@ -227,5 +227,3 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
   throw new Error("Call of non-function value");
 }
-
-    
