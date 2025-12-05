@@ -1,4 +1,3 @@
-
 // src/engine/expressions/evalCall.ts
 //
 // FINAL PHASE-2 VERSION + metadata for UI
@@ -119,7 +118,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
   try {
     const kind = calleeVal?.__node?.type === "ArrowFunctionExpression" ? "ArrowCall" : "FunctionCall";
     const signature = buildReadableSignatureFromValue(calleeVal, ctx.logger.getCode()) ?? calleeName;
-    ctx.logger.updateMeta({
+    ctx.logger.setLastMetadata({
       kind,
       functionName: calleeName,
       signature,
@@ -187,7 +186,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
     ctx.logger.addFlow(`console.log → ${formattedArgs}`);
     ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned undefined) ──`);
     // also mark metadata for this step (console output)
-    ctx.logger.updateMeta({ kind: "ConsoleOutput", outputText: formattedArgs, callDepth: ctx.stack?.length ?? 0 });
+    ctx.logger.setLastMetadata({ kind: "ConsoleOutput", outputText: formattedArgs, callDepth: ctx.stack?.length ?? 0 });
     ctx.logger.setNext(null, "Return: control returns to caller");
     return undefined;
   }
@@ -201,7 +200,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
       `── Call #${CALL_COUNTER} complete (returned ${safeString(result)}) ──`
     );
     // metadata for native function return
-    ctx.logger.updateMeta({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
+    ctx.logger.setLastMetadata({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
     return result;
   }
 
@@ -222,14 +221,14 @@ export function evalCall(node: any, ctx: EvalContext): any {
           result.value
         )}) ──`
       );
-      ctx.logger.updateMeta({ kind: "Return", returnedValue: safeString(result.value), callDepth: ctx.stack?.length ?? 0 });
+      ctx.logger.setLastMetadata({ kind: "Return", returnedValue: safeString(result.value), callDepth: ctx.stack?.length ?? 0 });
       return result.value;
     }
 
     ctx.logger.addFlow(
       `── Call #${CALL_COUNTER} complete (returned ${safeString(result)}) ──`
     );
-    ctx.logger.updateMeta({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
+    ctx.logger.setLastMetadata({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
     return result;
   }
 
