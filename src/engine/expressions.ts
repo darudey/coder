@@ -1,3 +1,4 @@
+
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -200,16 +201,22 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
   // When a function value is built during expression evaluation, record its creation metadata
   try {
-    const capturedObj = collectCapturedVariables(fn);
-    
-    ctx.logger.updateMeta({
-      kind: "ClosureCreated",
-      functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),
-      signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
-      activeScope: definingEnv.name,
-      capturedVariables: capturedObj,
-      capturedAtStep: ctx.logger.peekLastStep()?.step,
-    });
+    const funcName = node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)");
+    // This check is crucial: only log "ClosureCreated" when the function is being DEFINED,
+    // not when its implementation is being executed during a call.
+    if (!ctx.stack.includes(funcName)) {
+        const capturedObj = collectCapturedVariables(fn);
+        const last = ctx.logger.peekLastStep();
+        
+        ctx.logger.updateMeta({
+          kind: "ClosureCreated",
+          functionName: funcName,
+          signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+          activeScope: definingEnv.name,
+          capturedVariables: capturedObj,
+          capturedAtStep: last ? last.step + 1 : undefined,
+        });
+    }
   } catch {
     // do not fail on metadata extraction
   }

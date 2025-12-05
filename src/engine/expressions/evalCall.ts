@@ -1,3 +1,4 @@
+
 // src/engine/expressions/evalCall.ts
 //
 // FINAL PHASE-2 VERSION + metadata for UI
@@ -52,7 +53,9 @@ export function collectCapturedVariables(fn: FunctionValue): Record<string, any>
   while (env && env.outer && env.outer.kind === "function") {
     const rec = env.outer.record?.bindings;
     if (rec) {
-      const names = typeof rec.keys === "function" ? [...rec.keys()] : Object.keys(rec);
+      const names =
+        typeof rec.keys === "function" ? [...rec.keys()] : Object.keys(rec);
+
       for (const name of names) {
         const binding = typeof rec.get === "function" ? rec.get(name) : rec[name];
         const val = binding?.value ?? binding;
@@ -136,7 +139,10 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
     // Explain closure only ONCE
     if (!calleeVal.__closureExplained) {
-      const captured = Object.entries(collectCapturedVariables(calleeVal)).map(([k,v]) => `${k} = ${v}`).join(', ');
+      const captured = Object.entries(collectCapturedVariables(calleeVal))
+        .map(([k,v]) => `${k} = ${JSON.stringify(v)}`)
+        .join(', ');
+
       if (captured.length > 0) {
         ctx.logger.addFlow(
           `Closure created. It remembers: ${captured}`
