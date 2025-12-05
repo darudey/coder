@@ -31,7 +31,8 @@ export interface TimelineEntry {
   nextStep?: NextStep;
   diff?: DiffSnapshot;
   // closure/captured panel (populated when function values are evaluated)
-  captured?: Record<string, any>;
+  // can be an array of captured strings (["a = 1"]) or a map { a: 1 }
+  captured?: string[] | Record<string, any>;
   // NEW: structured metadata used by UI
   metadata?: {
     kind?: string; // "Statement" | "FunctionCall" | "ArrowCall" | "Return" | "ConsoleOutput" | "ClosureCreated"
@@ -147,7 +148,7 @@ export class TimelineLogger {
     const HIDDEN_GLOBALS = new Set([
       "Math","JSON","Number","String","Boolean","Object","Array","Function","Date","RegExp","Error","TypeError",
       "ReferenceError","SyntaxError","Promise","Reflect","Proxy","Intl","WeakMap","WeakSet","Set","Map","console",
-      "__proto","__env","__body","__params","bindings","outer","record",
+      "__proto__","__env","__body","__params","bindings","outer","record",
     ]);
 
     const frames = Array.isArray(envSnapshot) ? envSnapshot : Object.values(envSnapshot);
@@ -349,10 +350,11 @@ export class TimelineLogger {
       if (!fnVal || !fnVal.__env) return out;
       const chain = typeof fnVal.__env.snapshotChain === "function" ? fnVal.__env.snapshotChain() : [];
 
-      // iterate frames until we reach global/script
+      // iterate frames until we reach global or the top script frame
       for (const frame of chain) {
-        if (!frame || !frame.kind) continue;
-        if (frame.kind === "global" || frame.kind === "script") break;
+        if (!frame) continue;
+        // Some frames use 'kind' (global/function/block). The interpreter also uses a Script frame named "Script".
+        if (frame.kind === "global" || frame.name === "Script") break;
         const bindings = frame.bindings || {};
         for (const name of Object.keys(bindings)) {
           // avoid internals
