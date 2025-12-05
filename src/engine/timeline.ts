@@ -1,4 +1,3 @@
-
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -45,6 +44,8 @@ export interface TimelineEntry {
     returnedValue?: any;
     outputText?: string;
     statementText?: string;
+    // Additional UI-friendly fields allowed
+    [k: string]: any;
   };
 }
 
@@ -270,6 +271,13 @@ export class TimelineLogger {
     const last = this.entries[this.entries.length - 1];
     if (!last) return;
     last.metadata = { ...(last.metadata || {}), ...(partial || {}) };
+  }
+
+  // NEW: alias / safer API used by other modules (defensive, same behaviour)
+  updateMeta(partial: Partial<TimelineEntry["metadata"]>) {
+    // updateMeta is intended to be a safe helper to merge metadata into the current last entry
+    // It does not create new steps or modify step indices.
+    this.setLastMetadata(partial);
   }
 
   setNext(line: number | null, message: string, entry?: TimelineEntry) {
@@ -689,5 +697,3 @@ export class TimelineLogger {
     return this.entries;
   }
 }
-
-    

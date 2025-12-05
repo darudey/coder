@@ -105,6 +105,14 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
         // Normal functions always create an entry step
         logger.log(node.loc.start.line - 1);
         logger.addFlow(`Entering function ${funcName}`);
+        // Attach metadata for call entry (callDepth will be stack length before push)
+        logger.updateMeta({
+          kind: "FunctionEntry",
+          functionName: funcName,
+          signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+          callDepth: stack.length + 1,
+          activeScope: fnEnv.name,
+        });
       }
       // Arrows DO NOT create steps here (evalCall handles it)
     }
@@ -177,7 +185,8 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     // Return value handling
     if (isReturnSignal(result)) {
-      logger.updateMeta({ kind: 'return' });
+      // Merge return metadata safely
+      logger.updateMeta({ kind: "Return", returnedValue: JSON.stringify(result.value), callDepth: stack.length });
       logger.addFlow(`(callsite) returned → ${JSON.stringify(result.value)}`);
       return result.value;
     }
@@ -189,22 +198,35 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
   (fn as any).__node = node;
 
-  const capturedVars = collectCapturedVariables(fn);
-  const closureVariables = capturedVars.reduce((acc, curr) => {
-    const [key, val] = curr.split(' = ');
-    acc[key] = JSON.parse(val);
-    return acc;
-  }, {} as Record<string, any>);
+  // When a function value is built during expression evaluation, record its creation metadata
+  try {
+    // collect captured variables shallowly (use evalCall helper)
+    const capturedList = collectCapturedVariables(fn);
+    const capturedObj: Record<string, any> = {};
+    for (const kv of capturedList) {
+      const [k, v] = kv.split(" = ");
+      try {
+        capturedObj[k] = JSON.parse(v);
+      } catch {
+        capturedObj[k] = v;
+      }
+    }
 
-  ctx.logger.updateMeta({
-      kind: 'closureCreated',
-      functionName: node.id?.name || '(arrow closure)',
-      scopeName: definingEnv.name,
-      closureVariables
-  });
+    ctx.logger.updateMeta({
+      kind: "ClosureCreated",
+      functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),
+      signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+      activeScope: definingEnv.name,
+      capturedVariables: capturedObj,
+      capturedAtStep: ctx.logger.peekLastStep()?.step,
+    });
+  } catch {
+    // do not fail on metadata extraction
+  }
 
   return fn;
 }
+
 
 // ---------------------------------------------------------------
 // Expression evaluators
