@@ -200,23 +200,22 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   (fn as any).__node = node;
 
   // When a function value is built during expression evaluation, record its creation metadata
-  try {
-    // Only record closure creation when *defining*, not when executing
-    if (ctx !== (fn as any).__ctx) {
-        const capturedObj = collectCapturedVariables(fn);
-        const last = ctx.logger.peekLastStep();
-        ctx.logger.updateMeta({
-          kind: "ClosureCreated",
-          functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),
-          signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
-          activeScope: definingEnv.name,
-          capturedVariables: capturedObj,
-          capturedAtStep: last ? last.step + 1 : undefined,
-        });
-    }
-  } catch {
-    // do not fail on metadata extraction
+  if (!fn.__closureLogged) {
+    fn.__closureLogged = true;
+
+    const capturedObj = collectCapturedVariables(fn);
+    const last = ctx.logger.peekLastStep();
+
+    ctx.logger.updateMeta({
+      kind: "ClosureCreated",
+      functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),
+      signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+      activeScope: definingEnv.name,
+      capturedVariables: capturedObj,
+      capturedAtStep: last ? last.step + 1 : undefined,
+    });
   }
+
 
   return fn;
 }

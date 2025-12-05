@@ -1,3 +1,4 @@
+
 // src/engine/values.ts
 
 import type { LexicalEnvironment } from "./environment";
@@ -14,6 +15,7 @@ export interface FunctionValue {
   };
   __node?: any;
   __isClassConstructor?: boolean;
+  __closureLogged?: boolean;
 
   prototype?: any;
   call(thisArg: any, args: any[]): any;
