@@ -62,6 +62,7 @@ export function collectCapturedVariables(fn: FunctionValue): Record<string, any>
         result[name] = safeString(val);
       }
     }
+
     env = env.outer;
   }
   return result;
@@ -131,8 +132,8 @@ export function evalCall(node: any, ctx: EvalContext): any {
   // ✔ Arrow closure entry (teaching-friendly)
   // ------------------------------------------------------------------
   if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
-    const params = calleeVal.__params.map((p: any, i: number) =>
-      `${p.name} = ${safeString(args[i])}`
+    const params = (calleeVal.__node?.params || []).map((p: any, i: number) =>
+        `${p.name} = ${safeString(args[i])}`
     );
 
     ctx.logger.addFlow(`Entering closure (${params.join(", ")})`);
@@ -141,8 +142,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
     if (!calleeVal.__closureExplained) {
       const captured = Object.entries(collectCapturedVariables(calleeVal))
         .map(([k,v]) => `${k} = ${JSON.stringify(v)}`)
-        .join(', ');
-
+        .join(", ");
       if (captured.length > 0) {
         ctx.logger.addFlow(
           `Closure created. It remembers: ${captured}`
