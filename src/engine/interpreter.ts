@@ -1,3 +1,4 @@
+
 // src/engine/interpreter.ts
 //
 // FINAL PHASE-2 + UI metadata support (compatibility safe)
