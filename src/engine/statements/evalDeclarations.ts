@@ -1,3 +1,4 @@
+
 // src/engine/statements/evalDeclarations.ts
 import { bindPattern } from '../patterns/evalDestructuring';
 import type { EvalContext } from '../types';
@@ -36,7 +37,14 @@ export function evalVariableDeclaration(node: any, ctx: EvalContext) {
 
       // 🔹 Attach expression breakdown to this same step
       ctx.logger.addExpressionEval(decl.init, initValue);
-      ctx.logger.addExpressionContext(decl.init, "Variable initializer");
+      
+      // Pass variable name to context
+      if (pattern.type === "Identifier") {
+          ctx.logger.addExpressionContext(decl.init, `Initializer for '${pattern.name}'`);
+      } else {
+          ctx.logger.addExpressionContext(decl.init, "Variable initializer");
+      }
+
       ctx.logger.addFlow(
         `Initializer result → ${formatForFlow(initValue)}`
       );
