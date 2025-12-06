@@ -64,6 +64,7 @@ interface CompilerProps {
   deleteFile?: (folderName: string, fileName: string) => void;
   renameFile?: (index: number, newName: string) => void;
   setActiveFileIndex?: (index: number) => void;
+  onRun?: () => Promise<void>;
 }
 
 export interface CompilerRef {
@@ -112,6 +113,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     onToggleDebugger, 
     activeLine, 
     lineExecutionCounts,
+    onRun: onRunProp,
     ...props
 }, ref) => {
   const { toast } = useToast();
@@ -291,10 +293,16 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   }, [historyIndex, history.length, setHistoryIndex]);
 
   const handleRun = useCallback(async (): Promise<RunResult> => {
-    if (variant !== 'minimal') {
+    // Determine if we should open a modal/floating panel
+    const isFloatingMode = isMobile ? globalSettings.mobileOutputMode === 'floating' : globalSettings.desktopOutputMode === 'floating';
+    
+    if (variant !== 'minimal' && isFloatingMode) {
         setIsCompiling(true);
         setIsResultOpen(true);
         setOutput(null); // Clear previous output
+    } else if (variant !== 'minimal') {
+        setIsCompiling(true);
+        setOutput(null);
     }
     
     // Client-side syntax check
@@ -341,7 +349,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     }
     
     return result;
-  }, [code, settings.errorChecking, variant]);
+  }, [code, settings.errorChecking, variant, isMobile, globalSettings]);
 
   useImperativeHandle(ref, () => ({
     run: handleRun,
@@ -443,6 +451,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
   const editorVisible = variant === 'default' ? hasActiveFile : true;
 
+  const effectiveOnRun = onRunProp || handleRun;
+
   const DraggableOutputPanel = (
     <Card 
         className="fixed flex flex-col shadow-2xl z-40"
@@ -466,7 +476,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
       >
         <div className="flex items-center gap-2">
             <Grab className="w-4 h-4 text-muted-foreground" />
-            <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
+            <Button onClick={effectiveOnRun} disabled={isCompiling} size="sm" className="h-7">
               {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
             </Button>
         </div>
@@ -508,15 +518,15 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     </Card>
   );
 
-  const showFloatingPanel = isResultOpen && (!isMobile || globalSettings.isFloatingOutputEnabled);
-  const showDialogPanel = isResultOpen && isMobile && !globalSettings.isFloatingOutputEnabled;
+  const showFloatingPanel = isResultOpen && (isMobile ? globalSettings.mobileOutputMode === 'floating' : globalSettings.desktopOutputMode === 'floating');
+  const showDialogPanel = isResultOpen && isMobile && globalSettings.mobileOutputMode === 'side';
 
   return (
     <div className="bg-background">
       <div className="sticky top-0 z-[999] bg-background">
         {!hideHeader && (
           <Header 
-            onRun={handleRun} 
+            onRun={effectiveOnRun} 
             onSettings={() => setIsSettingsOpen(true)} 
             isCompiling={isCompiling} 
             onSaveToBrowser={handleSaveRequest} 
@@ -548,7 +558,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
                 onRedo={redo}
                 onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
                 hasActiveFile={hasActiveFile}
-                onRun={handleRun}
+                onRun={effectiveOnRun}
                 activeLine={activeLine}
                 lineExecutionCounts={lineExecutionCounts}
             />
@@ -629,4 +639,5 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
