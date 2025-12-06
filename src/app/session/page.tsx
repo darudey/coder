@@ -15,8 +15,8 @@ import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useSettings } from '@/hooks/use-settings';
 
 export default function SessionPage() {
-  const [showDebugger, setShowDebugger] = useState(false);
   const { settings } = useSettings();
+  const [showDebugger, setShowDebugger] = useState(false);
   const fs = useCompilerFs({
     initialCode: `function factorial(n) {
   if (n === 0) {
@@ -38,6 +38,7 @@ console.log(result);`
   const [currentStep, setCurrentStep] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(30);
 
   // State for draggable panel
   const [position, setPosition] = React.useState({ top: 80, left: window.innerWidth / 2 + 100 });
@@ -285,6 +286,11 @@ console.log(result);`
     <div className="h-full flex flex-col overflow-hidden">
         <Card className="flex-grow flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between p-2 border-b">
+                 <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="xs" onClick={() => setPanelWidth(20)}>20%</Button>
+                    <Button variant="ghost" size="xs" onClick={() => setPanelWidth(30)}>30%</Button>
+                    <Button variant="ghost" size="xs" onClick={() => setPanelWidth(40)}>40%</Button>
+                </div>
                 <CardTitle className="text-sm font-semibold">Output</CardTitle>
                 <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
                     {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
@@ -301,24 +307,42 @@ console.log(result);`
 
   return (
     <div className="bg-background h-[calc(100vh-4rem)]">
-        <div className={`p-4 h-full ${!showFloating ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : ''}`}>
-            <div className="h-full flex flex-col overflow-y-auto">
+        {showFloating ? (
+            <div className="p-4 h-full">
                 <Compiler
-                ref={compilerRef}
-                {...fs}
-                code={fs.code}
-                onCodeChange={handleCodeChange}
-                EditorComponent={GridEditor} 
-                onToggleDebugger={() => setShowDebugger(s => !s)}
-                activeLine={activeLine}
-                lineExecutionCounts={lineExecutionCounts}
-                hasActiveFile={!!fs.activeFile}
-                onRun={handleRun}
-                variant="default"
+                    ref={compilerRef}
+                    {...fs}
+                    code={fs.code}
+                    onCodeChange={handleCodeChange}
+                    EditorComponent={GridEditor} 
+                    onToggleDebugger={() => setShowDebugger(s => !s)}
+                    activeLine={activeLine}
+                    lineExecutionCounts={lineExecutionCounts}
+                    hasActiveFile={!!fs.activeFile}
+                    onRun={handleRun}
+                    variant="default"
                 />
             </div>
-            {!showFloating && SidePanelOutput}
-        </div>
+        ) : (
+             <div className="grid h-full p-4 gap-4" style={{ gridTemplateColumns: `${100 - panelWidth}% ${panelWidth}%`}}>
+                <div className="h-full flex flex-col overflow-y-auto">
+                    <Compiler
+                    ref={compilerRef}
+                    {...fs}
+                    code={fs.code}
+                    onCodeChange={handleCodeChange}
+                    EditorComponent={GridEditor} 
+                    onToggleDebugger={() => setShowDebugger(s => !s)}
+                    activeLine={activeLine}
+                    lineExecutionCounts={lineExecutionCounts}
+                    hasActiveFile={!!fs.activeFile}
+                    onRun={handleRun}
+                    variant="default"
+                    />
+                </div>
+                {SidePanelOutput}
+            </div>
+        )}
 
       {showFloating && showOutput && DraggableOutputPanel}
 
