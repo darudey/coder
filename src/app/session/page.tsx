@@ -116,8 +116,8 @@ console.log(result);`
   }, []);
 
   return (
-    <div className="bg-background min-h-screen">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-[calc(100vh-4rem)]">
+    <div className="bg-background h-[calc(100vh-4rem)]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-full">
         <div className="h-full flex flex-col">
             <Compiler
               ref={compilerRef}
