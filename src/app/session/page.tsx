@@ -287,9 +287,9 @@ console.log(result);`
         <Card className="flex-grow flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between p-2 border-b">
                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="xs" onClick={() => setPanelWidth(20)}>20%</Button>
-                    <Button variant="ghost" size="xs" onClick={() => setPanelWidth(30)}>30%</Button>
-                    <Button variant="ghost" size="xs" onClick={() => setPanelWidth(40)}>40%</Button>
+                    <Button variant="ghost" size="xs" className="h-6 px-1 text-xs" onClick={() => setPanelWidth(20)}>20%</Button>
+                    <Button variant="ghost" size="xs" className="h-6 px-1 text-xs" onClick={() => setPanelWidth(30)}>30%</Button>
+                    <Button variant="ghost" size="xs" className="h-6 px-1 text-xs" onClick={() => setPanelWidth(40)}>40%</Button>
                 </div>
                 <CardTitle className="text-sm font-semibold">Output</CardTitle>
                 <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
