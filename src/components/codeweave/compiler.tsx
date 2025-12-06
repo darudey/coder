@@ -45,6 +45,25 @@ interface CompilerProps {
   onToggleDebugger?: () => void;
   activeLine?: number;
   lineExecutionCounts?: Record<number, number>;
+  code?: string;
+  fileSystem?: FileSystem;
+  openFiles?: ActiveFile[];
+  activeFileIndex?: number;
+  activeFile?: ActiveFile | null;
+  hasActiveFile?: boolean;
+  isFsReady?: boolean;
+  history?: string[];
+  historyIndex?: number;
+  setCode?: (newCode: string) => void;
+  setHistory?: (history: string[]) => void;
+  setHistoryIndex?: (index: number) => void;
+  loadFile?: (folderName: string, fileName: string) => void;
+  addFile?: (folderName: string, fileName: string, content: string) => void;
+  createNewFile?: (activate?: boolean) => void;
+  closeTab?: (index: number) => void;
+  deleteFile?: (folderName: string, fileName: string) => void;
+  renameFile?: (index: number, newName: string) => void;
+  setActiveFileIndex?: (index: number) => void;
 }
 
 export interface CompilerRef {
@@ -84,32 +103,42 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange, EditorComponent = CodeEditor, onToggleDebugger, activeLine, lineExecutionCounts }, ref) => {
+const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ 
+    initialCode, 
+    variant = 'default', 
+    hideHeader = false, 
+    onCodeChange, 
+    EditorComponent = CodeEditor, 
+    onToggleDebugger, 
+    activeLine, 
+    lineExecutionCounts,
+    ...props
+}, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
   
-  const {
-    fileSystem,
-    openFiles,
-    activeFileIndex,
-    activeFile,
-    isFsReady,
-    code,
-    history,
-    historyIndex,
-    setCode,
-    setHistory,
-    setHistoryIndex,
-    loadFile,
-    addFile,
-    createNewFile,
-    closeTab,
-    deleteFile,
-    renameFile,
-    setActiveFileIndex,
-  } = useCompilerFs({ initialCode, onCodeChange, variant });
+  const fs = useCompilerFs({ initialCode, onCodeChange, variant });
+
+  const code = props.code ?? fs.code;
+  const setCode = props.setCode ?? fs.setCode;
+  const history = props.history ?? fs.history;
+  const historyIndex = props.historyIndex ?? fs.historyIndex;
+  const setHistoryIndex = props.setHistoryIndex ?? fs.setHistoryIndex;
+  const fileSystem = props.fileSystem ?? fs.fileSystem;
+  const openFiles = props.openFiles ?? fs.openFiles;
+  const activeFileIndex = props.activeFileIndex ?? fs.activeFileIndex;
+  const activeFile = props.activeFile ?? fs.activeFile;
+  const isFsReady = props.isFsReady ?? fs.isFsReady;
+  const loadFile = props.loadFile ?? fs.loadFile;
+  const addFile = props.addFile ?? fs.addFile;
+  const createNewFile = props.createNewFile ?? fs.createNewFile;
+  const closeTab = props.closeTab ?? fs.closeTab;
+  const deleteFile = props.deleteFile ?? fs.deleteFile;
+  const renameFile = props.renameFile ?? fs.renameFile;
+  const setActiveFileIndex = props.setActiveFileIndex ?? fs.setActiveFileIndex;
+  const hasActiveFile = props.hasActiveFile ?? !!activeFile;
 
   const [isCompiling, setIsCompiling] = useState(false);
   const [isAiChecking, setIsAiChecking] = useState(false);
@@ -412,7 +441,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
     return null; // Or a loading spinner for the main compiler
   }
 
-  const editorVisible = variant === 'default' ? !!activeFile : true;
+  const editorVisible = variant === 'default' ? hasActiveFile : true;
 
   const DraggableOutputPanel = (
     <Card 
@@ -494,7 +523,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
             onSaveToDrive={handleSaveToDrive}
             onShare={handleShare}
             activeFile={activeFile} 
-            hasActiveFile={!!activeFile}
+            hasActiveFile={hasActiveFile}
             variant={variant}
             onToggleDebugger={onToggleDebugger}
           />
@@ -518,7 +547,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
                 onUndo={undo}
                 onRedo={redo}
                 onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
-                hasActiveFile={!!activeFile}
+                hasActiveFile={hasActiveFile}
                 onRun={handleRun}
                 activeLine={activeLine}
                 lineExecutionCounts={lineExecutionCounts}
@@ -600,3 +629,4 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+

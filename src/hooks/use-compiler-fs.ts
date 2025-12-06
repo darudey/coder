@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -60,14 +61,13 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
   const activeFile = activeFileIndex !== -1 ? openFiles[activeFileIndex] : null;
 
-  const [_code, _setCode] = useState('');
+  const [_code, _setCode] = useState(initialCode || defaultCode);
   const [history, setHistory] = useState<string[]>([_code]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [isFsReady, setIsFsReady] = useState(false);
 
   const code = history[historyIndex];
-  const debouncedCode = useDebounce(code, 500);
   const debouncedInternalCode = useDebounce(_code, 500);
 
   const setCode = useCallback((newCode: string) => {
@@ -86,10 +86,7 @@ export function useCompilerFs({ initialCode, variant = 'default', onCodeChange }
 
   // Load initial file system from localStorage or props
   useEffect(() => {
-    if (variant === 'minimal' && initialCode) {
-      _setCode(initialCode);
-      setHistory([initialCode]);
-      setHistoryIndex(0);
+    if (variant === 'minimal') {
       setIsFsReady(true);
       return;
     }

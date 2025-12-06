@@ -7,11 +7,13 @@ import { Compiler } from '@/components/codeweave/compiler';
 import { GridEditor } from '@/components/codeweave/grid-editor';
 import { FloatingDebugger } from '@/components/codeweave/floating-debugger';
 import { generateTimeline } from '@/engine/interpreter';
+import { useCompilerFs } from '@/hooks/use-compiler-fs';
 
 
 export default function SessionPage() {
   const [showDebugger, setShowDebugger] = useState(false);
-  const [code, setCode] = useState(`function factorial(n) {
+  const { code, setCode, activeFile, ...fsProps } = useCompilerFs({
+    initialCode: `function factorial(n) {
   if (n === 0) {
     return 1;
   }
@@ -19,7 +21,9 @@ export default function SessionPage() {
 }
 
 const result = factorial(3);
-console.log(result);`);
+console.log(result);`
+  });
+
   const [activeLine, setActiveLine] = useState(0);
   const [lineExecutionCounts, setLineExecutionCounts] = useState<Record<number, number>>({});
 
@@ -97,12 +101,16 @@ console.log(result);`);
   return (
     <div className="bg-background min-h-screen">
       <Compiler 
-        initialCode={code}
+        {...fsProps}
+        code={code}
         onCodeChange={handleCodeChange}
         EditorComponent={GridEditor} 
         onToggleDebugger={() => setShowDebugger(s => !s)}
         activeLine={activeLine}
         lineExecutionCounts={lineExecutionCounts}
+        activeFile={activeFile}
+        hasActiveFile={!!activeFile}
+        variant="minimal"
       />
       {showDebugger && (
         <FloatingDebugger
