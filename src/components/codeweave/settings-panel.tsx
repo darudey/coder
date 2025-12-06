@@ -179,6 +179,30 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                                 </Button>
                             </div>
                         </div>
+                        <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div className="space-y-0.5">
+                                <Label>Desktop Output</Label>
+                                 <p className="text-xs text-muted-foreground">
+                                    Choose how the output panel appears on desktop.
+                                </p>
+                            </div>
+                             <div className="flex gap-1 rounded-md bg-muted p-1">
+                                <Button variant={settings.desktopOutputMode === 'side' ? 'secondary' : 'ghost'} size="xs" onClick={() => setSettings({...settings, desktopOutputMode: 'side'})}>Side</Button>
+                                <Button variant={settings.desktopOutputMode === 'floating' ? 'secondary' : 'ghost'} size="xs" onClick={() => setSettings({...settings, desktopOutputMode: 'floating'})}>Floating</Button>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div className="space-y-0.5">
+                                <Label>Mobile Output</Label>
+                                 <p className="text-xs text-muted-foreground">
+                                    Choose how the output panel appears on mobile.
+                                </p>
+                            </div>
+                             <div className="flex gap-1 rounded-md bg-muted p-1">
+                                <Button variant={settings.mobileOutputMode === 'side' ? 'secondary' : 'ghost'} size="xs" onClick={() => setSettings({...settings, mobileOutputMode: 'side'})}>Side</Button>
+                                <Button variant={settings.mobileOutputMode === 'floating' ? 'secondary' : 'ghost'} size="xs" onClick={() => setSettings({...settings, mobileOutputMode: 'floating'})}>Floating</Button>
+                            </div>
+                        </div>
                          <div className="flex items-center justify-between rounded-lg border p-3">
                             <div className="space-y-0.5">
                                 <Label htmlFor="session-output-toggle">Floating Session Output</Label>
