@@ -12,6 +12,8 @@ import React, {
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { useSettings } from '@/hooks/use-settings';
+import { parseCode, getTokenClassName } from '@/lib/syntax-highlighter';
+
 
 export interface OverlayEditorProps {
   code: string;
@@ -133,6 +135,24 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     };
   };
 
+  const highlightedCode = useMemo(() => {
+    return lines.map((line, i) => (
+        <div 
+          key={i} 
+          className={cn(
+            i === cursorLine && "bg-muted/50"
+          )}
+          style={getHighlightStyle(i)}
+        >
+          {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
+              <span key={tokenIndex} className={getTokenClassName(token.type)}>
+                  {token.value}
+              </span>
+          ))}
+        </div>
+    ));
+  }, [lines, cursorLine, getHighlightStyle]);
+
   return (
     <div
       className="relative flex border rounded-md bg-background min-h-[70vh] overflow-hidden"
@@ -156,17 +176,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           className="absolute inset-0 pointer-events-none px-3 py-2"
           style={textStyle}
         >
-            {lines.map((line, i) => (
-                <div 
-                  key={i} 
-                  className={cn(
-                    i === cursorLine && "bg-muted/50"
-                  )}
-                  style={getHighlightStyle(i)}
-                >
-                    {line === '' ? '\u00A0' : line}
-                </div>
-            ))}
+            {highlightedCode}
         </div>
 
         {/* REAL textarea */}
