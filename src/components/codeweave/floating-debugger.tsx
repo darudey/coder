@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
@@ -414,6 +413,7 @@ export const FloatingDebugger = ({
                 <MetadataPanel metadata={state.metadata} />
                 <ScopePanel scopes={state.variables} />
                 <CallStackPanel stack={state.stack} />
+                <ExpressionPanel evals={state.expressionEval} />
                 <details className="pt-4">
                     <summary className="text-xs cursor-pointer text-muted-foreground">Raw State</summary>
                     <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
