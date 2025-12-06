@@ -8,7 +8,9 @@ type Theme = 'light' | 'dark' | 'system';
 interface Settings {
   editorFontSize: number;
   isVirtualKeyboardEnabled: boolean;
-  isFloatingOutputEnabled: boolean;
+  isFloatingOutputEnabled: boolean; // For mobile
+  desktopOutputMode: 'side' | 'floating'; // For desktop
+  isSessionOutputFloating: boolean; // For session page
 }
 
 interface SettingsContextValue {
@@ -23,6 +25,8 @@ const defaultSettings: Settings = {
   editorFontSize: 14,
   isVirtualKeyboardEnabled: true,
   isFloatingOutputEnabled: false,
+  desktopOutputMode: 'side',
+  isSessionOutputFloating: false,
 };
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -39,7 +43,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (item) {
         const storedSettings = JSON.parse(item);
         // Merge stored settings with defaults to avoid breaking changes
-        setSettings(prev => ({...prev, ...storedSettings}));
+        setSettings(prev => ({...defaultSettings, ...storedSettings}));
       }
       const storedTheme = localStorage.getItem('theme') as Theme;
       if (storedTheme) {
@@ -121,5 +125,3 @@ export function useSettings() {
   }
   return context;
 }
-
-    

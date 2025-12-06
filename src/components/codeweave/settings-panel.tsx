@@ -26,6 +26,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Skeleton } from '../ui/skeleton';
 import { Switch } from '../ui/switch';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { buttonVariants } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -177,21 +179,19 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
                                 </Button>
                             </div>
                         </div>
-                        {isMobile && (
-                            <div className="flex items-center justify-between rounded-lg border p-3">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor="floating-output-toggle">Floating Output Panel</Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Show output in a floating panel instead of a dialog.
-                                    </p>
-                                </div>
-                                <Switch
-                                    id="floating-output-toggle"
-                                    checked={settings.isFloatingOutputEnabled}
-                                    onCheckedChange={(checked) => setSettings({...settings, isFloatingOutputEnabled: checked})}
-                                />
+                         <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="session-output-toggle">Floating Session Output</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Show session output in a floating panel.
+                                </p>
                             </div>
-                        )}
+                            <Switch
+                                id="session-output-toggle"
+                                checked={settings.isSessionOutputFloating}
+                                onCheckedChange={(checked) => setSettings({...settings, isSessionOutputFloating: checked})}
+                            />
+                        </div>
                         </div>
                     </AccordionContent>
                     </AccordionItem>
