@@ -6,7 +6,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardContent } from "../ui/card";
-import { Grab, X, GripHorizontal, Play, SkipBack, SkipForward, Pause, RefreshCw, Activity, Bot } from "lucide-react";
+import { Grab, X, GripHorizontal, Play, SkipBack, SkipForward, Pause, RefreshCw, Activity, Bot, Info, Briefcase, GitCommit, GitBranch } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import type { TimelineEntry } from "@/engine/timeline";
 
@@ -182,9 +182,32 @@ const DraggablePanel: React.FC<{
     );
 };
 
+const MetadataPanel: React.FC<{ metadata: TimelineEntry['metadata'] }> = ({ metadata }) => {
+    const data = metadata || {};
+    const kind = data.kind || 'Statement';
+    
+    return (
+        <div className="p-3 bg-muted/50 rounded-md space-y-2 text-xs">
+            <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-primary" />
+                <div className="font-semibold text-muted-foreground">Metadata</div>
+            </div>
+            <div className="pl-6 space-y-1 font-mono text-muted-foreground">
+                <div className="flex justify-between"><span>Kind:</span> <span className="text-foreground font-semibold">{kind}</span></div>
+                <div className="flex justify-between"><span>Depth:</span> <span className="text-foreground">{data.callDepth ?? 0}</span></div>
+                <div className="flex justify-between"><span>Scope:</span> <span className="text-foreground">{data.activeScope || 'Global'}</span></div>
+                {data.functionName && <div className="flex justify-between"><span>Function:</span> <span className="text-foreground truncate">{data.functionName}</span></div>}
+            </div>
+        </div>
+    );
+};
 
 const NextStepPanel: React.FC<{ nextStep?: TimelineEntry['nextStep'] }> = ({ nextStep }) => {
-    if (!nextStep) return null;
+    if (!nextStep) return (
+         <div className="p-3 text-xs italic text-muted-foreground">
+            No next step.
+        </div>
+    );
     
     return (
         <div className="p-3">
@@ -198,7 +221,13 @@ const NextStepPanel: React.FC<{ nextStep?: TimelineEntry['nextStep'] }> = ({ nex
 
 
 const ExpressionPanel: React.FC<{ evals?: Record<string, any> }> = ({ evals }) => {
-    if (!evals || Object.keys(evals).length === 0) return null;
+    if (!evals || Object.keys(evals).length === 0) {
+        return (
+            <div className="p-3 text-xs italic text-muted-foreground">
+                No expressions evaluated in this step.
+            </div>
+        );
+    }
   
     return (
         <div className="p-2 bg-muted/50 rounded-md space-y-3">
@@ -237,12 +266,24 @@ const ExpressionPanel: React.FC<{ evals?: Record<string, any> }> = ({ evals }) =
   };
 
 const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
-    if (!scopes || Object.keys(scopes).length === 0) return null;
+    const normalizedScopes = scopes || {};
+
+    if (Object.keys(normalizedScopes).length === 0) {
+        return (
+             <div className="p-3 text-xs italic text-muted-foreground">
+                No variables in scope.
+            </div>
+        )
+    }
+
     return (
-        <div className="bg-muted/50 p-2 rounded-md space-y-1">
-          <div className="text-xs font-semibold text-muted-foreground px-2">Scope</div>
+        <div className="p-2 bg-muted/50 rounded-md space-y-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground px-2">
+            <Briefcase className="w-3.5 h-3.5" />
+            Scope
+          </div>
     
-          {Object.entries(scopes).map(([scopeName, vars]) => (
+          {Object.entries(normalizedScopes).map(([scopeName, vars]) => (
             <details
               key={scopeName}
               open
@@ -253,7 +294,7 @@ const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
               </summary>
     
               <div className="pl-3 text-xs space-y-1 mt-1">
-                {Object.entries(vars as any).map(([key, value]) => (
+                {Object.keys(vars as any).length > 0 ? Object.entries(vars as any).map(([key, value]) => (
                   <div key={key} className="flex justify-between font-mono text-muted-foreground">
                     <span className="truncate" title={key}>{key}:</span>
                     <span className="text-foreground">
@@ -262,7 +303,7 @@ const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
                         : String(value)}
                     </span>
                   </div>
-                ))}
+                )) : <div className="text-xs italic text-muted-foreground pl-1">(empty)</div>}
               </div>
             </details>
           ))}
@@ -271,12 +312,15 @@ const ScopePanel = ({ scopes }: { scopes?: Record<string, any> }) => {
 }
 
 const CallStackPanel = ({ stack }: { stack?: string[] }) => {
-    if (!stack) return null;
+    const normalizedStack = stack || [];
     return (
-      <div className="bg-muted/50 p-2 rounded-md space-y-1">
-        <div className="text-xs font-semibold text-muted-foreground px-2">Call Stack</div>
+      <div className="p-2 bg-muted/50 rounded-md space-y-1">
+        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground px-2">
+            <GitCommit className="w-3.5 h-3.5" />
+            Call Stack
+        </div>
         <div className="text-xs space-y-1 p-2">
-            {stack.length > 0 ? stack.map((frame, index) => (
+            {normalizedStack.length > 0 ? normalizedStack.map((frame, index) => (
                 <div key={index} className="font-mono text-foreground">{frame}</div>
             )) : (
                 <div className="text-muted-foreground italic">(empty)</div>
@@ -287,12 +331,13 @@ const CallStackPanel = ({ stack }: { stack?: string[] }) => {
 };
 
 const FlowPanel: React.FC<{ flow?: string[], nextStep?: TimelineEntry['nextStep'] }> = ({ flow, nextStep }) => {
+    const normalizedFlow = flow || [];
     return (
       <div className="p-3 space-y-3">
-         {flow && flow.length > 0 && (
+         {normalizedFlow.length > 0 && (
              <div>
-                <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1">Control Flow</h3>
-                {flow.map((message, index) => (
+                <h3 className="font-semibold text-xs text-muted-foreground px-2 mb-1 flex items-center gap-2"><GitBranch className="w-3.5 h-3.5" />Control Flow</h3>
+                {normalizedFlow.map((message, index) => (
                     <div key={index} className="font-mono text-xs text-muted-foreground">
                         <span className="mr-1 text-purple-400">›</span>{message}
                     </div>
@@ -332,7 +377,7 @@ export const FloatingDebugger = ({
   const [showExecutionFlow, setShowExecutionFlow] = useState(false);
 
   if (!state) return null;
-
+  
   const headerControls = (
       <>
         <div className="flex gap-1">
@@ -366,7 +411,7 @@ export const FloatingDebugger = ({
         >
             <div className="p-2 space-y-3">
                 <div className="text-xs font-mono"><b>Step:</b> {state.step} | <b>Line:</b> {state.line + 1}</div>
-                <ExpressionPanel evals={state.expressionEval} />
+                <MetadataPanel metadata={state.metadata} />
                 <ScopePanel scopes={state.variables} />
                 <CallStackPanel stack={state.stack} />
                 <details className="pt-4">
@@ -391,3 +436,5 @@ export const FloatingDebugger = ({
     </>
   );
 };
+
+    
