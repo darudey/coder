@@ -110,7 +110,6 @@ console.log(result);`
         lineExecutionCounts={lineExecutionCounts}
         activeFile={activeFile}
         hasActiveFile={!!activeFile}
-        variant="minimal"
       />
       {showDebugger && (
         <FloatingDebugger
