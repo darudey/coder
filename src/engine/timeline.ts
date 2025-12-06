@@ -1,3 +1,4 @@
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -58,6 +59,7 @@ export class TimelineLogger {
   private step = 0;
   private output: string[] = [];
   private lastVars: Record<string, any> | null = null;
+  private pendingEntry: Partial<TimelineEntry> | null = null;
 
   constructor(
     private getEnvSnapshot: () => LexicalEnvironment,
@@ -231,53 +233,58 @@ export class TimelineLogger {
   }
 
   // ---------------- Logging steps ----------------
+  private commitPendingEntry() {
+    if (this.pendingEntry) {
+      const env = this.getEnvSnapshot();
+      let rawVars: any;
+      try {
+        rawVars = (env as any).snapshotChain ? (env as any).snapshotChain() : env;
+      } catch {
+        rawVars = env;
+      }
+      const serializedVars = this.safeSerializeEnv(rawVars);
+      const diff = this.computeDiff(this.lastVars, serializedVars);
+      this.lastVars = serializedVars;
+
+      this.pendingEntry.variables = serializedVars;
+      this.pendingEntry.diff = diff;
+      this.pendingEntry.stack = [...this.getStack()];
+      this.pendingEntry.output = [...this.output];
+      
+      this.entries.push(this.pendingEntry as TimelineEntry);
+      this.pendingEntry = null;
+    }
+  }
+
   log(line: number, isInitialStep = false) {
     if (this.step > this.maxSteps) throw new Error("Step limit exceeded");
 
-    const env = this.getEnvSnapshot();
-    let rawVars: any;
-    try {
-      rawVars = (env as any).snapshotChain ? (env as any).snapshotChain() : env;
-    } catch {
-      rawVars = env;
-    }
-
-    const serializedVars = this.safeSerializeEnv(rawVars);
-    const diff = this.computeDiff(this.lastVars, serializedVars);
-    this.lastVars = serializedVars;
-
+    this.commitPendingEntry();
+    
     const currentStepValue = isInitialStep ? this.step : this.step++;
 
-    const entry: TimelineEntry = {
+    this.pendingEntry = {
       step: currentStepValue,
       line,
-      variables: serializedVars,
-      heap: {},
-      stack: [...this.getStack()],
-      output: [...this.output],
-      diff,
-      // initialize captured as empty object so UI always has the panel available
+      heap: {}, // Heap is not implemented
       captured: {},
       metadata: {
         kind: "Statement",
         callDepth: this.getStack().length,
-        activeScope: serializedVars && Object.keys(serializedVars).length ? Object.keys(serializedVars)[0] : "Global",
-      },
+        activeScope: "Global"
+      }
     };
     
     if (isInitialStep && this.entries.length === 0) {
-        this.entries.push(entry);
-        this.step = 1; // Set next step to 1
-    } else {
-        this.entries.push(entry);
+        this.step = 1; // Next step will be 1
     }
   }
 
   // Merge partial metadata into the last entry's metadata
   setLastMetadata(partial: Partial<TimelineEntry["metadata"]>) {
-    const last = this.entries[this.entries.length - 1];
-    if (!last) return;
-    last.metadata = { ...(last.metadata || {}), ...(partial || {}) };
+    const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
+    if (!target) return;
+    target.metadata = { ...(target.metadata || {}), ...(partial || {}) };
   }
 
   // NEW: alias / safer API used by other modules (defensive, same behaviour)
@@ -288,7 +295,7 @@ export class TimelineLogger {
   }
 
   setNext(line: number | null, message: string, entry?: TimelineEntry) {
-    const target = entry ?? this.entries[this.entries.length - 1];
+    const target = entry ?? this.pendingEntry ?? this.entries[this.entries.length - 1];
     if (!target) return;
     // replace empty messages with nothing; avoid overriding existing message with empty
     if (message === "" && target.nextStep) return;
@@ -311,10 +318,10 @@ export class TimelineLogger {
 
   // control flow narration
   addFlow(message: string) {
-    const last = this.entries[this.entries.length - 1];
-    if (!last) return;
-    if (!last.controlFlow) last.controlFlow = [];
-    last.controlFlow.push(message);
+    const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
+    if (!target) return;
+    if (!target.controlFlow) target.controlFlow = [];
+    target.controlFlow.push(message);
   }
 
   // expression helpers used by evaluator
@@ -358,7 +365,7 @@ export class TimelineLogger {
 
       // iterate frames until we reach global or the top script frame
       for (const frame of chain) {
-        if (!frame) continue;
+        if (!frame || !frame.kind) continue;
         // Some frames use 'kind' (global/function/block). The interpreter also uses a Script frame named "Script".
         if (frame.kind === "global" || frame.name === "Script") break;
         const bindings = frame.bindings || {};
@@ -626,8 +633,8 @@ export class TimelineLogger {
   }
 
   addExpressionEval(expr: any, value: any, customBreakdown?: string[]) {
-    const last = this.entries[this.entries.length - 1];
-    if (!last || !expr) return;
+    const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
+    if (!target || !expr) return;
 
     let exprString = "<expr>";
     try {
@@ -636,7 +643,7 @@ export class TimelineLogger {
       exprString = expr.type || "<expr>";
     }
 
-    if (!last.expressionEval) last.expressionEval = {};
+    if (!target.expressionEval) target.expressionEval = {};
 
     // Pass the evaluated value to the breakdown builder so we can show captures for functions.
     const breakdown = (customBreakdown ?? this.buildExpressionBreakdown(expr, value)).map(line => typeof line === "string" ? line : String(line));
@@ -648,7 +655,7 @@ export class TimelineLogger {
       friendly = [`Expression result: ${value}`];
     }
 
-    last.expressionEval[exprString] = {
+    target.expressionEval[exprString] = {
       result: this.safeExpressionResult(value),
       breakdown,
       friendly,
@@ -658,14 +665,14 @@ export class TimelineLogger {
     try {
       if (isUserFunctionValue(value)) {
         const captured = this.extractCapturedVariables(value);
-        last.captured = captured;
-        last.metadata = { ...(last.metadata || {}), capturedVariables: captured, capturedAtStep: last.step, kind: "ClosureCreated" };
+        target.captured = captured;
+        target.metadata = { ...(target.metadata || {}), capturedVariables: captured, capturedAtStep: target.step, kind: "ClosureCreated" };
 
         // Try set readable signature
         try {
           const sig = value && value.__node ? (value.__node.range ? this.code.substring(value.__node.range[0], value.__node.range[1]) : (value.__node.id?.name ? `function ${value.__node.id.name}` : "(arrow closure)")) : undefined;
-          if (sig) last.metadata.signature = sig;
-          last.metadata.functionName = value.__node?.id?.name || (value.__node?.type === "ArrowFunctionExpression" ? "(arrow closure)" : undefined);
+          if (sig) target.metadata.signature = sig;
+          target.metadata.functionName = value.__node?.id?.name || (value.__node?.type === "ArrowFunctionExpression" ? "(arrow closure)" : undefined);
         } catch {}
       }
     } catch {
@@ -674,12 +681,12 @@ export class TimelineLogger {
   }
 
   addExpressionContext(expr: any, context: string) {
-    const last = this.entries[this.entries.length - 1];
-    if (!last || !expr) return;
+    const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
+    if (!target || !expr) return;
     const exprString = expr.range ? this.code.substring(expr.range[0], expr.range[1]) : expr.type || "<expr>";
-    if (!last.expressionEval) last.expressionEval = {};
-    if (!last.expressionEval[exprString]) last.expressionEval[exprString] = { result: undefined, breakdown: [] };
-    last.expressionEval[exprString].context = context;
+    if (!target.expressionEval) target.expressionEval = {};
+    if (!target.expressionEval[exprString]) target.expressionEval[exprString] = { result: undefined, breakdown: [] };
+    target.expressionEval[exprString].context = context;
   }
 
   logOutput(...args: any[]) {
@@ -693,15 +700,19 @@ export class TimelineLogger {
     }).join(" ");
 
     this.output.push(text);
-    const last = this.entries[this.entries.length - 1];
-    if (last) {
-      last.output = [...this.output];
+    const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
+    if (target) {
+      if(!target.output) target.output = [];
+      target.output.push(text);
       // mark console output metadata
-      last.metadata = { ...(last.metadata || {}), kind: "ConsoleOutput", outputText: text, callDepth: this.getStack().length };
+      target.metadata = { ...(target.metadata || {}), kind: "ConsoleOutput", outputText: text, callDepth: this.getStack().length };
     }
   }
 
   getTimeline(): TimelineEntry[] {
+    this.commitPendingEntry();
     return this.entries;
   }
 }
+
+    
