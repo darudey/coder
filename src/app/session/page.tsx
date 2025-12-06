@@ -2,17 +2,21 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Compiler } from '@/components/codeweave/compiler';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import { GridEditor } from '@/components/codeweave/grid-editor';
 import { FloatingDebugger } from '@/components/codeweave/floating-debugger';
 import { generateTimeline } from '@/engine/interpreter';
 import { useCompilerFs } from '@/hooks/use-compiler-fs';
-
+import { OutputDisplay } from '@/components/codeweave/output-display';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Play } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DotLoader } from '@/components/codeweave/dot-loader';
 
 export default function SessionPage() {
   const [showDebugger, setShowDebugger] = useState(false);
-  const { code, setCode, activeFile, ...fsProps } = useCompilerFs({
+  const fs = useCompilerFs({
     initialCode: `function factorial(n) {
   if (n === 0) {
     return 1;
@@ -23,22 +27,25 @@ export default function SessionPage() {
 const result = factorial(3);
 console.log(result);`
   });
+  const compilerRef = useRef<CompilerRef>(null);
 
   const [activeLine, setActiveLine] = useState(0);
   const [lineExecutionCounts, setLineExecutionCounts] = useState<Record<number, number>>({});
+  const [output, setOutput] = useState<RunResult | null>(null);
+  const [isCompiling, setIsCompiling] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const timeline = useMemo(() => {
     try {
-      return generateTimeline(code);
+      return generateTimeline(fs.code);
     } catch (e: any) {
       console.error(e);
       // Return a minimal timeline to prevent crashing
       return [{ step: 0, line: 0, variables: {}, heap: {}, stack: [], output: [`Error: ${e.message}`] }];
     }
-  }, [code]);
+  }, [fs.code]);
 
   const currentState = timeline[currentStep];
 
@@ -92,25 +99,54 @@ console.log(result);`
   }, [currentState]);
   
   const handleCodeChange = (newCode: string) => {
-    setCode(newCode);
+    fs.setCode(newCode);
     setCurrentStep(1);
     setIsPlaying(false);
     setLineExecutionCounts({});
   };
 
+  const handleRun = useCallback(async () => {
+    if (compilerRef.current) {
+      setIsCompiling(true);
+      setOutput(null);
+      const result = await compilerRef.current.run();
+      setOutput(result);
+      setIsCompiling(false);
+    }
+  }, []);
+
   return (
     <div className="bg-background min-h-screen">
-      <Compiler 
-        {...fsProps}
-        code={code}
-        onCodeChange={handleCodeChange}
-        EditorComponent={GridEditor} 
-        onToggleDebugger={() => setShowDebugger(s => !s)}
-        activeLine={activeLine}
-        lineExecutionCounts={lineExecutionCounts}
-        activeFile={activeFile}
-        hasActiveFile={!!activeFile}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-[calc(100vh-4rem)]">
+        <div className="h-full flex flex-col">
+            <Compiler
+              ref={compilerRef}
+              {...fs}
+              code={fs.code}
+              onCodeChange={handleCodeChange}
+              EditorComponent={GridEditor} 
+              onToggleDebugger={() => setShowDebugger(s => !s)}
+              activeLine={activeLine}
+              lineExecutionCounts={lineExecutionCounts}
+              hasActiveFile={!!fs.activeFile}
+              onRun={handleRun}
+              variant="default"
+            />
+        </div>
+        <div className="h-full flex flex-col">
+            <Card className="flex-grow flex flex-col">
+                <CardHeader className="flex flex-row items-center justify-between p-2 border-b">
+                    <CardTitle className="text-sm font-semibold">Output</CardTitle>
+                    <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
+                        {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
+                    </Button>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow overflow-hidden">
+                    <OutputDisplay output={output} isCompiling={isCompiling} />
+                </CardContent>
+            </Card>
+        </div>
+      </div>
       {showDebugger && (
         <FloatingDebugger
           state={currentState}
