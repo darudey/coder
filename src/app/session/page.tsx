@@ -285,16 +285,18 @@ console.log(result);`
   const SidePanelOutput = (
     <div className="h-full flex flex-col overflow-hidden">
         <Card className="flex-grow flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between p-2 border-b">
-                 <div className="flex items-center gap-1">
+            <CardHeader className="flex flex-row items-center p-2 border-b">
+                <div className="flex items-center gap-1 flex-1">
                     <Button variant="ghost" size="xs" className="h-6 px-1 text-xs" onClick={() => setPanelWidth(20)}>20%</Button>
                     <Button variant="ghost" size="xs" className="h-6 px-1 text-xs" onClick={() => setPanelWidth(30)}>30%</Button>
                     <Button variant="ghost" size="xs" className="h-6 px-1 text-xs" onClick={() => setPanelWidth(40)}>40%</Button>
                 </div>
-                <CardTitle className="text-sm font-semibold">Output</CardTitle>
-                <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
-                    {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
-                </Button>
+                <CardTitle className="text-sm font-semibold flex-1 text-center">Output</CardTitle>
+                <div className="flex-1 flex justify-end">
+                    <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
+                        {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="p-0 flex-grow overflow-auto">
                 <OutputDisplay output={output} isCompiling={isCompiling} />
@@ -324,7 +326,7 @@ console.log(result);`
                 />
             </div>
         ) : (
-             <div className="grid h-full p-4 gap-4" style={{ gridTemplateColumns: `${100 - panelWidth}% ${panelWidth}%`}}>
+             <div className="grid h-full p-4 gap-4" style={{ gridTemplateColumns: `1fr ${panelWidth}%`}}>
                 <div className="h-full flex flex-col overflow-y-auto">
                     <Compiler
                     ref={compilerRef}
