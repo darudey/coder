@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -13,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DotLoader } from '@/components/codeweave/dot-loader';
+import { cn } from '@/lib/utils';
 
 export default function SessionPage() {
   const [showDebugger, setShowDebugger] = useState(false);
@@ -36,6 +35,8 @@ console.log(result);`
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const [outputWidth, setOutputWidth] = useState(50); // Default to 50%
 
   const timeline = useMemo(() => {
     try {
@@ -117,7 +118,10 @@ console.log(result);`
 
   return (
     <div className="bg-background h-[calc(100vh-4rem)]">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-full">
+      <div 
+        className="grid gap-4 p-4 h-full"
+        style={{ gridTemplateColumns: `${100 - outputWidth}% 1fr` }}
+      >
         <div className="h-full flex flex-col overflow-y-auto">
             <Compiler
               ref={compilerRef}
@@ -137,6 +141,11 @@ console.log(result);`
             <Card className="flex-grow flex flex-col">
                 <CardHeader className="flex flex-row items-center justify-between p-2 border-b">
                     <CardTitle className="text-sm font-semibold">Output</CardTitle>
+                    <div className="flex items-center gap-1">
+                      <Button size="xs" variant={outputWidth === 20 ? "secondary" : "ghost"} onClick={() => setOutputWidth(20)}>20%</Button>
+                      <Button size="xs" variant={outputWidth === 30 ? "secondary" : "ghost"} onClick={() => setOutputWidth(30)}>30%</Button>
+                      <Button size="xs" variant={outputWidth === 40 ? "secondary" : "ghost"} onClick={() => setOutputWidth(40)}>40%</Button>
+                    </div>
                     <Button onClick={handleRun} disabled={isCompiling} size="sm" className="h-7">
                         {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
                     </Button>
