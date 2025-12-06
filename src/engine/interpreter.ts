@@ -87,6 +87,12 @@ export function generateTimeline(
   globalEnv.record.createMutableBinding("console", "var", consoleObj, true);
   globalEnv.record.createMutableBinding("Math", "var", Math, true);
 
+  // --- Step 0: Initial state before execution ---
+  logger.log(0, true); // Use a special flag to prevent step increment
+  logger.addFlow("Ready to run. Click Next to start.");
+  logger.setNext(ast.body[0]?.loc.start.line -1, "Start execution");
+
+
   // --------------------------------------------------------------
   // 4. CONTEXT
   // --------------------------------------------------------------

@@ -31,7 +31,6 @@ export interface TimelineEntry {
   nextStep?: NextStep;
   diff?: DiffSnapshot;
   // closure/captured panel (populated when function values are evaluated)
-  // can be an array of captured strings (["a = 1"]) or a map { a: 1 }
   captured?: string[] | Record<string, any>;
   // NEW: structured metadata used by UI
   metadata?: {
@@ -56,7 +55,7 @@ function isUserFunctionValue(value: any) {
 
 export class TimelineLogger {
   private entries: TimelineEntry[] = [];
-  private step = 1;
+  private step = 0;
   private output: string[] = [];
   private lastVars: Record<string, any> | null = null;
 
@@ -232,7 +231,7 @@ export class TimelineLogger {
   }
 
   // ---------------- Logging steps ----------------
-  log(line: number) {
+  log(line: number, isInitialStep = false) {
     if (this.step > this.maxSteps) throw new Error("Step limit exceeded");
 
     const env = this.getEnvSnapshot();
@@ -247,8 +246,10 @@ export class TimelineLogger {
     const diff = this.computeDiff(this.lastVars, serializedVars);
     this.lastVars = serializedVars;
 
+    const currentStepValue = isInitialStep ? this.step : this.step++;
+
     const entry: TimelineEntry = {
-      step: this.step++,
+      step: currentStepValue,
       line,
       variables: serializedVars,
       heap: {},
@@ -263,8 +264,13 @@ export class TimelineLogger {
         activeScope: serializedVars && Object.keys(serializedVars).length ? Object.keys(serializedVars)[0] : "Global",
       },
     };
-
-    this.entries.push(entry);
+    
+    if (isInitialStep && this.entries.length === 0) {
+        this.entries.push(entry);
+        this.step = 1; // Set next step to 1
+    } else {
+        this.entries.push(entry);
+    }
   }
 
   // Merge partial metadata into the last entry's metadata
