@@ -89,8 +89,15 @@ export function generateTimeline(
 
   // --- Step 0: Initial state before execution ---
   logger.log(0, true); // Use a special flag to prevent step increment
-  logger.addFlow("Ready to run. Click Next to start.");
-  logger.setNext(ast.body[0]?.loc.start.line -1, "Start execution");
+  const firstMeaningfulStatement = ast.body.find((stmt: any) => stmt.type !== 'EmptyStatement' && stmt.type !== 'DebuggerStatement');
+  
+  if (firstMeaningfulStatement) {
+    logger.addFlow("Ready to run. Click Next to start.");
+    logger.setNext(firstMeaningfulStatement.loc.start.line -1, "Start execution");
+  } else {
+    logger.addFlow("Ready to run, but no code found.");
+    logger.setNext(null, "End of program.");
+  }
 
 
   // --------------------------------------------------------------

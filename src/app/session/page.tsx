@@ -23,7 +23,7 @@ console.log(result);`);
   const [activeLine, setActiveLine] = useState(0);
   const [lineExecutionCounts, setLineExecutionCounts] = useState<Record<number, number>>({});
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const timeline = useMemo(() => {
@@ -50,7 +50,7 @@ console.log(result);`);
   }, []);
 
   const reset = useCallback(() => {
-    setCurrentStep(0);
+    setCurrentStep(1);
     setLineExecutionCounts({});
   }, []);
 
@@ -89,7 +89,7 @@ console.log(result);`);
   
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
-    setCurrentStep(0);
+    setCurrentStep(1);
     setIsPlaying(false);
     setLineExecutionCounts({});
   };
