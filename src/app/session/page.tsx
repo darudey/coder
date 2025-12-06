@@ -118,7 +118,7 @@ console.log(result);`
   return (
     <div className="bg-background h-[calc(100vh-4rem)]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-full">
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col overflow-y-auto">
             <Compiler
               ref={compilerRef}
               {...fs}
@@ -133,7 +133,7 @@ console.log(result);`
               variant="default"
             />
         </div>
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col overflow-hidden">
             <Card className="flex-grow flex flex-col">
                 <CardHeader className="flex flex-row items-center justify-between p-2 border-b">
                     <CardTitle className="text-sm font-semibold">Output</CardTitle>
@@ -141,7 +141,7 @@ console.log(result);`
                         {isCompiling ? <DotLoader /> : <><Play className="w-3 h-3 mr-1" /> Run</>}
                     </Button>
                 </CardHeader>
-                <CardContent className="p-0 flex-grow overflow-hidden">
+                <CardContent className="p-0 flex-grow overflow-auto">
                     <OutputDisplay output={output} isCompiling={isCompiling} />
                 </CardContent>
             </Card>
