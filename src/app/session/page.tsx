@@ -21,6 +21,7 @@ export default function SessionPage() {
 const result = factorial(3);
 console.log(result);`);
   const [activeLine, setActiveLine] = useState(0);
+  const [lineExecutionCounts, setLineExecutionCounts] = useState<Record<number, number>>({});
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -50,6 +51,7 @@ console.log(result);`);
 
   const reset = useCallback(() => {
     setCurrentStep(0);
+    setLineExecutionCounts({});
   }, []);
 
   // PLAY LOGIC
@@ -72,10 +74,16 @@ console.log(result);`);
   const play = () => setIsPlaying(true);
   const pause = () => setIsPlaying(false);
 
-  // Sync active line based on current interpreter step
+  // Sync active line and execution counts based on current interpreter step
   useEffect(() => {
     if (currentState) {
-      setActiveLine(currentState.line);
+      const currentLine = currentState.line;
+      setActiveLine(currentLine);
+      setLineExecutionCounts(prevCounts => {
+        const newCounts = { ...prevCounts };
+        newCounts[currentLine] = (newCounts[currentLine] || 0) + 1;
+        return newCounts;
+      });
     }
   }, [currentState]);
   
@@ -83,6 +91,7 @@ console.log(result);`);
     setCode(newCode);
     setCurrentStep(0);
     setIsPlaying(false);
+    setLineExecutionCounts({});
   };
 
   return (
@@ -93,6 +102,7 @@ console.log(result);`);
         EditorComponent={GridEditor} 
         onToggleDebugger={() => setShowDebugger(s => !s)}
         activeLine={activeLine}
+        lineExecutionCounts={lineExecutionCounts}
       />
       {showDebugger && (
         <FloatingDebugger
@@ -108,4 +118,11 @@ console.log(result);`);
       )}
     </div>
   );
+}
+
+// Add new prop to Compiler's EditorComponent
+declare module '@/components/codeweave/grid-editor' {
+    interface OverlayEditorProps {
+        lineExecutionCounts?: Record<number, number>;
+    }
 }

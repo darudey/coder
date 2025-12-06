@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, {
@@ -12,16 +13,18 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { useSettings } from '@/hooks/use-settings';
 
-interface OverlayEditorProps {
+export interface OverlayEditorProps {
   code: string;
   onCodeChange: (code: string) => void;
   activeLine?: number;
+  lineExecutionCounts?: Record<number, number>;
 }
 
 export const GridEditor: React.FC<OverlayEditorProps> = ({
   code,
   onCodeChange,
   activeLine = 0,
+  lineExecutionCounts = {},
 }) => {
   const { settings } = useSettings();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -118,6 +121,17 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     if (overlayRef.current) overlayRef.current.style.transform = `translateY(-${scrollTop}px)`;
     if (gutterRef.current) gutterRef.current.style.transform = `translateY(-${scrollTop}px)`;
   }, []);
+  
+  const getHighlightStyle = (lineIndex: number): React.CSSProperties => {
+    const count = lineExecutionCounts[lineIndex] || 0;
+    if (count === 0) return {};
+
+    const opacity = Math.min(0.1 + (count - 1) * 0.08, 0.7);
+    return {
+      backgroundColor: `rgba(34, 197, 94, ${opacity})`, // green-500 with variable opacity
+      transition: 'background-color 0.3s ease',
+    };
+  };
 
   return (
     <div
@@ -143,10 +157,13 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           style={textStyle}
         >
             {lines.map((line, i) => (
-                <div key={i} className={cn(
-                    i === activeLine && "bg-blue-500/20",
+                <div 
+                  key={i} 
+                  className={cn(
                     i === cursorLine && "bg-muted/50"
-                  )}>
+                  )}
+                  style={getHighlightStyle(i)}
+                >
                     {line === '' ? '\u00A0' : line}
                 </div>
             ))}

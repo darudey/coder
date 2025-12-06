@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
@@ -43,6 +44,7 @@ interface CompilerProps {
   EditorComponent?: React.FC<any>;
   onToggleDebugger?: () => void;
   activeLine?: number;
+  lineExecutionCounts?: Record<number, number>;
 }
 
 export interface CompilerRef {
@@ -82,7 +84,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 };
 
 
-const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange, EditorComponent = CodeEditor, onToggleDebugger, activeLine }, ref) => {
+const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, variant = 'default', hideHeader = false, onCodeChange, EditorComponent = CodeEditor, onToggleDebugger, activeLine, lineExecutionCounts }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
@@ -519,6 +521,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ initialCode, v
                 hasActiveFile={!!activeFile}
                 onRun={handleRun}
                 activeLine={activeLine}
+                lineExecutionCounts={lineExecutionCounts}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
