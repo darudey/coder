@@ -5,7 +5,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardContent } from "../ui/card";
-import { Grab, X, GripHorizontal, Play, SkipBack, SkipForward, Pause, RefreshCw, Activity, Bot, Info, Briefcase, GitCommit, GitBranch } from "lucide-react";
+import { Grab, X, GripHorizontal, Play, SkipBack, SkipForward, Pause, RefreshCw, Activity, Bot, Info, Briefcase, GitCommit, GitBranch, Zap } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import type { TimelineEntry } from "@/engine/timeline";
 
@@ -218,6 +218,36 @@ const NextStepPanel: React.FC<{ nextStep?: TimelineEntry['nextStep'] }> = ({ nex
     );
 };
 
+const ExpressionSummaryPanel: React.FC<{ evals?: Record<string, any> }> = ({ evals }) => {
+    if (!evals || Object.keys(evals).length === 0) {
+        return null;
+    }
+  
+    return (
+        <div className="p-2 bg-muted/50 rounded-md space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground px-2">
+                <Zap className="w-3.5 h-3.5" />
+                Result
+            </div>
+            {Object.entries(evals).map(([expr, info]) => (
+                <div key={expr} className="p-2 text-xs">
+                    {info.context && (
+                        <div className="text-xs text-blue-500 font-semibold mb-1">
+                            {info.context}
+                        </div>
+                    )}
+                    <div className="font-mono font-semibold truncate" title={expr}>
+                        {expr}
+                    </div>
+                    <div className="text-muted-foreground mt-1">
+                        Result: <span className="font-semibold text-foreground">{String(info.result)}</span>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 
 const ExpressionPanel: React.FC<{ evals?: Record<string, any> }> = ({ evals }) => {
     if (!evals || Object.keys(evals).length === 0) {
@@ -411,9 +441,10 @@ export const FloatingDebugger = ({
             <div className="p-2 space-y-3">
                 <div className="text-xs font-mono"><b>Step:</b> {state.step} | <b>Line:</b> {state.line + 1}</div>
                 <MetadataPanel metadata={state.metadata} />
-                <ExpressionPanel evals={state.expressionEval} />
+                <ExpressionSummaryPanel evals={state.expressionEval} />
                 <ScopePanel scopes={state.variables} />
                 <CallStackPanel stack={state.stack} />
+                <ExpressionPanel evals={state.expressionEval} />
                 <details className="pt-4">
                     <summary className="text-xs cursor-pointer text-muted-foreground">Raw State</summary>
                     <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
@@ -436,3 +467,5 @@ export const FloatingDebugger = ({
     </>
   );
 };
+
+    
