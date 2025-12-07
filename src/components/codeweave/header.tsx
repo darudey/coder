@@ -64,7 +64,6 @@ const NavItems = () => {
     { href: '/courses', label: 'Courses', icon: Book },
     { href: '/', label: 'Compiler', icon: Code },
     { href: '/session', label: 'Session', icon: Grid },
-    { href: '/execution', label: 'Execution', icon: Zap },
   ];
   
   const adminNavItems = [
@@ -351,3 +350,5 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
+
+    
