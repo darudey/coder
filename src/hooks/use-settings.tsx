@@ -8,9 +8,7 @@ type Theme = 'light' | 'dark' | 'system';
 interface Settings {
   editorFontSize: number;
   isVirtualKeyboardEnabled: boolean;
-  mobileOutputMode: 'side' | 'floating'; // For mobile
-  desktopOutputMode: 'side' | 'floating'; // For desktop
-  isSessionOutputFloating: boolean; // For session page
+  outputMode: 'side' | 'floating';
 }
 
 interface SettingsContextValue {
@@ -24,9 +22,7 @@ interface SettingsContextValue {
 const defaultSettings: Settings = {
   editorFontSize: 14,
   isVirtualKeyboardEnabled: true,
-  mobileOutputMode: 'side',
-  desktopOutputMode: 'side',
-  isSessionOutputFloating: false,
+  outputMode: 'side',
 };
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -42,9 +38,28 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const item = window.localStorage.getItem('app-settings');
       if (item) {
         const storedSettings = JSON.parse(item);
-        // Merge stored settings with defaults to avoid breaking changes
-        setSettings(prev => ({...defaultSettings, ...storedSettings}));
+        
+        // Check if we need to migrate old settings
+        if ('desktopOutputMode' in storedSettings || 'mobileOutputMode' in storedSettings || 'isSessionOutputFloating' in storedSettings) {
+            const isMobile = window.innerWidth < 768;
+            const preferredMode = isMobile ? 'floating' : 'side';
+            const migratedSettings = {
+                ...defaultSettings,
+                ...storedSettings,
+                outputMode: storedSettings.outputMode || preferredMode,
+            };
+            delete migratedSettings.desktopOutputMode;
+            delete migratedSettings.mobileOutputMode;
+            delete migratedSettings.isSessionOutputFloating;
+            setSettings(migratedSettings);
+        } else {
+            setSettings(prev => ({...defaultSettings, ...storedSettings}));
+        }
+      } else {
+         const isMobile = window.innerWidth < 768;
+         setSettings(prev => ({...prev, outputMode: isMobile ? 'floating' : 'side' }));
       }
+
       const storedTheme = localStorage.getItem('theme') as Theme;
       if (storedTheme) {
         setThemeState(storedTheme);

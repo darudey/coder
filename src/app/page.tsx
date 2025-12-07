@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -8,10 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { OutputDisplay } from '@/components/codeweave/output-display';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function Home() {
   const { settings } = useSettings();
   const compilerRef = useRef<CompilerRef>(null);
+  const isMobile = useIsMobile();
   
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
@@ -19,20 +22,21 @@ export default function Home() {
 
   const handleRun = useCallback(async () => {
     if (compilerRef.current) {
-        if (settings.desktopOutputMode === 'side') {
+        const showFloating = isMobile ? settings.outputMode === 'floating' : settings.outputMode === 'floating';
+        if (!showFloating) {
             setIsCompiling(true);
             setOutput(null);
         }
         // The Compiler component will handle opening the floating panel
         const result = await compilerRef.current.run();
-        if (settings.desktopOutputMode === 'side') {
+        if (!showFloating) {
             setOutput(result);
             setIsCompiling(false);
         }
     }
-  }, [settings.desktopOutputMode]);
+  }, [settings.outputMode, isMobile]);
 
-  const showSidePanel = settings.desktopOutputMode === 'side';
+  const showSidePanel = !isMobile && settings.outputMode === 'side';
 
   if (!showSidePanel) {
     return (

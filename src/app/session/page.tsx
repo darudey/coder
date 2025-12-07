@@ -13,10 +13,12 @@ import { Play, Grab, X, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useSettings } from '@/hooks/use-settings';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function SessionPage() {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
+  const isMobile = useIsMobile();
   const fs = useCompilerFs({
     initialCode: `function factorial(n) {
   if (n === 0) {
@@ -305,27 +307,12 @@ console.log(result);`
     </div>
   );
 
-  const showFloating = settings.isSessionOutputFloating;
+  const showFloating = isMobile ? settings.outputMode === 'floating' : settings.outputMode === 'floating';
+  const showSidePanel = !isMobile && settings.outputMode === 'side';
 
   return (
     <div className="bg-background h-[calc(100vh-4rem)]">
-        {showFloating ? (
-            <div className="p-4 h-full">
-                <Compiler
-                    ref={compilerRef}
-                    {...fs}
-                    code={fs.code}
-                    onCodeChange={handleCodeChange}
-                    EditorComponent={GridEditor} 
-                    onToggleDebugger={() => setShowDebugger(s => !s)}
-                    activeLine={activeLine}
-                    lineExecutionCounts={lineExecutionCounts}
-                    hasActiveFile={!!fs.activeFile}
-                    onRun={handleRun}
-                    variant="default"
-                />
-            </div>
-        ) : (
+        {showSidePanel ? (
              <div className="grid h-full p-4 gap-4" style={{ gridTemplateColumns: `1fr ${panelWidth}%`}}>
                 <div className="h-full flex flex-col overflow-y-auto">
                     <Compiler
@@ -343,6 +330,22 @@ console.log(result);`
                     />
                 </div>
                 {SidePanelOutput}
+            </div>
+        ) : (
+            <div className="p-4 h-full">
+                <Compiler
+                    ref={compilerRef}
+                    {...fs}
+                    code={fs.code}
+                    onCodeChange={handleCodeChange}
+                    EditorComponent={GridEditor} 
+                    onToggleDebugger={() => setShowDebugger(s => !s)}
+                    activeLine={activeLine}
+                    lineExecutionCounts={lineExecutionCounts}
+                    hasActiveFile={!!fs.activeFile}
+                    onRun={handleRun}
+                    variant="default"
+                />
             </div>
         )}
 

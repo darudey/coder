@@ -294,9 +294,9 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
   const handleRun = useCallback(async (): Promise<RunResult> => {
     // Determine if we should open a modal/floating panel
-    const isFloatingMode = isMobile ? globalSettings.mobileOutputMode === 'floating' : globalSettings.desktopOutputMode === 'floating';
+    const showFloating = isMobile ? globalSettings.outputMode === 'floating' : globalSettings.outputMode === 'floating';
     
-    if (variant !== 'minimal' && isFloatingMode) {
+    if (variant !== 'minimal' && showFloating) {
         setIsCompiling(true);
         setIsResultOpen(true);
         setOutput(null); // Clear previous output
@@ -518,8 +518,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     </Card>
   );
 
-  const showFloatingPanel = isResultOpen && (isMobile ? globalSettings.mobileOutputMode === 'floating' : globalSettings.desktopOutputMode === 'floating');
-  const showDialogPanel = isResultOpen && isMobile && globalSettings.mobileOutputMode === 'side';
+  const showFloatingPanel = isResultOpen && (isMobile ? globalSettings.outputMode === 'floating' : globalSettings.outputMode === 'floating');
+  const showDialogPanel = isResultOpen && isMobile && globalSettings.outputMode === 'side';
 
   return (
     <div className="bg-background">
@@ -639,5 +639,6 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
