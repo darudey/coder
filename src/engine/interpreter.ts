@@ -1,4 +1,3 @@
-
 // src/engine/interpreter.ts
 //
 // FINAL PHASE-2 + UI metadata support (compatibility safe)
@@ -27,12 +26,8 @@ export function generateTimeline(
 ): TimelineEntry[] & { meta?: RunMetadata } {
   const maxSteps = options.maxSteps ?? 2000;
 
-  // Always reset call counter before execution (Phase 2 rule)
   resetCallCounter();
 
-  // --------------------------------------------------------------
-  // 1. PARSE
-  // --------------------------------------------------------------
   let ast;
   try {
     ast = acorn.parse(code, {
@@ -42,7 +37,6 @@ export function generateTimeline(
       sourceType: "script",
     }) as any;
   } catch (e: any) {
-    // Return a timeline with a single syntax-error step
     const errorEntry: TimelineEntry = {
       step: 0,
       line: (e.loc?.line ?? 1) - 1,
@@ -61,14 +55,12 @@ export function generateTimeline(
     return arr;
   }
 
-  // --------------------------------------------------------------
-  // 2. GLOBAL ENVIRONMENT
-  // --------------------------------------------------------------
+  // GLOBAL ENV
   const globalRecord = new EnvironmentRecord();
   const globalEnv = new LexicalEnvironment("Global", "global", globalRecord, null);
   const scriptEnv = globalEnv.extend("script", "Script");
-
   const stack: string[] = [];
+
   const logger = new TimelineLogger(
     () => scriptEnv,
     () => stack,
@@ -76,26 +68,32 @@ export function generateTimeline(
     maxSteps
   );
 
-  // --------------------------------------------------------------
-  // 3. BUILTINS (teaching-friendly)
-  // --------------------------------------------------------------
+  // BUILTINS
   const consoleObj: any = createObject(null);
-
-  const logFn = (...args: any[]) => {
-    logger.logOutput(...args);
-  };
-  (logFn as any).__builtin = "console.log"; // needed by evalCall
+  const logFn = (...args: any[]) => logger.logOutput(...args);
+  (logFn as any).__builtin = "console.log";
   consoleObj.log = logFn;
 
   globalEnv.record.createMutableBinding("console", "var", consoleObj, true);
   globalEnv.record.createMutableBinding("Math", "var", Math, true);
 
-   // --- Step 0: Initial state before execution ---
-  const firstMeaningfulStatement = ast.body.find((stmt: any) => stmt.type !== 'EmptyStatement' && stmt.type !== 'DebuggerStatement');
-  
-  // --------------------------------------------------------------
-  // 4. CONTEXT
-  // --------------------------------------------------------------
+  // --- STEP 0 (critical!) ---
+  logger.log(0, true);  
+
+  // Determine first "real" executable line
+  const firstMeaningful = ast.body.find(
+    (n: any) => n.type !== "EmptyStatement" && n.type !== "DebuggerStatement"
+  );
+
+  if (firstMeaningful?.loc) {
+    const preview = displayHeader(firstMeaningful, code);
+    logger.addFlow("Ready to run. Click Next to start.");
+    logger.setNext(
+      firstMeaningful.loc.start.line - 1,
+      `Next Step → ${preview} (line ${firstMeaningful.loc.start.line})`
+    );
+  }
+
   const ctx: EvalContext = {
     env: scriptEnv,
     thisValue: undefined,
@@ -103,48 +101,28 @@ export function generateTimeline(
     stack,
   };
 
-
-  if (firstMeaningfulStatement) {
-    logger.addFlow("Ready to run. Click Next to start.");
-    const ln = firstMeaningfulStatement.loc.start.line;
-    const lineText = logger.getCode().split("\n")[ln - 1].trim();
-
-    logger.setNext(
-      ln - 1,
-      `Next Step → ${lineText} (line ${ln})`
-    );
-  } else {
-    logger.addFlow("Ready to run, but no code found.");
-    logger.setNext(null, "End of program.");
-  }
-
-
-  // --------------------------------------------------------------
-  // 5. EXECUTE PROGRAM
-  // --------------------------------------------------------------
+  // EXECUTION
   try {
     evaluateProgram(ast, ctx);
   } catch (err: any) {
-    // Step-limit or runtime error
     const entries = logger.getTimeline();
-    const lastEntry = entries.at(-1);
-    const lastStep = (lastEntry?.step ?? 0) + 1;
-    const lastLine = lastEntry?.line ?? 0;
+    const last = entries.at(-1);
+    const step = (last?.step ?? 0) + 1;
 
     const extra: TimelineEntry = {
-      step: lastStep,
-      line: lastLine,
+      step,
+      line: last?.line ?? 0,
       variables: globalEnv.snapshotChain(),
       heap: {},
       stack: [...stack],
-      output: lastEntry ? [...lastEntry.output] : [],
+      output: last ? [...last.output] : [],
       controlFlow: [],
       expressionEval: {},
       nextStep: {
         line: null,
         message:
           err?.message === "Step limit exceeded"
-            ? "Execution stopped: too many steps (possible infinite loop)"
+            ? "Execution stopped: too many steps"
             : `Execution error: ${err?.message ?? String(err)}`,
       },
     };
@@ -152,32 +130,24 @@ export function generateTimeline(
     entries.push(extra);
 
     const arr: any = [...entries];
-    const indexByStep: Record<number, number> = {};
-    arr.forEach((e: any, idx: number) => (indexByStep[e.step] = idx));
-    arr.meta = { indexByStep };
-
+    arr.meta = { indexByStep: Object.fromEntries(arr.map((e: any, i: number) => [e.step, i])) };
     return arr;
   }
 
-  // --------------------------------------------------------------
-  // 6. UNIVERSAL FINAL STEP (Phase-2 requirement)
-  // --------------------------------------------------------------
-  const last = logger.peekLastStep();
+  const lastStep = logger.peekLastStep();
 
-  // Only add finishing line if we returned to global
-  if (last && stack.length === 0) {
-    logger.log(last.line);
+  if (lastStep && stack.length === 0) {
+    logger.log(lastStep.line);
     logger.addFlow("Program finished ✔");
     logger.setNext(null, "No more steps");
   }
 
   const timeline = logger.getTimeline();
-  const arr: any = [...timeline];
+  const out: any = [...timeline];
 
-  // Build step-index map
-  const indexByStep: Record<number, number> = {};
-  arr.forEach((e: any, idx: number) => (indexByStep[e.step] = idx));
-  arr.meta = { indexByStep };
+  out.meta = {
+    indexByStep: Object.fromEntries(out.map((e: any, i: number) => [e.step, i])),
+  };
 
-  return arr;
+  return out;
 }
