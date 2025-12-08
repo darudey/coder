@@ -47,21 +47,17 @@ function getCalleeName(node: any, value: any): string {
  */
 export function collectCapturedVariables(fn: FunctionValue): Record<string, any> {
   const result: Record<string, any> = {};
-  let env = fn.__env;
+  if (!fn.__env || !fn.__env.outer) return result;
 
-  while (env && env.outer && env.outer.kind === "function") {
-    const rec = env.outer.record?.bindings;
-    if (rec) {
-      const names =
-        typeof rec.keys === "function" ? [...rec.keys()] : Object.keys(rec);
-
-      for (const name of names) {
-        const binding = typeof rec.get === "function" ? rec.get(name) : rec[name];
-        const val = binding?.value ?? binding;
-        result[name] = safeString(val);
+  let current = fn.__env.outer;
+  while (current && current.kind !== 'global' && current.name !== 'Script') {
+    const snapshot = current.record.snapshot();
+    for (const key in snapshot) {
+      if (!result.hasOwnProperty(key)) {
+        result[key] = snapshot[key];
       }
     }
-    env = env.outer;
+    current = current.outer;
   }
   return result;
 }
@@ -97,8 +93,8 @@ function buildReadableSignatureFromValue(val: any, loggerCode: string) {
 // ----------------------------------------------------------------------
 
 export function evalCall(node: any, ctx: EvalContext): any {
-  CALL_COUNTER++;
-  ctx.logger.addFlow(`── Call #${CALL_COUNTER} start ──`);
+  const callId = ++CALL_COUNTER;
+  ctx.logger.addFlow(`── Call #${callId} start ──`);
 
   const calleeVal = evaluateExpression(node.callee, ctx);
   const args = node.arguments.map((arg: any) => evaluateExpression(arg, ctx));
@@ -127,69 +123,22 @@ export function evalCall(node: any, ctx: EvalContext): any {
       activeScope: ctx.env.name ?? "Unknown",
     });
   } catch {}
-
-  // ------------------------------------------------------------------
-  // ✔ Arrow closure entry (teaching-friendly)
-  // ------------------------------------------------------------------
-  if (calleeVal?.__node?.type === "ArrowFunctionExpression") {
-    const params = (calleeVal.__node?.params || []).map((p: any, i: number) =>
-        `${p.name} = ${safeString(args[i])}`
-    );
-
-    ctx.logger.addFlow(`Entering closure (${params.join(", ")})`);
-
-    // Explain closure only ONCE
-    if (!calleeVal.__closureExplained) {
-      const captured = Object.entries(collectCapturedVariables(calleeVal))
-        .map(([k,v]) => `${k} = ${JSON.stringify(v)}`)
-        .join(', ');
-
-      if (captured.length > 0) {
-        ctx.logger.addFlow(
-          `Closure created. It remembers: ${captured}`
-        );
-      }
-      calleeVal.__closureExplained = true;
-    }
-
-    // DO NOT create a new timeline step — expressions.ts handles arrow step creation
+  
+  if (calleeVal?.__node) {
     const body = calleeVal.__node.body;
-    if (body?.loc) {
-      if (body.type === "BlockStatement") {
-        const first = getFirstMeaningfulStatement(body);
-        if (first?.loc) {
-            const ln = first.loc.start.line;
-            const lineText = ctx.logger.getCode().split("\n")[ln - 1].trim();
-            ctx.logger.setNext(ln - 1, `Next Step → ${lineText} (line ${ln})`);
-        }
-      } else {
-        const ln = body.loc.start.line;
-        const lineText = ctx.logger.getCode().split("\n")[ln - 1].trim();
-        ctx.logger.setNext(ln - 1, `Next Step → ${lineText} (line ${ln})`);
-      }
-    }
-  }
-
-  // ------------------------------------------------------------------
-  // ✔ Next-step prediction for normal functions
-  // ------------------------------------------------------------------
-  if (calleeVal?.__node && calleeVal.__node.type !== "ArrowFunctionExpression") {
-    const body = calleeVal.__node.body;
-
     const nextHeaderNode =
         body && body.type === "BlockStatement"
             ? getFirstMeaningfulStatement(body)
             : body;
 
     if (nextHeaderNode?.loc) {
-        const ln = nextHeaderNode.loc.start.line;
-        const lineText = ctx.logger.getCode().split("\n")[ln - 1].trim();
         ctx.logger.setNext(
-            ln - 1,
-            `Next Step → ${lineText} (line ${ln})`
+            nextHeaderNode.loc.start.line - 1,
+            `Next Step → ${displayHeader(nextHeaderNode, ctx.logger.getCode())}`
         );
     }
   }
+
 
   // ------------------------------------------------------------------
   // ✔ Builtin console.log
@@ -198,7 +147,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
     const formattedArgs = args.map(a => safeString(a)).join(" ");
     ctx.logger.logOutput(formattedArgs);
     ctx.logger.addFlow(`console.log → ${formattedArgs}`);
-    ctx.logger.addFlow(`── Call #${CALL_COUNTER} complete (returned undefined) ──`);
+    ctx.logger.addFlow(`── Call #${callId} complete (returned undefined) ──`);
     // also mark metadata for this step (console output) — use normalized API
     ctx.logger.updateMeta({ kind: "ConsoleOutput", outputText: formattedArgs, callDepth: ctx.stack?.length ?? 0 });
     ctx.logger.setNext(null, "Return: control returns to caller");
@@ -211,7 +160,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
   if (typeof calleeVal === "function" && !isUserFunction(calleeVal)) {
     const result = calleeVal.apply(thisArg, args);
     ctx.logger.addFlow(
-      `── Call #${CALL_COUNTER} complete (returned ${safeString(result)}) ──`
+      `── Call #${callId} complete (returned ${safeString(result)}) ──`
     );
     // metadata for native function return — normalized API
     ctx.logger.updateMeta({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
@@ -231,7 +180,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
 
     if (isReturnSignal(result)) {
       ctx.logger.addFlow(
-        `── Call #${CALL_COUNTER} complete (returned ${safeString(
+        `── Call #${callId} complete (returned ${safeString(
           result.value
         )}) ──`
       );
@@ -240,7 +189,7 @@ export function evalCall(node: any, ctx: EvalContext): any {
     }
 
     ctx.logger.addFlow(
-      `── Call #${CALL_COUNTER} complete (returned ${safeString(result)}) ──`
+      `── Call #${callId} complete (returned ${safeString(result)}) ──`
     );
     ctx.logger.updateMeta({ kind: "Return", returnedValue: safeString(result), callDepth: ctx.stack?.length ?? 0 });
     return result;

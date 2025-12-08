@@ -1,4 +1,5 @@
 
+
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -176,12 +177,11 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
       const value = evaluateExpression(body, innerCtx);
 
-      logger.addExpressionEval(body, value);
+      logger.addExpressionEval(body, value, undefined, innerCtx.env);
       logger.addExpressionContext(body, "Arrow function body");
 
       logger.addFlow(`Arrow body result → ${JSON.stringify(value)}`);
-      logger.addFlow(`Function complete → returned ${JSON.stringify(value)}`);
-
+      
       // Next-step goes back to caller
       logger.setNext(null, "Return: control returns to caller");
 
@@ -198,7 +198,6 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
     if (isReturnSignal(result)) {
       // Use setLastMetadata so return metadata overwrites last entry as expected by UI
       logger.setLastMetadata({ kind: "Return", returnedValue: JSON.stringify(result.value), callDepth: stack.length });
-      logger.addFlow(`(callsite) returned → ${JSON.stringify(result.value)}`);
       return result.value;
     }
 
@@ -209,44 +208,20 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
   (fn as any).__node = node;
 
-  // When a function value is built during expression evaluation, record its creation metadata
-  // and ensure a useful "next step" is present for the debugger UI (helps nested / returned functions).
   try {
-    const funcName = node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)");
-
-    // Only log ClosureCreated once per function value
-    if (!(fn as any).__closureLogged) {
-      (fn as any).__closureLogged = true;
-
-      const capturedObj = collectCapturedVariables(fn);
-      const last = ctx.logger.peekLastStep();
-
-      // Merge closure metadata into the active timeline entry safely
-      ctx.logger.updateMeta({
-        kind: "ClosureCreated",
-        functionName: funcName,
-        signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
-        activeScope: definingEnv.name,
-        capturedVariables: capturedObj,
-        capturedAtStep: last ? last.step + 1 : undefined,
-      });
-
-      // --- NEW: ensure next-step prediction is available for the debugger ---
-      // Prefer ctx.nextStatement (set by evaluator when available). If not present,
-      // fallback to a generic "Return to caller" so UI shows a clear next message.
-      try {
-        if (ctx.nextStatement && ctx.nextStatement.loc) {
-          ctx.logger.setNext(
-            ctx.nextStatement.loc.start.line - 1,
-            `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
-          );
-        } else {
-          // If there is no explicit next statement in ctx, set a harmless return-to-caller step.
-          ctx.logger.setNext(null, "Return: control returns to caller");
-        }
-      } catch {
-        // never allow next-step prediction to crash execution
-      }
+    const capturedObj = collectCapturedVariables(fn);
+    // Only mark as a closure if it actually captures something
+    if (Object.keys(capturedObj).length > 0) {
+        const funcName = node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)");
+        const last = ctx.logger.peekLastStep();
+        ctx.logger.updateMeta({
+            kind: "ClosureCreated",
+            functionName: funcName,
+            signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+            activeScope: definingEnv.name,
+            capturedVariables: capturedObj,
+            capturedAtStep: last ? last.step + 1 : undefined,
+        });
     }
   } catch {
     // do not fail on metadata extraction

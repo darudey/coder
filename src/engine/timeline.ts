@@ -1,4 +1,5 @@
 
+
 // src/engine/timeline.ts
 import type { LexicalEnvironment } from "./environment";
 
@@ -388,12 +389,12 @@ export class TimelineLogger {
   }
 
   // expression helpers used by evaluator
-  private safeValue(nameOrNode: any): any {
+  private safeValue(nameOrNode: any, env?: LexicalEnvironment): any {
     try {
-      const env = this.getEnvSnapshot();
-      if (!env || typeof (env as any).get !== "function") return undefined;
+      const effectiveEnv = env || this.getEnvSnapshot();
+      if (!effectiveEnv || typeof (effectiveEnv as any).get !== "function") return undefined;
       const name = typeof nameOrNode === "string" ? nameOrNode : nameOrNode?.name;
-      return (env as any).get(name);
+      return (effectiveEnv as any).get(name);
     } catch {
       return undefined;
     }
@@ -449,7 +450,7 @@ export class TimelineLogger {
   }
 
   // Build breakdown (upgraded for functions & arrows)
-  private buildExpressionBreakdown(expr: any, evaluatedValue?: any): string[] {
+  private buildExpressionBreakdown(expr: any, evaluatedValue?: any, envForEval?: LexicalEnvironment): string[] {
     const lines: string[] = [];
     const walk = (node: any, indent = ""): any => {
       if (!node) { lines.push(indent + "(empty)"); return undefined; }
@@ -489,7 +490,7 @@ export class TimelineLogger {
 
       switch (node.type) {
         case "Identifier": {
-          const v = this.safeValue(node.name);
+          const v = this.safeValue(node.name, envForEval);
           const display = isUserFunctionValue(v) ? "[Function]" : JSON.stringify(v);
           log(`Identifier "${node.name}" → ${display}`);
           return v;
@@ -625,7 +626,7 @@ export class TimelineLogger {
           log(`Assignment (${node.operator}):`);
           if (node.left.type !== "Identifier") { log("Unsupported assignment target (not Identifier)"); return undefined; }
           const name = node.left.name;
-          const oldVal = this.safeValue(name);
+          const oldVal = this.safeValue(name, envForEval);
           log(`Left side identifier "${name}" → old value ${JSON.stringify(oldVal)}`);
           const rightVal = walk(node.right, indent + "  ");
           let newVal;
@@ -651,7 +652,7 @@ export class TimelineLogger {
     return lines;
   }
 
-  private makeFriendlyExplanation(expr: any, result: any): string[] {
+  private makeFriendlyExplanation(expr: any, result: any, env?: LexicalEnvironment): string[] {
     if (!expr || !expr.type) return [`Expression result: ${result}`];
     if (expr.type === "BinaryExpression") {
       const op = expr.operator;
@@ -659,8 +660,8 @@ export class TimelineLogger {
       const rightNode = expr.right;
       const leftName = leftNode?.type === "Identifier" ? leftNode.name : this.code.substring(leftNode?.range?.[0] ?? 0, leftNode?.range?.[1] ?? 0);
       const rightName = rightNode?.type === "Identifier" ? rightNode.name : this.code.substring(rightNode?.range?.[0] ?? 0, rightNode?.range?.[1] ?? 0);
-      const leftVal = leftNode?.type === "Literal" ? leftNode.value : this.safeValue(leftNode?.name ?? leftName);
-      const rightVal = rightNode?.type === "Literal" ? rightNode.value : this.safeValue(rightNode?.name ?? rightName);
+      const leftVal = leftNode?.type === "Literal" ? leftNode.value : this.safeValue(leftNode?.name ?? leftName, env);
+      const rightVal = rightNode?.type === "Literal" ? rightNode.value : this.safeValue(rightNode?.name ?? rightName, env);
       const lines: string[] = [];
       const exprString = this.code.substring(expr.range?.[0] ?? 0, expr.range?.[1] ?? 0);
       lines.push(`Expression: ${exprString}`);
@@ -703,7 +704,7 @@ export class TimelineLogger {
    * - textual breakdown and friendly explanation
    * - if the result is a user function, record captured variables & function signature into metadata (normalized)
    */
-  addExpressionEval(expr: any, value: any, customBreakdown?: string[]) {
+  addExpressionEval(expr: any, value: any, customBreakdown?: string[], envForEval?: LexicalEnvironment) {
     const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
     if (!target || !expr) return;
 
@@ -717,11 +718,11 @@ export class TimelineLogger {
     if (!target.expressionEval) target.expressionEval = {};
 
     // Pass the evaluated value to the breakdown builder so we can show captures for functions.
-    const breakdown = (customBreakdown ?? this.buildExpressionBreakdown(expr, value)).map(line => typeof line === "string" ? line : String(line));
+    const breakdown = (customBreakdown ?? this.buildExpressionBreakdown(expr, value, envForEval)).map(line => typeof line === "string" ? line : String(line));
 
     let friendly: string[];
     try {
-      friendly = this.makeFriendlyExplanation(expr, value).map(x => typeof x === "string" ? x : String(x));
+      friendly = this.makeFriendlyExplanation(expr, value, envForEval).map(x => typeof x === "string" ? x : String(x));
     } catch {
       friendly = [`Expression result: ${value}`];
     }

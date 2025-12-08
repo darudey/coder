@@ -1,3 +1,4 @@
+
 // src/engine/interpreter.ts
 //
 // FINAL PHASE-2 + UI metadata support (compatibility safe)
@@ -137,7 +138,9 @@ export function generateTimeline(
   const lastStep = logger.peekLastStep();
 
   if (lastStep && stack.length === 0) {
-    logger.log(lastStep.line);
+    const lastSourceNode = ast.body[ast.body.length - 1];
+    const finalLine = lastSourceNode?.loc?.end?.line - 1 ?? lastStep.line;
+    logger.log(finalLine);
     logger.addFlow("Program finished ✔");
     logger.setNext(null, "No more steps");
   }

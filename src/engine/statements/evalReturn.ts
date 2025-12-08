@@ -51,42 +51,18 @@ export function evalReturnStatement(node: any, ctx: EvalContext): any {
   const logger = ctx.logger;
   const arg = node.argument;
 
-  logger.addFlow("Evaluating return expression");
-
   let value: any = undefined;
 
   if (arg) {
     value = evaluateExpression(arg, ctx);
 
     // mark this expression as "return value" for the Expression Evaluation panel
+    logger.addExpressionEval(arg, value, undefined, ctx.env); // Pass environment
     logger.addExpressionContext(arg, "Return value expression");
-    logger.addExpressionEval(arg, value);
   }
 
   const pretty = formatValueForLog(value);
-
-  // Clear short messages instead of giant JSON blobs
-  logger.addFlow(`Return encountered → value: ${pretty}`);
-
-  const funcName = ctx.stack[ctx.stack.length - 1] || "<anonymous>";
-  logger.addFlow(`Return → ${funcName} returns ${pretty}`);
-
-  // Teaching-friendly: explicit "function finished" narration attached to this step
-  // (helps user understand the function has ended and what was returned)
-  try {
-    if (value && typeof value === "object" && value.__isFunctionValue) {
-      // If returning a function, hint that a closure / function value was created
-      const capturedHint = (value.__env && value.__env.outer)
-        ? " (closure capturing outer variables)"
-        : "";
-      logger.addFlow(`Function complete → returned a function${capturedHint}`);
-    } else {
-      logger.addFlow(`Function complete → returned ${pretty}`);
-    }
-  } catch {
-    // swallow — never crash debugger logging
-    logger.addFlow(`Function complete → returned ${pretty}`);
-  }
+  logger.addFlow(`Return value → ${pretty}`);
 
   // After return, control goes back to caller
   logger.setNext(null, "Return: control returns to caller");
