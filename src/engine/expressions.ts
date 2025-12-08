@@ -186,8 +186,8 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     // Return value handling
     if (isReturnSignal(result)) {
-      // Merge return metadata safely
-      logger.updateMeta({ kind: "Return", returnedValue: JSON.stringify(result.value), callDepth: stack.length });
+      // Use setLastMetadata so return metadata overwrites last entry as expected by UI
+      logger.setLastMetadata({ kind: "Return", returnedValue: JSON.stringify(result.value), callDepth: stack.length });
       logger.addFlow(`(callsite) returned → ${JSON.stringify(result.value)}`);
       return result.value;
     }
@@ -199,23 +199,28 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
   (fn as any).__node = node;
 
-  // When a function value is built during expression evaluation, record its creation metadata
-  if (!fn.__closureLogged) {
-    fn.__closureLogged = true;
+  // When a function value is built, record its creation metadata if not already done.
+  // This is the only time "ClosureCreated" should be emitted.
+  // Guard so we do NOT log when the function is being created during the execution of its own impl (i.e. calls)
+  try {
+    if (!fn.__closureLogged && ctx !== (fn as any).__ctx) {
+      (fn as any).__closureLogged = true; // Set flag immediately to prevent re-logging
 
-    const capturedObj = collectCapturedVariables(fn);
-    const last = ctx.logger.peekLastStep();
+      const capturedObj = collectCapturedVariables(fn);
+      const last = ctx.logger.peekLastStep();
 
-    ctx.logger.updateMeta({
-      kind: "ClosureCreated",
-      functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),
-      signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
-      activeScope: definingEnv.name,
-      capturedVariables: capturedObj,
-      capturedAtStep: last ? last.step + 1 : undefined,
-    });
+      ctx.logger.setLastMetadata({
+        kind: "ClosureCreated",
+        functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),
+        signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+        activeScope: definingEnv.name,
+        capturedVariables: capturedObj,
+        capturedAtStep: last ? last.step + 1 : undefined,
+      });
+    }
+  } catch {
+    // don't fail on metadata extraction
   }
-
 
   return fn;
 }
@@ -281,9 +286,14 @@ export function evaluateExpression(node: any, ctx: EvalContext): any {
       case "CallExpression":
         return "[Side Effect]";
       case "AssignmentExpression":
+        // AssignmentExpression uses .left (not .argument)
+        if (node.left?.type === "Identifier") {
+          try { return ctx.env.get(node.left.name); } catch { return undefined; }
+        }
+        return undefined;
       case "UpdateExpression":
         if (node.argument?.type === "Identifier") {
-          return ctx.env.get(node.argument.name);
+          try { return ctx.env.get(node.argument.name); } catch { return undefined; }
         }
         return undefined;
     }
