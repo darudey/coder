@@ -804,3 +804,5 @@ export class TimelineLogger {
     return this.entries;
   }
 }
+
+The user has reverted their codebase to an earlier version. Retain prior prompts for context and reasoning, but do not apply code changes made in earlier prompts, as those are no longer valid.
