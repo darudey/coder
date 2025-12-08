@@ -11,9 +11,6 @@ import AnsiToHtml from '@/lib/ansi-to-html';
 import { cn } from '@/lib/utils';
 import { diffLines } from 'diff';
 import { motion, AnimatePresence } from 'framer-motion';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/themes/prism.css';
 import { FixedSizeList as VirtualList } from 'react-window';
 import { Copy, Check, X, Activity } from 'lucide-react';
 
@@ -163,6 +160,16 @@ const OutputBlock: React.FC<{
 }> = ({ content, type, autoScroll = true, collapseThreshold = 800 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [expanded, setExpanded] = useState(() => content.length < collapseThreshold);
+
+  useEffect(() => {
+    async function highlight() {
+      const Prism = (await import('prismjs')).default;
+      await import('prismjs/components/prism-javascript');
+      await import('prismjs/themes/prism.css');
+      Prism.highlightAll();
+    }
+    highlight();
+  }, [content]);
 
   useEffect(() => {
     setExpanded(content.length < collapseThreshold);
