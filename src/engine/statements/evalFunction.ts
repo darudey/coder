@@ -1,5 +1,4 @@
 
-
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
@@ -68,22 +67,21 @@ export function evalFunctionDeclaration(
       }
     }
 
-    // 4. Log entry
+    // 4. Log entry: use first meaningful statement so the entry step points to real code
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
       let entryLine = node.loc.start.line - 1;
 
-      // Fix: jump to first meaningful inside block
       if (node.body?.type === "BlockStatement") {
-          const first = getFirstMeaningfulStatement(node.body);
-          if (first?.loc) {
-              entryLine = first.loc.start.line - 1;
-          }
+        const first = getFirstMeaningfulStatement(node.body);
+        if (first?.loc) {
+          entryLine = first.loc.start.line - 1;
+        }
       }
 
       logger.log(entryLine);
-
       logger.addFlow(`Entering function ${funcName}`);
+
       // Attach metadata for runtime function entry (callDepth will be stack length before push)
       logger.updateMeta({
         kind: "FunctionEntry",
@@ -94,7 +92,7 @@ export function evalFunctionDeclaration(
       });
     }
 
-    // Predict next step inside body
+    // Predict next step inside body (first meaningful inside block / or the body itself)
     const body = node.body;
     const firstStmt =
       body && body.type === "BlockStatement"
@@ -104,10 +102,7 @@ export function evalFunctionDeclaration(
     if (firstStmt?.loc) {
       logger.setNext(
         firstStmt.loc.start.line - 1,
-        `Next Step → ${displayHeader(
-          firstStmt,
-          logger.getCode()
-        )}`
+        `Next Step → ${displayHeader(firstStmt, logger.getCode())}`
       );
     }
 
@@ -161,7 +156,6 @@ export function evalFunctionDeclaration(
   ctx.logger.addFlow(`Declared function ${name}`);
 
   // Record closure/creation metadata on this declaration step.
-  // Use updateMeta so we merge into current logged step safely.
   try {
     const sig = node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined;
     const captured = collectCapturedVariables(fn);
@@ -178,14 +172,13 @@ export function evalFunctionDeclaration(
     // never throw from metadata collection
   }
 
-    // After declaring the function, next-step should remain pointing
-    // toward the next *real executable* statement in the parent scope.
-    if (ctx.nextStatement) {
-        ctx.logger.setNext(
-            ctx.nextStatement.loc.start.line - 1,
-            `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
-        );
-    } else {
-        ctx.logger.setNext(null, "End of block");
-    }
+  // After declaring the function, keep next-step pointing to the parent's nextStatement (first real executable)
+  if (ctx.nextStatement) {
+    ctx.logger.setNext(
+      ctx.nextStatement.loc.start.line - 1,
+      `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+    );
+  } else {
+    ctx.logger.setNext(null, "End of block");
+  }
 }
