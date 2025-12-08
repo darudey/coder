@@ -1,4 +1,3 @@
-
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -199,27 +198,47 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
   const fn = createFunction(definingEnv, node.params ?? [], node.body, impl);
   (fn as any).__node = node;
 
-  // When a function value is built, record its creation metadata if not already done.
-  // This is the only time "ClosureCreated" should be emitted.
-  // Guard so we do NOT log when the function is being created during the execution of its own impl (i.e. calls)
+  // When a function value is built during expression evaluation, record its creation metadata
+  // and ensure a useful "next step" is present for the debugger UI (helps nested / returned functions).
   try {
-    if (!fn.__closureLogged && ctx !== (fn as any).__ctx) {
-      (fn as any).__closureLogged = true; // Set flag immediately to prevent re-logging
+    const funcName = node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)");
+
+    // Only log ClosureCreated once per function value
+    if (!(fn as any).__closureLogged) {
+      (fn as any).__closureLogged = true;
 
       const capturedObj = collectCapturedVariables(fn);
       const last = ctx.logger.peekLastStep();
 
-      ctx.logger.setLastMetadata({
+      // Merge closure metadata into the active timeline entry safely
+      ctx.logger.updateMeta({
         kind: "ClosureCreated",
-        functionName: node.id?.name || (node.type === "ArrowFunctionExpression" ? "(arrow closure)" : "(anonymous)"),
+        functionName: funcName,
         signature: node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined,
         activeScope: definingEnv.name,
         capturedVariables: capturedObj,
         capturedAtStep: last ? last.step + 1 : undefined,
       });
+
+      // --- NEW: ensure next-step prediction is available for the debugger ---
+      // Prefer ctx.nextStatement (set by evaluator when available). If not present,
+      // fallback to a generic "Return to caller" so UI shows a clear next message.
+      try {
+        if (ctx.nextStatement && ctx.nextStatement.loc) {
+          ctx.logger.setNext(
+            ctx.nextStatement.loc.start.line - 1,
+            `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+          );
+        } else {
+          // If there is no explicit next statement in ctx, set a harmless return-to-caller step.
+          ctx.logger.setNext(null, "Return: control returns to caller");
+        }
+      } catch {
+        // never allow next-step prediction to crash execution
+      }
     }
   } catch {
-    // don't fail on metadata extraction
+    // do not fail on metadata extraction
   }
 
   return fn;
