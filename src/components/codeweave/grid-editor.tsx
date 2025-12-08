@@ -118,6 +118,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
     measure.style.width = `${ta.clientWidth}px`;
     gutter.innerHTML = '';
+    const maxLineNumber = lines.length;
+    const gutterWidth = String(maxLineNumber).length * (fontSize * 0.6) + 32; // char width + padding + icon
+    gutter.style.width = `${gutterWidth}px`;
+
 
     for (let i = 0; i < lines.length; i++) {
         if (!isLineVisible(i)) continue;
@@ -280,7 +284,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="w-16 shrink-0 border-r bg-muted py-2"
+        className="shrink-0 border-r bg-muted py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
