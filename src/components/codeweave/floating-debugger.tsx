@@ -9,7 +9,6 @@ import { Grab, X, GripHorizontal, Play, SkipBack, SkipForward, Pause, RefreshCw,
 import { ScrollArea } from "../ui/scroll-area";
 import type { TimelineEntry } from "@/engine/timeline";
 
-
 const DraggablePanel: React.FC<{
     title: string;
     children: React.ReactNode;
@@ -201,18 +200,34 @@ const MetadataPanel: React.FC<{ metadata: TimelineEntry['metadata'] }> = ({ meta
     );
 };
 
-const NextStepPanel: React.FC<{ nextStep?: TimelineEntry['nextStep'] }> = ({ nextStep }) => {
+const NextStepPanel: React.FC<{ nextStep?: TimelineEntry['nextStep'], metadata?: TimelineEntry['metadata'] }> = ({ nextStep, metadata }) => {
     if (!nextStep) return (
          <div className="p-3 text-xs italic text-muted-foreground">
             No next step.
         </div>
     );
-    
+
+    // Build a safe, concise preview for the next step:
+    const previewFromMeta = metadata?.signature ? String(metadata.signature).trim() : undefined;
+    const rawMessage = nextStep.message ?? "";
+    const firstLine = rawMessage.split("\n")[0].trim();
+
+    // When signature exists, prefer it (trim to single line)
+    const preview = previewFromMeta && previewFromMeta.length > 0
+        ? (previewFromMeta.length > 140 ? previewFromMeta.slice(0, 137) + "..." : previewFromMeta)
+        : (firstLine.length > 140 ? firstLine.slice(0, 137) + "..." : firstLine);
+
     return (
         <div className="p-3">
-            <div className="text-xs text-muted-foreground mt-1">
-                {nextStep.message}
+            <div className="text-xs text-muted-foreground mt-1" title={rawMessage}>
+                {preview}
+                {nextStep.line !== null && ` (line ${nextStep.line + 1})`}
             </div>
+            {rawMessage && rawMessage !== preview && (
+                <div className="mt-2 text-xs text-muted-foreground/70 italic">
+                    (full: <span className="font-mono">{rawMessage.length > 200 ? rawMessage.slice(0,200) + "..." : rawMessage}</span>)
+                </div>
+            )}
         </div>
     );
 };
