@@ -75,6 +75,10 @@ export interface CompilerRef {
 
 const runCodeOnClient = (code: string): Promise<RunResult> => {
     return new Promise((resolve) => {
+        if (typeof window === 'undefined') {
+            resolve({ output: '', type: 'result' });
+            return;
+        }
         const worker = new Worker('/runner.js');
         const timeout = setTimeout(() => {
             worker.terminate();
@@ -639,6 +643,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 
