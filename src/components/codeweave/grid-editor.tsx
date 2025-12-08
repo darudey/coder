@@ -133,6 +133,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         lineNumSpan.className = cn('text-xs text-muted-foreground', i === cursorLine && 'text-foreground font-semibold');
         lineNumSpan.textContent = String(i + 1);
         
+        div.appendChild(lineNumSpan);
+        
         if (isFoldable) {
             const chevronWrapper = document.createElement('div');
             chevronWrapper.className = cn('cursor-pointer text-muted-foreground transition-transform', isCollapsed && '-rotate-90');
@@ -148,7 +150,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             div.appendChild(placeholder);
         }
         
-        div.appendChild(lineNumSpan);
         gutter.appendChild(div);
 
         if (isCollapsed) {
