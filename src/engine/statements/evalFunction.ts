@@ -1,4 +1,5 @@
 
+
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
@@ -70,27 +71,26 @@ export function evalFunctionDeclaration(
     // 4. Log entry
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
-        let entryLine = node.loc.start.line - 1;
+      let entryLine = node.loc.start.line - 1;
 
-        // Try to point debugger to first executable statement inside the function
-        const body = node.body;
-        if (body?.type === "BlockStatement") {
-            const first = getFirstMeaningfulStatement(body);
-            if (first?.loc) {
-                entryLine = first.loc.start.line - 1;
-            }
-        }
+      // Fix: jump to first meaningful inside block
+      if (node.body?.type === "BlockStatement") {
+          const first = getFirstMeaningfulStatement(node.body);
+          if (first?.loc) {
+              entryLine = first.loc.start.line - 1;
+          }
+      }
 
-        logger.log(entryLine);
-        logger.addFlow(`Entering function ${funcName}`);
-
-        logger.updateMeta({
-            kind: "FunctionEntry",
-            functionName: funcName,
-            signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
-            callDepth: stack.length + 1,
-            activeScope: fnEnv.name,
-        });
+      logger.log(entryLine);
+      logger.addFlow(`Entering function ${funcName}`);
+      // Attach metadata for runtime function entry (callDepth will be stack length before push)
+      logger.updateMeta({
+        kind: "FunctionEntry",
+        functionName: funcName,
+        signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+        callDepth: stack.length + 1,
+        activeScope: fnEnv.name,
+      });
     }
 
     // Predict next step inside body

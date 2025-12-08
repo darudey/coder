@@ -1,3 +1,4 @@
+
 // src/engine/expressions/evalCall.ts
 //
 // FINAL PHASE-2 VERSION + metadata for UI
@@ -165,18 +166,25 @@ export function evalCall(node: any, ctx: EvalContext): any {
   // ------------------------------------------------------------------
   if (calleeVal?.__node && calleeVal.__node.type !== "ArrowFunctionExpression") {
     const body = calleeVal.__node.body;
-    if (body?.loc) {
-      const first =
-        body.type === "BlockStatement"
-          ? getFirstMeaningfulStatement(body)?.loc?.start.line - 1
-          : body.loc.start.line - 1;
 
-      ctx.logger.setNext(
-        first,
-        `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
-      );
+    let nextLine = null;
+
+    if (body?.type === "BlockStatement") {
+        const first = getFirstMeaningfulStatement(body);
+        if (first?.loc) {
+            nextLine = first.loc.start.line - 1;   // CORRECT
+        }
+    } else if (body?.loc) {
+        nextLine = body.loc.start.line - 1;
     }
-  }
+
+    if (nextLine !== null) {
+        ctx.logger.setNext(
+            nextLine,
+            `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
+        );
+    }
+}
 
   // ------------------------------------------------------------------
   // ✔ Builtin console.log
