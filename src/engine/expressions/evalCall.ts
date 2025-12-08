@@ -170,23 +170,16 @@ export function evalCall(node: any, ctx: EvalContext): any {
   // ------------------------------------------------------------------
   if (calleeVal?.__node && calleeVal.__node.type !== "ArrowFunctionExpression") {
     const body = calleeVal.__node.body;
+    const nextHeaderNode =
+      body.type === "BlockStatement"
+        ? getFirstMeaningfulStatement(body)
+        : body;
 
-    let nextLine: number | null = null;
-
-    if (body?.type === "BlockStatement") {
-      const first = getFirstMeaningfulStatement(body);
-      if (first?.loc) {
-        nextLine = first.loc.start.line - 1;   // CORRECT: first executable inside block
-      }
-    } else if (body?.loc) {
-      nextLine = body.loc.start.line - 1;
-    }
-
-    if (nextLine !== null) {
-      ctx.logger.setNext(
-        nextLine,
-        `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
-      );
+    if (nextHeaderNode?.loc) {
+        ctx.logger.setNext(
+            nextHeaderNode.loc.start.line - 1,
+            `Next Step → ${displayHeader(nextHeaderNode, ctx.logger.getCode())}`
+        );
     }
   }
 

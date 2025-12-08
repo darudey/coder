@@ -1,4 +1,3 @@
-
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
