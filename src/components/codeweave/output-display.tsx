@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -11,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { diffLines } from 'diff';
 import { motion, AnimatePresence } from 'framer-motion';
 import Prism from 'prismjs';
-// Removed the direct import of prism-javascript here
+import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism.css';
 import { FixedSizeList as VirtualList } from 'react-window';
 import { Copy, Check, X, Activity } from 'lucide-react';
@@ -250,11 +251,6 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<number | null>(null);
-
-  useEffect(() => {
-    // Dynamically import the prism-javascript component to ensure Prism is defined first.
-    import('prismjs/components/prism-javascript');
-  }, []);
 
   useEffect(() => () => {
     if (copyTimeout.current) window.clearTimeout(copyTimeout.current);

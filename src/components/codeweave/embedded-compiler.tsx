@@ -11,7 +11,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import AnsiToHtml from '@/lib/ansi-to-html';
 import type { RunResult } from './compiler';
-import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
+import { getTokenStyle, parseCode } from '@/lib/syntax-highlighter';
 
 interface EmbeddedCompilerProps {
     initialCode: string;
@@ -125,7 +125,7 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
                 {lines.map((line, lineIndex) => (
                     <div key={lineIndex} className="min-h-[21px]">
                         {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-                            <span key={tokenIndex} className={getTokenClassName(token.type)}>
+                            <span key={tokenIndex} style={getTokenStyle(token.type)}>
                                 {token.value}
                             </span>
                         ))}

@@ -15,7 +15,7 @@ import { getCaretCoordinates } from '@/lib/caret-position';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useSettings } from '@/hooks/use-settings';
 import { getSmartIndentation } from '@/lib/indentation';
-import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
+import { getTokenStyle, parseCode } from '@/lib/syntax-highlighter';
 
 interface CodeEditorProps {
   code: string;
@@ -592,7 +592,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         {lines.map((line, lineIndex) => (
             <div key={lineIndex} className="min-h-[21px]" style={{minHeight: `${fontSize * 1.5}px`}}>
               {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-                  <span key={tokenIndex} className={getTokenClassName(token.type)}>
+                  <span key={tokenIndex} style={getTokenStyle(token.type)}>
                     {token.value}
                   </span>
                 ))}

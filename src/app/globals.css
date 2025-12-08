@@ -44,6 +44,18 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
     --editor-font-size: 14px;
+    
+    /* Syntax Highlighting */
+    --syntax-keyword: 220 100% 60%;
+    --syntax-string: 25 85% 55%;
+    --syntax-comment: 110 10% 55%;
+    --syntax-number: 280 80% 65%;
+    --syntax-operator: 0 0% 50%;
+    --syntax-function-name: 45 80% 55%;
+    --syntax-class-name: 180 60% 50%;
+    --syntax-builtin: 200 70% 50%;
+    --syntax-property: 240 50% 65%;
+    --syntax-default: 222.2 84% 4.9%;
   }
   .dark {
     --background: 222.2 84% 4.9%;
@@ -78,6 +90,18 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Syntax Highlighting */
+    --syntax-keyword: 210 100% 70%;
+    --syntax-string: 90 70% 70%;
+    --syntax-comment: 220 15% 60%;
+    --syntax-number: 300 80% 75%;
+    --syntax-operator: 0 0% 70%;
+    --syntax-function-name: 50 100% 70%;
+    --syntax-class-name: 180 60% 65%;
+    --syntax-builtin: 200 80% 70%;
+    --syntax-property: 240 60% 75%;
+    --syntax-default: 210 40% 98%;
   }
 }
 
@@ -161,6 +185,15 @@ body {
     }
     .prose th {
         @apply bg-muted/50;
+    }
+    .prose code {
+        @apply bg-muted px-1.5 py-1 rounded-md font-code text-sm;
+    }
+    .prose pre {
+        @apply bg-muted p-4 rounded-md overflow-x-auto;
+    }
+    .prose pre code {
+        @apply bg-transparent p-0;
     }
 
     /* Comparison Table Styles */

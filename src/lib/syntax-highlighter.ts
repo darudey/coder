@@ -1,4 +1,5 @@
 
+
 const tokenRegex = new RegExp(
   [
     // Comments
@@ -84,27 +85,17 @@ export const parseCode = (code: string): Token[] => {
   return tokens;
 };
 
-export const getTokenClassName = (type: TokenType) => {
-  switch (type) {
-    case 'keyword':
-      return 'text-blue-600 dark:text-blue-400';
-    case 'string':
-      return 'text-green-600 dark:text-green-400';
-    case 'comment':
-      return 'text-gray-500 italic';
-    case 'number':
-      return 'text-purple-600 dark:text-purple-400';
-    case 'operator':
-      return 'text-red-500 dark:text-red-400';
-    case 'function-name':
-      return 'text-yellow-700 dark:text-yellow-500 font-semibold';
-    case 'class-name':
-        return 'text-teal-600 dark:text-teal-400 font-semibold';
-    case 'builtin':
-        return 'text-cyan-600 dark:text-cyan-400';
-    case 'property':
-        return 'text-indigo-600 dark:text-indigo-400';
-    default:
-      return 'text-black dark:text-gray-300';
-  }
+export const getTokenStyle = (type: TokenType): React.CSSProperties => {
+    switch (type) {
+        case 'keyword': return { color: 'hsl(var(--syntax-keyword))' };
+        case 'string': return { color: 'hsl(var(--syntax-string))' };
+        case 'comment': return { color: 'hsl(var(--syntax-comment))', fontStyle: 'italic' };
+        case 'number': return { color: 'hsl(var(--syntax-number))' };
+        case 'operator': return { color: 'hsl(var(--syntax-operator))' };
+        case 'function-name': return { color: 'hsl(var(--syntax-function-name))', fontWeight: 600 };
+        case 'class-name': return { color: 'hsl(var(--syntax-class-name))', fontWeight: 600 };
+        case 'builtin': return { color: 'hsl(var(--syntax-builtin))' };
+        case 'property': return { color: 'hsl(var(--syntax-property))' };
+        default: return { color: 'hsl(var(--syntax-default))' };
+    }
 }

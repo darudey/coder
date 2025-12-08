@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Bold, Italic, List, Underline, ChevronDown, ListOrdered } from 'lucide-react';
+import { Bold, Italic, List, Underline, ChevronDown, ListOrdered, Code } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,28 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         editorRef.current?.focus();
         updateActiveStyles();
         onContentChange(editorRef.current?.innerHTML || '');
+    };
+
+    const toggleCodeBlock = () => {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+    
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        
+        let preNode = container.nodeName === 'PRE' ? container : container.parentElement?.closest('pre');
+
+        if (preNode) {
+            // Already in a code block, so unwrap it.
+            const p = document.createElement('p');
+            p.innerHTML = (preNode as HTMLElement).innerText;
+            (preNode as HTMLElement).replaceWith(p);
+        } else {
+            // Not in a code block, so wrap selection or current line.
+            execCommand('formatBlock', 'pre');
+        }
+
+        updateActiveStyles();
     };
 
     const toggleList = (command: 'insertUnorderedList' | 'insertOrderedList') => {
@@ -128,6 +151,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
         if (blockType.startsWith('h')) {
             styles.push(blockType);
             setCurrentBlockType(`Headline ${blockType.charAt(1)}`);
+        } else if (blockType === 'pre') {
+            styles.push('pre');
+            setCurrentBlockType('Code Block');
         } else {
             setCurrentBlockType('Paragraph');
         }
@@ -209,6 +235,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'u': e.preventDefault(); execCommand('underline'); break;
                 case 'l': e.preventDefault(); toggleList('insertUnorderedList'); break;
                 case 'h': e.preventDefault(); cycleHeadline(); break;
+                case 'k': e.preventDefault(); toggleCodeBlock(); break;
                 case 'z': e.preventDefault(); undo(); break;
                 case 'y': e.preventDefault(); redo(); break;
                 case 'a': e.preventDefault(); document.execCommand('selectAll'); break;
@@ -244,6 +271,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                 case 'u': execCommand('underline'); break;
                 case 'l': toggleList('insertUnorderedList'); break;
                 case 'h': cycleHeadline(); break;
+                case 'k': toggleCodeBlock(); break;
                 case 'z': undo(); break;
                 case 'y': redo(); break;
                 case 'a': document.execCommand('selectAll'); break;
@@ -307,6 +335,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
                     <Button variant="toggle" size="icon" className="h-8 w-8" onClick={() => toggleList('insertOrderedList')} data-state={activeStyles.includes('ol') ? 'on' : 'off'}>
                         <ListOrdered className="w-4 h-4" />
                     </Button>
+                    <Button variant="toggle" size="icon" className="h-8 w-8" onClick={toggleCodeBlock} data-state={activeStyles.includes('pre') ? 'on' : 'off'}>
+                        <Code className="w-4 h-4" />
+                    </Button>
                 </div>
                 <div
                     ref={editorRef}
@@ -322,7 +353,7 @@ const RichTextEditor = React.forwardRef<RichTextEditorRef, { initialValue: strin
             </div>
              {showKeyboard && (
                 <div id="coder-keyboard" className={cn(
-                    "fixed bottom-0 left-0 right-0 transition-transform duration-300 ease-in-out z-[999]",
+                    "fixed bottom-0 left-0 right-0 z-[999] transition-transform duration-300 ease-in-out",
                     isKeyboardVisible ? "translate-y-0" : "translate-y-full"
                 )}>
                     <CoderKeyboard 

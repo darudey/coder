@@ -12,7 +12,7 @@ import React, {
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { useSettings } from '@/hooks/use-settings';
-import { parseCode, getTokenClassName } from '@/lib/syntax-highlighter';
+import { parseCode, getTokenStyle } from '@/lib/syntax-highlighter';
 
 
 export interface OverlayEditorProps {
@@ -145,7 +145,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           style={getHighlightStyle(i)}
         >
           {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-              <span key={tokenIndex} className={getTokenClassName(token.type)}>
+              <span key={tokenIndex} style={getTokenStyle(token.type)}>
                   {token.value}
               </span>
           ))}

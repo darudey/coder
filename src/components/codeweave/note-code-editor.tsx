@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { getTokenClassName, parseCode } from '@/lib/syntax-highlighter';
+import { getTokenStyle, parseCode } from '@/lib/syntax-highlighter';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getSmartIndentation } from '@/lib/indentation';
@@ -296,7 +296,7 @@ export const NoteCodeEditor = React.forwardRef<HTMLTextAreaElement, NoteCodeEdit
                 {lines.map((line, lineIndex) => (
                     <div key={lineIndex} className="min-h-[21px]">
                         {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-                            <span key={tokenIndex} className={getTokenClassName(token.type)}>
+                            <span key={tokenIndex} style={getTokenStyle(token.type)}>
                                 {token.value}
                             </span>
                         ))}
@@ -399,5 +399,3 @@ export const NoteCodeEditor = React.forwardRef<HTMLTextAreaElement, NoteCodeEdit
     );
 });
 NoteCodeEditor.displayName = 'NoteCodeEditor';
-
-    
