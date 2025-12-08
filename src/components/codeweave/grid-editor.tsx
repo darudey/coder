@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, {
@@ -88,11 +87,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   }, [code]);
 
   const isLineVisible = useCallback((lineNumber: number) => {
-    for (const start of collapsedLines) {
-      const region = foldableRegions.find(r => r.start === start);
-      if (region && lineNumber > region.start && lineNumber <= region.end) {
-        return false;
-      }
+    for (const collapsedStartLine of collapsedLines) {
+        const region = foldableRegions.find(r => r.start === collapsedStartLine);
+        if (region && lineNumber > region.start && lineNumber <= region.end) {
+            return false;
+        }
     }
     return true;
   }, [collapsedLines, foldableRegions]);
@@ -120,56 +119,49 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     measure.style.width = `${ta.clientWidth}px`;
     gutter.innerHTML = '';
 
-    lines.forEach((line, i) => {
+    for (let i = 0; i < lines.length; i++) {
+        if (!isLineVisible(i)) continue;
+
         const isFoldable = foldableRegions.some(r => r.start === i);
         const isCollapsed = collapsedLines.has(i);
 
-        if (!isLineVisible(i) && i !== 0) return;
-
         const div = document.createElement('div');
         div.style.height = `${fontSize * 1.5}px`;
-        div.className = 'flex items-center justify-end px-1 relative';
+        div.className = 'flex items-center justify-end px-2 gap-1';
 
         const lineNumSpan = document.createElement('span');
         lineNumSpan.className = cn('text-xs text-muted-foreground', i === cursorLine && 'text-foreground font-semibold');
         lineNumSpan.textContent = String(i + 1);
-        div.appendChild(lineNumSpan);
         
         if (isFoldable) {
-            const chevron = document.createElement('div');
-            chevron.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`;
-            chevron.className = cn('absolute -left-1.5 cursor-pointer text-muted-foreground transition-transform', isCollapsed && '-rotate-90');
-            chevron.onclick = (e) => {
+            const chevronWrapper = document.createElement('div');
+            chevronWrapper.className = cn('cursor-pointer text-muted-foreground transition-transform', isCollapsed && '-rotate-90');
+            chevronWrapper.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`;
+            chevronWrapper.onclick = (e) => {
                 e.stopPropagation();
                 toggleFold(i);
             };
-            div.prepend(chevron);
+            div.appendChild(chevronWrapper);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.style.width = '14px';
+            div.appendChild(placeholder);
         }
         
+        div.appendChild(lineNumSpan);
+        gutter.appendChild(div);
+
         if (isCollapsed) {
             const region = foldableRegions.find(r => r.start === i);
-            if (region) {
-                const collapsedIndicator = document.createElement('span');
-                collapsedIndicator.textContent = ' ... ';
+            if(region) {
+                 const collapsedIndicator = document.createElement('span');
+                collapsedIndicator.textContent = '...';
                 collapsedIndicator.className = 'absolute left-full ml-1 px-1 rounded-sm bg-muted text-muted-foreground cursor-pointer';
                 collapsedIndicator.onclick = () => toggleFold(i);
                 div.appendChild(collapsedIndicator);
-
-                // Adjust height for the single line
-                div.style.height = `${fontSize * 1.5}px`;
-                gutter.appendChild(div);
-
-                // Skip rendering gutter lines for hidden lines
-                let nextLine = region.end + 1;
-                while(nextLine < lines.length && !isLineVisible(nextLine)) {
-                    nextLine++;
-                }
-                i = nextLine - 1;
-                return;
             }
         }
-        gutter.appendChild(div);
-    });
+    }
   }, [lines, fontSize, cursorLine, foldableRegions, collapsedLines, isLineVisible, toggleFold]);
 
   const handleSelectionChange = useCallback(() => {
@@ -287,7 +279,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="w-14 shrink-0 border-r bg-muted py-2"
+        className="w-16 shrink-0 border-r bg-muted py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
