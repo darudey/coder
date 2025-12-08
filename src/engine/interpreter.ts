@@ -94,7 +94,7 @@ export function generateTimeline(
   
   if (firstMeaningfulStatement) {
     logger.addFlow("Ready to run. Click Next to start.");
-    logger.setNext(firstMeaningfulStatement.loc.start.line -1, "Start execution");
+    logger.setNext(firstMeaningfulStatement.loc.start.line -1, `Next Step → Line ${firstMeaningfulStatement.loc.start.line}: const result = ...`);
   } else {
     logger.addFlow("Ready to run, but no code found.");
     logger.setNext(null, "End of program.");
