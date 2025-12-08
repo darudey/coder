@@ -33,8 +33,9 @@ export interface TimelineEntry {
   diff?: DiffSnapshot;
   // closure/captured panel (populated when function values are evaluated)
   captured?: string[] | Record<string, any>;
-  // NEW: structured metadata used by UI
+  // structured metadata used by UI (hybrid-normalized)
   metadata?: {
+    // normalized keys (preferred)
     kind?: string; // "Statement" | "FunctionCall" | "ArrowCall" | "Return" | "ConsoleOutput" | "ClosureCreated"
     functionName?: string;
     signature?: string;
@@ -43,8 +44,9 @@ export interface TimelineEntry {
     capturedAtStep?: number;
     capturedVariables?: Record<string, any>;
     returnedValue?: any;
-    outputText?: string;
-    statementText?: string;
+    consoleOutput?: string;
+    statement?: string;
+    // backward-compatible/alias keys (kept for compatibility but mapped into normalized fields)
     // Additional UI-friendly fields allowed
     [k: string]: any;
   };
@@ -54,6 +56,19 @@ function isUserFunctionValue(value: any) {
   return value && typeof value === "object" && value.__isFunctionValue === true;
 }
 
+/**
+ * TimelineLogger
+ *
+ * Responsibilities:
+ * - Record step-by-step timeline entries for the debugger UI.
+ * - Safely serialize environment / values for display.
+ * - Produce normalized metadata (hybrid mode):
+ *     - Keep old fields for backward compatibility but also map them onto normalized keys:
+ *         outputText -> consoleOutput
+ *         statementText -> statement
+ *         capturedAtStep/capturedVariables preserved
+ * - Ensure initial steps expose a full snapshot so Step 1 / Step 2 show "full scope" in raw state.
+ */
 export class TimelineLogger {
   private entries: TimelineEntry[] = [];
   private step = 0;
@@ -246,23 +261,37 @@ export class TimelineLogger {
       const diff = this.computeDiff(this.lastVars, serializedVars);
       this.lastVars = serializedVars;
 
-      this.pendingEntry.variables = serializedVars;
+      // ensure variables present even if empty (helps Step 1 / Step 2 full-scope requirement)
+      this.pendingEntry.variables = serializedVars || {};
       this.pendingEntry.diff = diff;
       this.pendingEntry.stack = [...this.getStack()];
       this.pendingEntry.output = [...this.output];
-      
+
+      // normalize metadata for backward compatibility (if pendingEntry.metadata exists, normalize aliases)
+      if (this.pendingEntry.metadata) {
+        this.pendingEntry.metadata = this.normalizeMetadata(this.pendingEntry.metadata);
+      }
+
       this.entries.push(this.pendingEntry as TimelineEntry);
       this.pendingEntry = null;
     }
   }
 
+  /**
+   * log(line, isInitialStep?)
+   *
+   * - isInitialStep: set true when creating the very first "declaration/initialization" step to
+   *   preserve a stable step numbering and ensure Step 1 shows full global snapshot.
+   */
   log(line: number, isInitialStep = false) {
     if (this.step > this.maxSteps) throw new Error("Step limit exceeded");
 
     this.commitPendingEntry();
-    
-    const currentStepValue = isInitialStep ? this.step : this.step++;
 
+    // compute step id: when first step requested as initial, we want step = 1 and keep consistent numbering
+    const currentStepValue = isInitialStep ? (this.step === 0 ? 1 : this.step) : ++this.step;
+
+    // Create pending entry; don't immediately snapshot env — commitPendingEntry will populate variables
     this.pendingEntry = {
       step: currentStepValue,
       line,
@@ -274,17 +303,51 @@ export class TimelineLogger {
         activeScope: "Global"
       }
     };
-    
-    if (isInitialStep && this.entries.length === 0) {
-        this.step = 1; // Next step will be 1
+
+    // if this is the first-ever initial step, ensure internal counter moves forward for further steps
+    if (isInitialStep && this.entries.length === 0 && this.step === 0) {
+      this.step = 1;
     }
+  }
+
+  // ---------------- Metadata helpers (normalization) ----------------
+  /**
+   * Normalize metadata shape (hybrid mode):
+   * - Map legacy keys to modern ones for UI.
+   * - Keep both where useful (for backward compatibility).
+   */
+  private normalizeMetadata(partial: Partial<TimelineEntry["metadata"]>): Partial<TimelineEntry["metadata"]> {
+    const out: Partial<TimelineEntry["metadata"]> = { ...(partial || {}) };
+
+    // alias mapping
+    if ((partial as any).outputText && !out.consoleOutput) {
+      out.consoleOutput = (partial as any).outputText;
+    }
+    if ((partial as any).statementText && !out.statement) {
+      out.statement = (partial as any).statementText;
+    }
+    // returnedValue might already exist; preserve it
+    if ((partial as any).returnedValue !== undefined) {
+      out.returnedValue = (partial as any).returnedValue;
+    }
+    // keep capturedVariables/capturedAtStep as-is (they are already preferred names)
+    // ensure callDepth is a number
+    if (partial && (partial as any).callDepth !== undefined) {
+      out.callDepth = (partial as any).callDepth;
+    }
+    if ((partial as any).activeScope && !out.activeScope) {
+      out.activeScope = (partial as any).activeScope;
+    }
+
+    return out;
   }
 
   // Merge partial metadata into the last entry's metadata
   setLastMetadata(partial: Partial<TimelineEntry["metadata"]>) {
     const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
     if (!target) return;
-    target.metadata = { ...(target.metadata || {}), ...(partial || {}) };
+    const normalized = this.normalizeMetadata(partial || {});
+    target.metadata = { ...(target.metadata || {}), ...(normalized as any) };
   }
 
   // NEW: alias / safer API used by other modules (defensive, same behaviour)
@@ -632,6 +695,14 @@ export class TimelineLogger {
     return String(val);
   }
 
+  /**
+   * addExpressionEval
+   *
+   * When an expression is evaluated, the evaluator calls this to attach:
+   * - serialized result
+   * - textual breakdown and friendly explanation
+   * - if the result is a user function, record captured variables & function signature into metadata (normalized)
+   */
   addExpressionEval(expr: any, value: any, customBreakdown?: string[]) {
     const target = this.pendingEntry ?? this.entries[this.entries.length - 1];
     if (!target || !expr) return;
@@ -666,14 +737,21 @@ export class TimelineLogger {
       if (isUserFunctionValue(value)) {
         const captured = this.extractCapturedVariables(value);
         target.captured = captured;
-        target.metadata = { ...(target.metadata || {}), capturedVariables: captured, capturedAtStep: target.step, kind: "ClosureCreated" };
+        const metaPartial: Partial<TimelineEntry["metadata"]> = {
+          capturedVariables: captured,
+          capturedAtStep: (target.step as number) || undefined,
+          kind: "ClosureCreated",
+        };
 
-        // Try set readable signature
+        // Try set readable signature & functionName
         try {
           const sig = value && value.__node ? (value.__node.range ? this.code.substring(value.__node.range[0], value.__node.range[1]) : (value.__node.id?.name ? `function ${value.__node.id.name}` : "(arrow closure)")) : undefined;
-          if (sig) target.metadata.signature = sig;
-          target.metadata.functionName = value.__node?.id?.name || (value.__node?.type === "ArrowFunctionExpression" ? "(arrow closure)" : undefined);
+          if (sig) metaPartial.signature = sig;
+          metaPartial.functionName = value.__node?.id?.name || (value.__node?.type === "ArrowFunctionExpression" ? "(arrow closure)" : undefined);
         } catch {}
+
+        // merge normalized metadata
+        target.metadata = { ...(target.metadata || {}), ...(this.normalizeMetadata(metaPartial) as any) };
       }
     } catch {
       // ignore extraction errors
@@ -689,6 +767,11 @@ export class TimelineLogger {
     target.expressionEval[exprString].context = context;
   }
 
+  /**
+   * logOutput
+   *
+   * Records console output in timeline + sets normalized metadata.consoleOutput
+   */
   logOutput(...args: any[]) {
     const text = args.map(arg => {
       try {
@@ -704,8 +787,15 @@ export class TimelineLogger {
     if (target) {
       if(!target.output) target.output = [];
       target.output.push(text);
-      // mark console output metadata
-      target.metadata = { ...(target.metadata || {}), kind: "ConsoleOutput", outputText: text, callDepth: this.getStack().length };
+      // mark console output metadata — normalize to consoleOutput while keeping backward alias outputText
+      const metaPartial: Partial<TimelineEntry["metadata"]> = {
+        kind: "ConsoleOutput",
+        consoleOutput: text,
+        // keep old alias for backward compatibility
+        outputText: text,
+        callDepth: this.getStack().length
+      };
+      target.metadata = { ...(target.metadata || {}), ...(this.normalizeMetadata(metaPartial) as any) };
     }
   }
 
@@ -714,5 +804,3 @@ export class TimelineLogger {
     return this.entries;
   }
 }
-
-    
