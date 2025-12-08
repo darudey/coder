@@ -1,3 +1,4 @@
+
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -119,15 +120,14 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     const body = node.body;
 
-    // Predict next-step for normal block functions only
-    if (body && body.type === "BlockStatement") {
-      const first = getFirstMeaningfulStatement(body);
-      if (first?.loc) {
-        logger.setNext(
-          first.loc.start.line - 1,
-          `Next Step → ${displayHeader(first, logger.getCode())}`
-        );
-      }
+    if (!isArrow && body && body.type === "BlockStatement") {
+        const first = getFirstMeaningfulStatement(body);
+        if (first?.loc) {
+            logger.setNext(
+                first.loc.start.line - 1,
+                `Next Step → ${displayHeader(first, logger.getCode())}`
+            );
+        }
     }
 
     // Build inner evaluation context

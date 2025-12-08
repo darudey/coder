@@ -82,21 +82,15 @@ export function evalFunctionDeclaration(
       });
     }
 
-    // Predict next step inside body
-    const body = node.body;
-    const firstStmt =
-      body && body.type === "BlockStatement"
-        ? getFirstMeaningfulStatement(body)
-        : body;
-
-    if (firstStmt?.loc) {
-      logger.setNext(
-        firstStmt.loc.start.line - 1,
-        `Next Step → ${displayHeader(
-          firstStmt,
-          logger.getCode()
-        )}`
-      );
+    // Predict first meaningful statement inside function body
+    if (node.body && node.body.type === "BlockStatement") {
+        const first = getFirstMeaningfulStatement(node.body);
+        if (first?.loc) {
+            logger.setNext(
+                first.loc.start.line - 1,
+                `Next Step → ${displayHeader(first, logger.getCode())}`
+            );
+        }
     }
 
     // 5. Build call context
@@ -115,9 +109,9 @@ export function evalFunctionDeclaration(
     // 7. Execute function body
     let result: any = undefined;
 
-    if (body && body.type === "BlockStatement") {
-      hoistProgram({ body: body.body }, fnEnv);
-      result = evaluateBlockBody(body.body, innerCtx);
+    if (node.body && node.body.type === "BlockStatement") {
+      hoistProgram({ body: node.body.body }, fnEnv);
+      result = evaluateBlockBody(node.body.body, innerCtx);
     }
 
     // 8. Pop stack
