@@ -1,4 +1,3 @@
-
 // src/engine/evaluator.ts
 // The main dispatcher for the JavaScript engine.
 // It routes statements to their respective handler modules.
@@ -34,9 +33,47 @@ import { evalForIn } from "./statements/evalForIn";
 import { evalForOf } from "./statements/evalForOf";
 import { evalThrow } from "./statements/evalThrow";
 
+/**
+ * Utility: find first meaningful (non-empty, non-debugger) statement in a list.
+ * Returns null if none found.
+ */
+function findFirstMeaningfulStatement(body: any[] | undefined) {
+  if (!Array.isArray(body)) return null;
+  for (const candidate of body) {
+    if (!candidate) continue;
+    if (candidate.type === "EmptyStatement" || candidate.type === "DebuggerStatement")
+      continue;
+    return candidate;
+  }
+  return null;
+}
+
 // ---------- MAIN ENTRY ----------
 export function evaluateProgram(ast: any, ctx: EvalContext): any {
+  // Hoist first so the global env is prepared
   hoistProgram(ast, ctx.env);
+
+  // Emit an initial "Step 1" raw snapshot so debugger has a full scope to display.
+  // We mark it as initial by passing isInitialStep = true — logger will handle step numbering.
+  try {
+    // Log an initial step at "line 0". UI can interpret this as program-start snapshot.
+    ctx.logger.log(0, true);
+
+    // Predict the next real step (first meaningful statement) and set it for the initial snapshot.
+    const first = findFirstMeaningfulStatement(ast.body);
+    if (first && first.loc) {
+      ctx.logger.setNext(
+        first.loc.start.line - 1,
+        `Next Step → ${displayHeader(first, ctx.logger.getCode())}`
+      );
+    } else {
+      // fallback: end of block
+      ctx.logger.setNext(null, "Program start — no statements");
+    }
+  } catch {
+    // never let logger prediction crash program execution
+  }
+
   return evaluateBlockBody(ast.body, ctx);
 }
 
@@ -166,13 +203,18 @@ export function evaluateStatement(
   const next = ctx.logger.peekNext?.();
   if (next && next.message === "...") {
     if (ctx.nextStatement) {
-      ctx.logger.setNext(
-        ctx.nextStatement.loc.start.line - 1,
-        `Next Step → ${displayHeader(
-          ctx.nextStatement,
-          ctx.logger.getCode()
-        )}`
-      );
+      try {
+        ctx.logger.setNext(
+          ctx.nextStatement.loc.start.line - 1,
+          `Next Step → ${displayHeader(
+            ctx.nextStatement,
+            ctx.logger.getCode()
+          )}`
+        );
+      } catch {
+        // ignore formatting errors
+        ctx.logger.setNext(null, "Next step (unknown)");
+      }
     } else {
       ctx.logger.setNext(null, "End of block");
     }
