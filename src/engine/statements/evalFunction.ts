@@ -1,3 +1,4 @@
+
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
@@ -69,27 +70,44 @@ export function evalFunctionDeclaration(
     // 4. Log entry
     logger.setCurrentEnv(fnEnv);
     if (node.loc) {
-      logger.log(node.loc.start.line - 1);
-      logger.addFlow(`Entering function ${funcName}`);
-      // Attach metadata for runtime function entry (callDepth will be stack length before push)
-      logger.updateMeta({
-        kind: "FunctionEntry",
-        functionName: funcName,
-        signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
-        callDepth: stack.length + 1,
-        activeScope: fnEnv.name,
-      });
+        let entryLine = node.loc.start.line - 1;
+
+        // Try to point debugger to first executable statement inside the function
+        const body = node.body;
+        if (body?.type === "BlockStatement") {
+            const first = getFirstMeaningfulStatement(body);
+            if (first?.loc) {
+                entryLine = first.loc.start.line - 1;
+            }
+        }
+
+        logger.log(entryLine);
+        logger.addFlow(`Entering function ${funcName}`);
+
+        logger.updateMeta({
+            kind: "FunctionEntry",
+            functionName: funcName,
+            signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+            callDepth: stack.length + 1,
+            activeScope: fnEnv.name,
+        });
     }
 
-    // Predict first meaningful statement inside function body
-    if (node.body && node.body.type === "BlockStatement") {
-        const first = getFirstMeaningfulStatement(node.body);
-        if (first?.loc) {
-            logger.setNext(
-                first.loc.start.line - 1,
-                `Next Step → ${displayHeader(first, logger.getCode())}`
-            );
-        }
+    // Predict next step inside body
+    const body = node.body;
+    const firstStmt =
+      body && body.type === "BlockStatement"
+        ? getFirstMeaningfulStatement(body)
+        : body;
+
+    if (firstStmt?.loc) {
+      logger.setNext(
+        firstStmt.loc.start.line - 1,
+        `Next Step → ${displayHeader(
+          firstStmt,
+          logger.getCode()
+        )}`
+      );
     }
 
     // 5. Build call context
@@ -108,9 +126,9 @@ export function evalFunctionDeclaration(
     // 7. Execute function body
     let result: any = undefined;
 
-    if (node.body && node.body.type === "BlockStatement") {
-      hoistProgram({ body: node.body.body }, fnEnv);
-      result = evaluateBlockBody(node.body.body, innerCtx);
+    if (body && body.type === "BlockStatement") {
+      hoistProgram({ body: body.body }, fnEnv);
+      result = evaluateBlockBody(body.body, innerCtx);
     }
 
     // 8. Pop stack
@@ -159,14 +177,14 @@ export function evalFunctionDeclaration(
     // never throw from metadata collection
   }
 
-  // After declaring the function, next-step should remain pointing
-  // toward the next *real executable* statement in the parent scope.
-  if (ctx.nextStatement) {
-      ctx.logger.setNext(
-          ctx.nextStatement.loc.start.line - 1,
-          `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
-      );
-  } else {
-      ctx.logger.setNext(null, "End of block");
-  }
+    // After declaring the function, next-step should remain pointing
+    // toward the next *real executable* statement in the parent scope.
+    if (ctx.nextStatement) {
+        ctx.logger.setNext(
+            ctx.nextStatement.loc.start.line - 1,
+            `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+        );
+    } else {
+        ctx.logger.setNext(null, "End of block");
+    }
 }

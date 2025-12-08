@@ -1,3 +1,4 @@
+
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -102,16 +103,26 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     if (node.loc) {
       if (!isArrow) {
-        // Normal functions always create an entry step
-        logger.log(node.loc.start.line - 1);
+        let entryLine = node.loc.start.line - 1;
+
+        // Try to point debugger to first executable statement inside the function
+        const body = node.body;
+        if (body?.type === "BlockStatement") {
+            const first = getFirstMeaningfulStatement(body);
+            if (first?.loc) {
+                entryLine = first.loc.start.line - 1;
+            }
+        }
+
+        logger.log(entryLine);
         logger.addFlow(`Entering function ${funcName}`);
-        // Attach metadata for call entry (callDepth will be stack length before push)
+
         logger.updateMeta({
-          kind: "FunctionEntry",
-          functionName: funcName,
-          signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
-          callDepth: stack.length + 1,
-          activeScope: fnEnv.name,
+            kind: "FunctionEntry",
+            functionName: funcName,
+            signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+            callDepth: stack.length + 1,
+            activeScope: fnEnv.name,
         });
       }
       // Arrows DO NOT create steps here (evalCall handles it)
@@ -129,7 +140,6 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
             );
         }
     }
-
 
     // Build inner evaluation context
     const innerCtx: EvalContext = {
