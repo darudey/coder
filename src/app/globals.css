@@ -119,6 +119,10 @@ body {
 }
 
 @layer utilities {
+  .floating-panel {
+    touch-action: none;
+    overscroll-behavior: contain;
+  }
   @keyframes bounce {
     0%, 100% {
       transform: translateY(-25%);
