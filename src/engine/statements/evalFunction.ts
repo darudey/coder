@@ -82,6 +82,7 @@ export function evalFunctionDeclaration(
       }
 
       logger.log(entryLine);
+
       logger.addFlow(`Entering function ${funcName}`);
       // Attach metadata for runtime function entry (callDepth will be stack length before push)
       logger.updateMeta({
