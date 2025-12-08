@@ -1,3 +1,4 @@
+
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
@@ -13,6 +14,9 @@ import {
   getFirstMeaningfulStatement,
   displayHeader,
 } from "../next-step-helpers";
+
+// helper to collect captured variables using shared logic
+import { collectCapturedVariables } from "../expressions/evalCall";
 
 export function evalFunctionDeclaration(
   node: any,
@@ -68,6 +72,14 @@ export function evalFunctionDeclaration(
     if (node.loc) {
       logger.log(node.loc.start.line - 1);
       logger.addFlow(`Entering function ${funcName}`);
+      // Attach metadata for runtime function entry (callDepth will be stack length before push)
+      logger.updateMeta({
+        kind: "FunctionEntry",
+        functionName: funcName,
+        signature: node.range ? logger.getCode().substring(node.range[0], node.range[1]) : undefined,
+        callDepth: stack.length + 1,
+        activeScope: fnEnv.name,
+      });
     }
 
     // Predict next step inside body
@@ -135,4 +147,22 @@ export function evalFunctionDeclaration(
 
   // Simple declaration flow
   ctx.logger.addFlow(`Declared function ${name}`);
+
+  // Record closure/creation metadata on this declaration step.
+  // Use updateMeta so we merge into current logged step safely.
+  try {
+    const sig = node.range ? ctx.logger.getCode().substring(node.range[0], node.range[1]) : undefined;
+    const captured = collectCapturedVariables(fn);
+    const last = ctx.logger.peekLastStep();
+    ctx.logger.updateMeta({
+      kind: "ClosureCreated",
+      functionName: name,
+      signature: sig,
+      activeScope: definingEnv.name,
+      capturedVariables: captured,
+      capturedAtStep: last ? last.step : undefined,
+    });
+  } catch {
+    // never throw from metadata collection
+  }
 }
