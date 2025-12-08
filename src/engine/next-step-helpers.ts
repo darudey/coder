@@ -1,4 +1,3 @@
-
 // src/engine/next-step-helpers.ts
 
 import type { EvalContext } from "./types";
@@ -23,29 +22,61 @@ export function firstLineOf(node: any, code: string): string {
   return s;
 }
 
+/**
+ * 🔥 FIXED:
+ * BlockStatement should NEVER be displayed directly.
+ * Instead, we return the header of its FIRST real statement.
+ */
 export function displayHeader(node: any, code: string): string {
   if (!node) return "";
 
-  switch (node.type) {
-    case "WhileStatement":
-      return `while (${code.substring(node.test.range[0], node.test.range[1])})`;
+  // NEW: handle block properly
+  if (node.type === "BlockStatement") {
+    const first = getFirstMeaningfulStatement(node);
+    if (first) return displayHeader(first, code);
+    return "{}";
+  }
 
-    case "ForStatement": {
-      const endRange = node.body.range[0];
-      return code.substring(node.range[0], endRange).trim();
+  switch (node.type) {
+    case "IfStatement": {
+      // only show: if (condition)
+      const testCode = code.substring(node.test.range[0], node.test.range[1]);
+      return `if (${testCode})`;
     }
 
-    case "IfStatement":
-      return `if (${code.substring(node.test.range[0], node.test.range[1])})`;
+    case "WhileStatement": {
+      const test = code.substring(node.test.range[0], node.test.range[1]);
+      return `while (${test})`;
+    }
 
-    case "ExpressionStatement":
+    case "ForStatement": {
+      // show: for (...)
+      const header = code.substring(node.range[0], node.body.range[0]).trim();
+      return header.replace(/\s*\{$/, ""); // remove trailing brace
+    }
+
+    case "FunctionDeclaration": {
+      const name = node.id?.name || "(anonymous)";
+      const params = node.params.map((p: any) => p.name).join(", ");
+      return `function ${name}(${params})`;
+    }
+
+    case "ExpressionStatement": {
       return code.substring(node.expression.range[0], node.expression.range[1]);
+    }
 
-    case "VariableDeclaration":
-      return code.substring(node.range[0], node.range[1]).split("\n")[0];
+    case "VariableDeclaration": {
+      let line = code.substring(node.range[0], node.range[1]).split("\n")[0];
+      return line.replace(/\s*\{$/, "");
+    }
 
-    default:
-      return firstLineOf(node, code);
+    default: {
+      // safe fallback: ONLY first line of the snippet
+      let s = code.substring(node.range[0], node.range[1]).trim();
+      const firstLine = s.split("\n")[0];
+      // REMOVE trailing '{' to stop multi-line preview duplication
+      return firstLine.replace(/\s*\{$/, "");
+    }
   }
 }
 
