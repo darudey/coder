@@ -76,6 +76,9 @@ export function evalFunctionDeclaration(
         if (first?.loc) {
           entryLine = first.loc.start.line - 1;
         }
+      } else if (node.body?.loc) {
+        // if body is expression (arrow with expr), point at the body line
+        entryLine = node.body.loc.start.line - 1;
       }
 
       logger.log(entryLine);
@@ -99,10 +102,13 @@ export function evalFunctionDeclaration(
         : body;
 
     if (firstStmt?.loc) {
-      logger.setNext(
-        firstStmt.loc.start.line - 1,
-        `Next Step → ${displayHeader(firstStmt, logger.getCode())}`
-      );
+        const ln = firstStmt.loc.start.line;
+        const lineText = logger.getCode().split("\n")[ln - 1].trim();
+
+        logger.setNext(
+          ln - 1,
+          `Next Step → ${lineText} (line ${ln})`
+        );
     }
 
     // 5. Build call context
@@ -124,6 +130,10 @@ export function evalFunctionDeclaration(
     if (body && body.type === "BlockStatement") {
       hoistProgram({ body: body.body }, fnEnv);
       result = evaluateBlockBody(body.body, innerCtx);
+    } else if (body) {
+      // expression body (arrow or function returning expression) — evaluate it
+      // evaluateExpression will run via expressions path normally; but for declarations it's rare.
+      // Keep behavior consistent: evaluate with innerCtx if needed (left intentionally minimal)
     }
 
     // 8. Pop stack
@@ -173,9 +183,11 @@ export function evalFunctionDeclaration(
 
   // After declaring the function, keep next-step pointing to the parent's nextStatement (first real executable)
   if (ctx.nextStatement) {
+    const ln = ctx.nextStatement.loc.start.line;
+    const lineText = ctx.logger.getCode().split("\n")[ln - 1].trim();
     ctx.logger.setNext(
-      ctx.nextStatement.loc.start.line - 1,
-      `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+      ln - 1,
+      `Next Step → ${lineText} (line ${ln})`
     );
   } else {
     ctx.logger.setNext(null, "End of block");

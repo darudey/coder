@@ -152,15 +152,20 @@ export function evalCall(node: any, ctx: EvalContext): any {
       calleeVal.__closureExplained = true;
     }
 
-    // DO NOT create a new timeline step — expressions.ts handles this
+    // DO NOT create a new timeline step — expressions.ts handles arrow step creation
     const body = calleeVal.__node.body;
     if (body?.loc) {
-      // for arrow, find first meaningful if block; otherwise point at body
       if (body.type === "BlockStatement") {
         const first = getFirstMeaningfulStatement(body);
-        if (first?.loc) ctx.logger.setNext(first.loc.start.line - 1, `Evaluate arrow body`);
+        if (first?.loc) {
+            const ln = first.loc.start.line;
+            const lineText = ctx.logger.getCode().split("\n")[ln - 1].trim();
+            ctx.logger.setNext(ln - 1, `Next Step → ${lineText} (line ${ln})`);
+        }
       } else {
-        ctx.logger.setNext(body.loc.start.line - 1, `Evaluate arrow body`);
+        const ln = body.loc.start.line;
+        const lineText = ctx.logger.getCode().split("\n")[ln - 1].trim();
+        ctx.logger.setNext(ln - 1, `Next Step → ${lineText} (line ${ln})`);
       }
     }
   }
@@ -170,15 +175,18 @@ export function evalCall(node: any, ctx: EvalContext): any {
   // ------------------------------------------------------------------
   if (calleeVal?.__node && calleeVal.__node.type !== "ArrowFunctionExpression") {
     const body = calleeVal.__node.body;
+
     const nextHeaderNode =
-      body.type === "BlockStatement"
-        ? getFirstMeaningfulStatement(body)
-        : body;
+        body && body.type === "BlockStatement"
+            ? getFirstMeaningfulStatement(body)
+            : body;
 
     if (nextHeaderNode?.loc) {
+        const ln = nextHeaderNode.loc.start.line;
+        const lineText = ctx.logger.getCode().split("\n")[ln - 1].trim();
         ctx.logger.setNext(
-            nextHeaderNode.loc.start.line - 1,
-            `Next Step → ${displayHeader(nextHeaderNode, ctx.logger.getCode())}`
+            ln - 1,
+            `Next Step → ${lineText} (line ${ln})`
         );
     }
   }

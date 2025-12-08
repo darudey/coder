@@ -106,9 +106,12 @@ export function generateTimeline(
 
   if (firstMeaningfulStatement) {
     logger.addFlow("Ready to run. Click Next to start.");
+    const ln = firstMeaningfulStatement.loc.start.line;
+    const lineText = logger.getCode().split("\n")[ln - 1].trim();
+
     logger.setNext(
-        firstMeaningfulStatement.loc.start.line - 1,
-        `Next Step → ${displayHeader(firstMeaningfulStatement, logger.getCode())}`
+      ln - 1,
+      `Next Step → ${lineText} (line ${ln})`
     );
   } else {
     logger.addFlow("Ready to run, but no code found.");

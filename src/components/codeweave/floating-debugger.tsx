@@ -212,7 +212,6 @@ const NextStepPanel: React.FC<{ nextStep?: TimelineEntry['nextStep'] }> = ({ nex
         <div className="p-3">
             <div className="text-xs text-muted-foreground mt-1">
                 {nextStep.message}
-                {nextStep.line !== null && ` (line ${nextStep.line + 1})`}
             </div>
         </div>
     );
