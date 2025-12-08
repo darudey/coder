@@ -136,7 +136,6 @@ export function evalCall(node: any, ctx: EvalContext): any {
         `${p.name} = ${safeString(args[i])}`
     );
 
-
     ctx.logger.addFlow(`Entering closure (${params.join(", ")})`);
 
     // Explain closure only ONCE
@@ -156,7 +155,13 @@ export function evalCall(node: any, ctx: EvalContext): any {
     // DO NOT create a new timeline step — expressions.ts handles this
     const body = calleeVal.__node.body;
     if (body?.loc) {
-      ctx.logger.setNext(body.loc.start.line - 1, `Evaluate arrow body`);
+      // for arrow, find first meaningful if block; otherwise point at body
+      if (body.type === "BlockStatement") {
+        const first = getFirstMeaningfulStatement(body);
+        if (first?.loc) ctx.logger.setNext(first.loc.start.line - 1, `Evaluate arrow body`);
+      } else {
+        ctx.logger.setNext(body.loc.start.line - 1, `Evaluate arrow body`);
+      }
     }
   }
 
@@ -166,24 +171,24 @@ export function evalCall(node: any, ctx: EvalContext): any {
   if (calleeVal?.__node && calleeVal.__node.type !== "ArrowFunctionExpression") {
     const body = calleeVal.__node.body;
 
-    let nextLine = null;
+    let nextLine: number | null = null;
 
     if (body?.type === "BlockStatement") {
-        const first = getFirstMeaningfulStatement(body);
-        if (first?.loc) {
-            nextLine = first.loc.start.line - 1;   // CORRECT
-        }
+      const first = getFirstMeaningfulStatement(body);
+      if (first?.loc) {
+        nextLine = first.loc.start.line - 1;   // CORRECT: first executable inside block
+      }
     } else if (body?.loc) {
-        nextLine = body.loc.start.line - 1;
+      nextLine = body.loc.start.line - 1;
     }
 
     if (nextLine !== null) {
-        ctx.logger.setNext(
-            nextLine,
-            `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
-        );
+      ctx.logger.setNext(
+        nextLine,
+        `Next Step → ${displayHeader(body, ctx.logger.getCode())}`
+      );
     }
-}
+  }
 
   // ------------------------------------------------------------------
   // ✔ Builtin console.log
