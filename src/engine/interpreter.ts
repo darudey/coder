@@ -10,6 +10,8 @@ import { TimelineLogger, TimelineEntry } from "./timeline";
 import { evaluateProgram, EvalContext } from "./evaluator";
 import { createObject } from "./values";
 import { resetCallCounter } from "./expressions/evalCall";
+import { displayHeader } from "./next-step-helpers";
+
 
 export interface RunOptions {
   maxSteps?: number;
@@ -88,19 +90,9 @@ export function generateTimeline(
   globalEnv.record.createMutableBinding("console", "var", consoleObj, true);
   globalEnv.record.createMutableBinding("Math", "var", Math, true);
 
-  // --- Step 0: Initial state before execution ---
-  logger.log(0, true); // Use a special flag to prevent step increment
+   // --- Step 0: Initial state before execution ---
   const firstMeaningfulStatement = ast.body.find((stmt: any) => stmt.type !== 'EmptyStatement' && stmt.type !== 'DebuggerStatement');
   
-  if (firstMeaningfulStatement) {
-    logger.addFlow("Ready to run. Click Next to start.");
-    logger.setNext(firstMeaningfulStatement.loc.start.line -1, `Next Step → Line ${firstMeaningfulStatement.loc.start.line}: const result = ...`);
-  } else {
-    logger.addFlow("Ready to run, but no code found.");
-    logger.setNext(null, "End of program.");
-  }
-
-
   // --------------------------------------------------------------
   // 4. CONTEXT
   // --------------------------------------------------------------
@@ -110,6 +102,19 @@ export function generateTimeline(
     logger,
     stack,
   };
+
+
+  if (firstMeaningfulStatement) {
+    logger.addFlow("Ready to run. Click Next to start.");
+    logger.setNext(
+        firstMeaningfulStatement.loc.start.line - 1,
+        `Next Step → ${displayHeader(firstMeaningfulStatement, logger.getCode())}`
+    );
+  } else {
+    logger.addFlow("Ready to run, but no code found.");
+    logger.setNext(null, "End of program.");
+  }
+
 
   // --------------------------------------------------------------
   // 5. EXECUTE PROGRAM
