@@ -1,4 +1,3 @@
-
 // src/engine/expressions.ts
 //
 // FINAL PHASE-2 VERSION
@@ -120,7 +119,8 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
 
     const body = node.body;
 
-    if (!isArrow && body && body.type === "BlockStatement") {
+    // Predict first step INSIDE function body
+    if (body && body.type === "BlockStatement") {
         const first = getFirstMeaningfulStatement(body);
         if (first?.loc) {
             logger.setNext(
@@ -129,6 +129,7 @@ function buildFunctionValue(node: any, ctx: EvalContext): FunctionValue {
             );
         }
     }
+
 
     // Build inner evaluation context
     const innerCtx: EvalContext = {

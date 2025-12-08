@@ -1,4 +1,3 @@
-
 // src/engine/statements/evalFunction.ts
 
 import type { EvalContext } from "../types";
@@ -158,5 +157,16 @@ export function evalFunctionDeclaration(
     });
   } catch {
     // never throw from metadata collection
+  }
+
+  // After declaring the function, next-step should remain pointing
+  // toward the next *real executable* statement in the parent scope.
+  if (ctx.nextStatement) {
+      ctx.logger.setNext(
+          ctx.nextStatement.loc.start.line - 1,
+          `Next Step → ${displayHeader(ctx.nextStatement, ctx.logger.getCode())}`
+      );
+  } else {
+      ctx.logger.setNext(null, "End of block");
   }
 }
