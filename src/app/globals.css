@@ -216,4 +216,7 @@ body {
     .comparison-table tbody th {
         @apply font-semibold pr-6;
     }
+    .bracket-match {
+      @apply bg-primary/20 rounded-sm;
+    }
 }

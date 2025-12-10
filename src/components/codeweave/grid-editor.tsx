@@ -29,6 +29,42 @@ interface FoldableRegion {
   end: number;
 }
 
+const findMatchingBracket = (code: string, position: number): [number, number] | null => {
+    const char = code[position - 1];
+    const bracketPairs: { [key: string]: string } = { '(': ')', '{': '}', '[': ']', ')': '(', '}': '{', ']': '[' };
+    const openBrackets = ['(', '{', '['];
+    const closeBrackets = [')', '}', ']'];
+
+    if (!bracketPairs[char]) {
+        return null;
+    }
+
+    if (openBrackets.includes(char)) {
+        const closeChar = bracketPairs[char];
+        let balance = 1;
+        for (let i = position; i < code.length; i++) {
+            if (code[i] === char) balance++;
+            else if (code[i] === closeChar) balance--;
+            if (balance === 0) {
+                return [position - 1, i];
+            }
+        }
+    } else if (closeBrackets.includes(char)) {
+        const openChar = bracketPairs[char];
+        let balance = 1;
+        for (let i = position - 2; i >= 0; i--) {
+            if (code[i] === char) balance++;
+            else if (code[i] === openChar) balance--;
+            if (balance === 0) {
+                return [i, position - 1];
+            }
+        }
+    }
+
+    return null;
+};
+
+
 export const GridEditor: React.FC<OverlayEditorProps> = ({
   code,
   onCodeChange,
@@ -44,6 +80,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   const [foldableRegions, setFoldableRegions] = useState<FoldableRegion[]>([]);
   const [collapsedLines, setCollapsedLines] = useState<Set<number>>(new Set());
+  const [matchedBrackets, setMatchedBrackets] = useState<[number, number] | null>(null);
 
   const fontSize = settings.editorFontSize ?? 14;
 
@@ -173,12 +210,17 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const index = ta.selectionStart ?? 0;
     
     let line = 0;
+    let charPos = 0;
     for (let i = 0; i < index; i++) {
         if (code[i] === '\n') {
             line++;
+            charPos = 0;
+        } else {
+            charPos++;
         }
     }
     setCursorLine(line);
+    setMatchedBrackets(findMatchingBracket(code, index));
 
   }, [code]);
 
@@ -229,11 +271,55 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   };
 
   const highlightedCode = useMemo(() => {
+    let currentPos = 0;
     return lines.map((line, i) => {
-        if (!isLineVisible(i)) return null;
+        if (!isLineVisible(i)) {
+          currentPos += line.length + 1;
+          return null;
+        };
 
         const isCollapsed = collapsedLines.has(i);
         const region = foldableRegions.find(r => r.start === i);
+        const lineStartPos = currentPos;
+
+        const renderTokens = (text: string, startOffset: number = 0) => {
+          return parseCode(text).map((token, tokenIndex) => {
+              const tokenStart = lineStartPos + startOffset;
+              const isBracketMatch = matchedBrackets && (tokenStart === matchedBrackets[0] || tokenStart === matchedBrackets[1]);
+              startOffset += token.value.length;
+              return (
+                  <span
+                      key={tokenIndex}
+                      className={cn(isBracketMatch && "bracket-match")}
+                      style={{
+                      ...getTokenStyle(token.type),
+                      display: 'inline',
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'normal',
+                      }}
+                  >
+                      {token.value}
+                  </span>
+              );
+          })
+        };
+
+        const lineContent = isCollapsed && region ? (
+            <>
+                {renderTokens(line)}
+                <span 
+                    className="px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground cursor-pointer"
+                    style={{ display: 'inline', whiteSpace: 'pre-wrap' }}
+                    onClick={() => toggleFold(i)}
+                >...</span>
+                {renderTokens('}', line.length + 3)}
+            </>
+        ) : (
+            line === '' ? <>&nbsp;</> : renderTokens(line)
+        );
+        
+        currentPos += line.length + 1;
 
         return (
             <div 
@@ -245,59 +331,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
               style={getHighlightStyle(i)}
             >
               <div className="flex-grow">
-                {isCollapsed && region ? (
-                    <>
-                        {parseCode(line).map((token, tokenIndex) => (
-                             <span
-                                key={tokenIndex}
-                                style={{
-                                ...getTokenStyle(token.type),
-                                display: 'inline',
-                                whiteSpace: 'pre-wrap',
-                                }}
-                            >
-                                {token.value}
-                            </span>
-                        ))}
-                        <span 
-                            className="px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground cursor-pointer"
-                            style={{ display: 'inline', whiteSpace: 'pre-wrap' }}
-                            onClick={() => toggleFold(i)}
-                        >...</span>
-                        {parseCode('}').map((token, tokenIndex) => (
-                            <span
-                                key={tokenIndex}
-                                style={{
-                                ...getTokenStyle(token.type),
-                                display: 'inline',
-                                whiteSpace: 'pre-wrap',
-                                }}
-                            >
-                                {token.value}
-                            </span>
-                        ))}
-                    </>
-                ) : (
-                    line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-                        <span
-                            key={tokenIndex}
-                            style={{
-                            ...getTokenStyle(token.type),
-                            display: 'inline',
-                            whiteSpace: 'pre-wrap',
-                            overflowWrap: 'anywhere',
-                            wordBreak: 'normal',
-                            }}
-                        >
-                            {token.value}
-                        </span>
-                    ))
-                )}
+                {lineContent}
               </div>
             </div>
         );
     }).filter(Boolean);
-  }, [lines, cursorLine, getHighlightStyle, isLineVisible, collapsedLines, foldableRegions, toggleFold]);
+  }, [lines, cursorLine, getHighlightStyle, isLineVisible, collapsedLines, foldableRegions, toggleFold, matchedBrackets]);
 
   return (
     <div
