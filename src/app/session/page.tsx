@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -8,7 +9,7 @@ import { generateTimeline } from '@/engine/interpreter';
 import { useCompilerFs } from '@/hooks/use-compiler-fs';
 import { OutputDisplay } from '@/components/codeweave/output-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Grab, X, GripHorizontal } from 'lucide-react';
+import { Play, Grab, X, GripHorizontal, PlayIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useSettings } from '@/hooks/use-settings';
@@ -27,8 +28,18 @@ export default function SessionPage() {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
   const isMobile = useIsMobile();
-  const fs = useCompilerFs({ initialCode: factorialCode });
   const compilerRef = useRef<CompilerRef>(null);
+
+  const fs = useCompilerFs({ initialCode: factorialCode });
+  
+  const handleCodeChange = useCallback((newCode: string) => {
+    fs.setCode(newCode);
+    // Reset debugger state on code change
+    setCurrentStep(1);
+    setIsPlaying(false);
+    setLineExecutionCounts({});
+  }, [fs]);
+
 
   const [activeLine, setActiveLine] = useState(0);
   const [lineExecutionCounts, setLineExecutionCounts] = useState<Record<number, number>>({});
@@ -211,13 +222,6 @@ export default function SessionPage() {
       });
     }
   }, [currentState]);
-  
-  const handleCodeChange = (newCode: string) => {
-    fs.setCode(newCode);
-    setCurrentStep(1);
-    setIsPlaying(false);
-    setLineExecutionCounts({});
-  };
 
   const handleRun = useCallback(async () => {
     if (compilerRef.current) {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
@@ -75,17 +76,15 @@ export function CompilerFsProvider({ children }: { children: React.ReactNode }) 
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
   const activeFile = activeFileIndex !== -1 ? openFiles[activeFileIndex] : null;
 
-  const [_code, _setCode] = useState(defaultCode);
-  const [history, setHistory] = useState<string[]>([_code]);
+  const [history, setHistory] = useState<string[]>([defaultCode]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [isFsReady, setIsFsReady] = useState(false);
 
-  const code = history[historyIndex];
-  const debouncedInternalCode = useDebounce(_code, 500);
+  const code = history[historyIndex] ?? defaultCode;
+  const debouncedCode = useDebounce(code, 500);
 
   const setCode = useCallback((newCode: string) => {
-    _setCode(newCode);
     setHistory(h => {
         const newHistory = h.slice(0, historyIndex + 1);
         newHistory.push(newCode);
@@ -138,8 +137,7 @@ export function CompilerFsProvider({ children }: { children: React.ReactNode }) 
     
     const codeToSet = fileSystem[activeFile.folderName]?.[activeFile.fileName] ?? '';
 
-    if (codeToSet !== _code) {
-      _setCode(codeToSet);
+    if (codeToSet !== code) {
       setHistory([codeToSet]);
       setHistoryIndex(0);
     }
@@ -149,18 +147,18 @@ export function CompilerFsProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (!isFsReady || !activeFile) return;
-    if (fileSystem[activeFile.folderName]?.[activeFile.fileName] !== debouncedInternalCode) {
+    if (fileSystem[activeFile.folderName]?.[activeFile.fileName] !== debouncedCode) {
         setFileSystem(fs => {
             const newFs = { ...fs };
             if (!newFs[activeFile.folderName]) {
                 newFs[activeFile.folderName] = {};
             }
-            newFs[activeFile.folderName][activeFile.fileName] = debouncedInternalCode;
+            newFs[activeFile.folderName][activeFile.fileName] = debouncedCode;
             localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
             return newFs;
         });
     }
-  }, [debouncedInternalCode, activeFile, isFsReady, fileSystem]);
+  }, [debouncedCode, activeFile, isFsReady, fileSystem]);
 
   useEffect(() => {
     if (!isFsReady) return;
