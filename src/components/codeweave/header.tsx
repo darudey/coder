@@ -47,15 +47,15 @@ const NavItems = () => {
   const { user, userRole } = useAuth();
   const pathname = usePathname();
   const { theme, toggleTheme } = useSettings();
-  const [effectiveTheme, setEffectiveTheme] = React.useState(theme);
   const [isAboutOpen, setIsAboutOpen] = React.useState(false);
 
-  React.useEffect(() => {
+  const effectiveTheme = React.useMemo(() => {
     if (theme === 'system') {
-      setEffectiveTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    } else {
-      setEffectiveTheme(theme);
+      // On the server, we can default to light and let the client correct it.
+      if (typeof window === 'undefined') return 'light';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
+    return theme;
   }, [theme]);
 
 
@@ -350,5 +350,3 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
-
-    
