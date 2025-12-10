@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, {
@@ -15,6 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSettings } from '@/hooks/use-settings';
 import { parseCode, getTokenStyle } from '@/lib/syntax-highlighter';
 import { ChevronDown } from 'lucide-react';
+import { AutocompleteDropdown } from './autocomplete-dropdown';
+import { getSuggestions, type Suggestion } from '@/lib/autocomplete';
+import { useDebounce } from '@/hooks/use-debounce';
+import { getCaretCoordinates } from '@/lib/caret-position';
+import { getSmartIndentation } from '@/lib/indentation';
 
 
 export interface OverlayEditorProps {
@@ -76,18 +80,20 @@ const findMatchingBracket = (code: string, position: number): [number, number] |
     
     // Check for enclosing multi-character delimiters
     for (const delim of multiCharDelimiters) {
-        let lastIndex = -1;
-        while ((lastIndex = code.lastIndexOf(delim, position - delim.length)) !== -1) {
+        let searchPos = position - 1;
+        while(searchPos >= 0) {
+            const lastIndex = code.lastIndexOf(delim, searchPos);
+            if (lastIndex === -1) break;
+
             const pair = findMultiCharPair(delim, lastIndex);
             if (pair && position > pair[0] && position <= pair[1] + 1) {
                 const distance = position - pair[0];
                  if (distance < closestDistance) {
                     closestDistance = distance;
-                    bestPair = [pair[0], pair[1] +1]; // Adjust for inclusive end
+                    bestPair = [pair[0], pair[1]];
                 }
             }
-            if (lastIndex === 0) break;
-            position = lastIndex; // Continue search from before this found delimiter
+            searchPos = lastIndex - 1;
         }
     }
 
@@ -112,6 +118,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const [collapsedLines, setCollapsedLines] = useState<Set<number>>(new Set());
   const [matchedBrackets, setMatchedBrackets] = useState<[number, number] | null>(null);
 
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
+  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const debouncedCode = useDebounce(code, 150);
+
   const fontSize = settings.editorFontSize ?? 14;
 
   const textStyle = useMemo<React.CSSProperties>(() => ({
@@ -125,6 +136,28 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   }), [fontSize]);
 
   const lines = useMemo(() => code.split('\n'), [code]);
+
+    const updateSuggestions = useCallback(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const { suggestions: newSuggestions, word } = getSuggestions(code, textarea.selectionStart, false);
+        if (newSuggestions.length > 0) {
+            setSuggestions(newSuggestions);
+            setActiveSuggestion(0);
+            const coords = getCaretCoordinates(textarea, textarea.selectionStart);
+            setSuggestionPos({
+                top: coords.top + coords.height,
+                left: coords.left - (word.length * (fontSize * 0.6)), // Approximate char width
+            });
+        } else {
+            setSuggestions([]);
+        }
+    }, [code, fontSize]);
+
+  useEffect(() => {
+    updateSuggestions();
+  }, [debouncedCode, updateSuggestions]);
 
   useEffect(() => {
     try {
@@ -253,6 +286,152 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     setMatchedBrackets(findMatchingBracket(code, index));
 
   }, [code]);
+
+  const handleEnterPress = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    const { textToInsert, newCursorPosition } = getSmartIndentation(code, start, end);
+    
+    const newCode = code.substring(0, start) + textToInsert + code.substring(end);
+    onCodeChange(newCode);
+    
+    requestAnimationFrame(() => {
+        textarea.selectionStart = newCursorPosition;
+        textarea.selectionEnd = newCursorPosition;
+        textarea.focus();
+    });
+}, [code, onCodeChange]);
+
+  const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { word, startPos } = getSuggestions(code, textarea.selectionStart, false);
+    
+    const newCode = code.substring(0, startPos) + suggestion.value + code.substring(textarea.selectionStart);
+    const newCursorPosition = startPos + suggestion.value.length;
+    
+    onCodeChange(newCode);
+    setSuggestions([]);
+
+    requestAnimationFrame(() => {
+        textarea.selectionStart = newCursorPosition;
+        textarea.selectionEnd = newCursorPosition;
+        textarea.focus();
+    });
+  }, [code, onCodeChange]);
+
+    const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        if (suggestions.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveSuggestion(prev => (prev + 1) % suggestions.length);
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
+                return;
+            }
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                handleSuggestionSelection(suggestions[activeSuggestion]);
+                return;
+            }
+            if (e.key === 'Escape') {
+                setSuggestions([]);
+                return;
+            }
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleEnterPress();
+            return;
+        }
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const newCode = code.substring(0, start) + '    ' + code.substring(end);
+            onCodeChange(newCode);
+            requestAnimationFrame(() => {
+                textarea.selectionStart = start + 4;
+                textarea.selectionEnd = start + 4;
+                textarea.focus();
+            });
+            return;
+        }
+
+        if (e.key === 'Backspace') {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+
+            if (start === end && start > 0) {
+                const charBefore = code.charAt(start - 1);
+                const charAfter = code.charAt(start);
+                const pairs: { [key: string]: string } = { '(': ')', '{': '}', '[ T]': ']', "'": "'", '"': '"', '`': '`'};
+
+                if (pairs[charBefore] === charAfter) {
+                    e.preventDefault();
+                    const newCode = code.substring(0, start - 1) + code.substring(start + 1);
+                    onCodeChange(newCode);
+                    
+                    requestAnimationFrame(() => {
+                        textarea.selectionStart = start - 1;
+                        textarea.selectionEnd = start - 1;
+                        textarea.focus();
+                    });
+                    return;
+                }
+            }
+        }
+        
+        const pairMap: {[key:string]: string} = { '(': ')', '{': '}', '[': ']', "'": "'", '"': '"', '`': '`' };
+
+        if (pairMap[e.key]) {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const open = e.key;
+            const close = pairMap[e.key];
+            
+            let newCode;
+            let newCursorPosition;
+
+            if (start === end) {
+                newCode = code.substring(0, start) + open + close + code.substring(end);
+                newCursorPosition = start + 1;
+            } else {
+                const selectedText = code.substring(start, end);
+                newCode = code.substring(0, start) + open + selectedText + close + code.substring(end);
+                newCursorPosition = start + open.length + selectedText.length + close.length;
+            }
+            
+            onCodeChange(newCode);
+
+            requestAnimationFrame(() => {
+                if (start === end) {
+                    textarea.selectionStart = newCursorPosition;
+                    textarea.selectionEnd = newCursorPosition;
+                } else {
+                    textarea.selectionStart = start + open.length;
+                    textarea.selectionEnd = end + open.length;
+                }
+                textarea.focus();
+            });
+            return;
+        }
+
+    }, [code, onCodeChange, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress]);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -412,6 +591,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           ref={textareaRef}
           value={code}
           onChange={(e) => onCodeChange(e.target.value)}
+          onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
           className={cn(
             'absolute inset-0 w-full h-full resize-none border-0 bg-transparent',
@@ -421,6 +601,16 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           style={textStyle}
           spellCheck={false}
         />
+        
+        {suggestions.length > 0 && (
+          <AutocompleteDropdown 
+            suggestions={suggestions} 
+            top={suggestionPos.top} 
+            left={suggestionPos.left}
+            onSelect={handleSuggestionSelection}
+            activeIndex={activeSuggestion}
+          />
+        )}
 
         {/* Hidden measuring mirror */}
         <div
