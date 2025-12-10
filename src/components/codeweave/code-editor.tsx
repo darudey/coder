@@ -312,8 +312,8 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         }
         break;
       case 'Tab':
-        newCode = code.substring(0, start) + '  ' + code.substring(end);
-        newCursorPosition = start + 2;
+        newCode = code.substring(0, start) + '    ' + code.substring(end);
+        newCursorPosition = start + 4;
         break;
       case 'CapsLock':
       case 'Shift':
@@ -582,7 +582,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       whiteSpace: 'pre-wrap',
       overflowWrap: 'anywhere',
       // @ts-ignore
-      tabSize: 2,
+      tabSize: 4,
   }), []);
   
   const highlightedCode = useMemo(() => {
@@ -706,4 +706,3 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
-

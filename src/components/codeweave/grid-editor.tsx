@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, {
@@ -52,7 +53,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
     wordBreak: 'normal',
-    tabSize: 2,
+    tabSize: 4,
   }), [fontSize]);
 
   const lines = useMemo(() => code.split('\n'), [code]);
