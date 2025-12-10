@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -10,11 +9,13 @@ import { Play } from 'lucide-react';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { OutputDisplay } from '@/components/codeweave/output-display';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCompilerFs } from '@/hooks/use-compiler-fs';
 
 export default function Home() {
   const { settings } = useSettings();
   const compilerRef = useRef<CompilerRef>(null);
   const isMobile = useIsMobile();
+  const fs = useCompilerFs({});
   
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
@@ -41,7 +42,7 @@ export default function Home() {
   if (!showSidePanel) {
     return (
         <div className="bg-background min-h-screen">
-            <Compiler ref={compilerRef} onRun={handleRun} />
+            <Compiler ref={compilerRef} onRun={handleRun} {...fs} />
         </div>
     );
   }
@@ -73,7 +74,7 @@ export default function Home() {
     <div className="bg-background h-[calc(100vh-4rem)]">
         <div className="grid h-full p-4 gap-4" style={{ gridTemplateColumns: `1fr ${panelWidth}%`}}>
             <div className="h-full flex flex-col overflow-y-auto">
-                 <Compiler ref={compilerRef} onRun={handleRun} />
+                 <Compiler ref={compilerRef} onRun={handleRun} {...fs} />
             </div>
             {SidePanelOutput}
         </div>
