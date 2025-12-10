@@ -14,11 +14,20 @@ import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useSettings } from '@/hooks/use-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+const factorialCode = `function factorial(n) {
+  if (n === 0) {
+    return 1;
+  }
+  return n * factorial(n - 1);
+}
+
+console.log(factorial(5));`;
+
 export default function SessionPage() {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
   const isMobile = useIsMobile();
-  const fs = useCompilerFs();
+  const fs = useCompilerFs({ initialCode: factorialCode });
   const compilerRef = useRef<CompilerRef>(null);
 
   const [activeLine, setActiveLine] = useState(0);
