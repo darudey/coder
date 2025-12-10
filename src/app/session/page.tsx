@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -332,7 +331,7 @@ console.log(result);`
                 {SidePanelOutput}
             </div>
         ) : (
-            <div className="h-[calc(100vh-4rem)]">
+            <div className="h-[calc(100vh-4rem)] p-4">
                 <Compiler
                     ref={compilerRef}
                     {...fs}
