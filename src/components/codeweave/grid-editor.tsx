@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, {
@@ -378,7 +377,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             if (start === end && start > 0) {
                 const charBefore = code.charAt(start - 1);
                 const charAfter = code.charAt(start);
-                const pairs: { [key: string]: string } = { '(': ')', '{': '}', '[ T]': ']', "'": "'", '"': '"', '`': '`'};
+                const pairs: { [key: string]: string } = { '(': ')', '{': '}', '[': ']', "'": "'", '"': '"', '`': '`'};
 
                 if (pairs[charBefore] === charAfter) {
                     e.preventDefault();
@@ -449,9 +448,13 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
     return () => {
         observer.disconnect();
-        document.removeEventListener('selectionchange', handler);
-        ta.removeEventListener('keyup', handler);
-        ta.removeEventListener('click', handler);
+        if(document) {
+          document.removeEventListener('selectionchange', handler);
+        }
+        if (ta) {
+          ta.removeEventListener('keyup', handler);
+          ta.removeEventListener('click', handler);
+        }
     };
   }, [handleSelectionChange, computeWrappedRows]);
 
@@ -622,3 +625,5 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     </div>
   );
 };
+
+export default GridEditor;
