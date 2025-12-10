@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, {
@@ -51,7 +50,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     fontSize,
     lineHeight: 1.5,
     whiteSpace: 'pre-wrap',
-    overflowWrap: 'break-word',
+    overflowWrap: 'anywhere',
+    wordBreak: 'normal',
     tabSize: 2,
   }), [fontSize]);
 
@@ -96,8 +96,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     return true;
   }, [collapsedLines, foldableRegions]);
 
-  const visibleLines = useMemo(() => lines.filter((_, i) => isLineVisible(i)), [lines, isLineVisible]);
-
   const toggleFold = (lineNumber: number) => {
     setCollapsedLines(prev => {
       const newSet = new Set(prev);
@@ -126,11 +124,17 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     for (let i = 0; i < lines.length; i++) {
         if (!isLineVisible(i)) continue;
 
-        const isFoldable = foldableRegions.some(r => r.start === i);
-        const isCollapsed = collapsedLines.has(i);
+        const text = lines[i] === '' ? '\u00A0' : lines[i];
+        measure.textContent = text;
+        // PATCH: Ensure measure div wraps exactly like editor
+        measure.style.whiteSpace = 'pre-wrap';
+        measure.style.overflowWrap = 'anywhere';
+        
+        // PATCHED: true wrapped height
+        const height = Math.max(measure.offsetHeight, fontSize * 1.5);
 
         const div = document.createElement('div');
-        div.style.height = `${fontSize * 1.5}px`;
+        div.style.height = `${height}px`;
         div.className = 'flex items-center justify-end px-2 gap-1';
 
         const lineNumSpan = document.createElement('span');
@@ -138,6 +142,9 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         lineNumSpan.textContent = String(i + 1);
         
         div.appendChild(lineNumSpan);
+        
+        const isFoldable = foldableRegions.some(r => r.start === i);
+        const isCollapsed = collapsedLines.has(i);
         
         if (isFoldable) {
             const chevronWrapper = document.createElement('div');
@@ -155,17 +162,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         }
         
         gutter.appendChild(div);
-
-        if (isCollapsed) {
-            const region = foldableRegions.find(r => r.start === i);
-            if(region) {
-                 const collapsedIndicator = document.createElement('span');
-                collapsedIndicator.textContent = '...';
-                collapsedIndicator.className = 'absolute left-full ml-1 px-1 rounded-sm bg-muted text-muted-foreground cursor-pointer';
-                collapsedIndicator.onclick = () => toggleFold(i);
-                div.appendChild(collapsedIndicator);
-            }
-        }
     }
   }, [lines, fontSize, cursorLine, foldableRegions, collapsedLines, isLineVisible, toggleFold]);
 
@@ -250,23 +246,47 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                 {isCollapsed && region ? (
                     <>
                         {parseCode(line).map((token, tokenIndex) => (
-                            <span key={tokenIndex} style={getTokenStyle(token.type)}>
+                             <span
+                                key={tokenIndex}
+                                style={{
+                                ...getTokenStyle(token.type),
+                                display: 'inline',
+                                whiteSpace: 'pre-wrap',
+                                }}
+                            >
                                 {token.value}
                             </span>
                         ))}
                         <span 
                             className="px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground cursor-pointer"
+                            style={{ display: 'inline', whiteSpace: 'pre-wrap' }}
                             onClick={() => toggleFold(i)}
                         >...</span>
                         {parseCode('}').map((token, tokenIndex) => (
-                            <span key={tokenIndex} style={getTokenStyle(token.type)}>
+                            <span
+                                key={tokenIndex}
+                                style={{
+                                ...getTokenStyle(token.type),
+                                display: 'inline',
+                                whiteSpace: 'pre-wrap',
+                                }}
+                            >
                                 {token.value}
                             </span>
                         ))}
                     </>
                 ) : (
                     line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-                        <span key={tokenIndex} style={getTokenStyle(token.type)}>
+                        <span
+                            key={tokenIndex}
+                            style={{
+                            ...getTokenStyle(token.type),
+                            display: 'inline',
+                            whiteSpace: 'pre-wrap',
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'normal',
+                            }}
+                        >
                             {token.value}
                         </span>
                     ))
@@ -298,7 +318,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <div
           ref={overlayRef}
           className="absolute inset-0 pointer-events-none px-3 py-2"
-          style={textStyle}
+          style={{
+            ...textStyle,
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+            wordBreak: 'normal',
+          }}
         >
             {highlightedCode}
         </div>
