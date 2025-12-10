@@ -30,38 +30,68 @@ interface FoldableRegion {
 }
 
 const findMatchingBracket = (code: string, position: number): [number, number] | null => {
-    const char = code[position - 1];
-    const bracketPairs: { [key: string]: string } = { '(': ')', '{': '}', '[': ']', ')': '(', '}': '{', ']': '[' };
-    const openBrackets = ['(', '{', '['];
-    const closeBrackets = [')', '}', ']'];
+    const singleCharPairs: { [key: string]: string } = { '(': ')', '{': '}', '[': ']', ')': '(', '}': '{', ']': '[' };
+    const multiCharDelimiters = ["'''", '"""'];
 
-    if (!bracketPairs[char]) {
-        return null;
-    }
+    // Function to find single character pairs
+    const findSingleCharPair = (startPos: number): [number, number] | null => {
+        const char = code[startPos];
+        const closeChar = singleCharPairs[char];
+        if (!closeChar || !['(', '{', '['].includes(char)) return null;
 
-    if (openBrackets.includes(char)) {
-        const closeChar = bracketPairs[char];
         let balance = 1;
-        for (let i = position; i < code.length; i++) {
+        for (let i = startPos + 1; i < code.length; i++) {
             if (code[i] === char) balance++;
             else if (code[i] === closeChar) balance--;
-            if (balance === 0) {
-                return [position - 1, i];
-            }
+            if (balance === 0) return [startPos, i];
         }
-    } else if (closeBrackets.includes(char)) {
-        const openChar = bracketPairs[char];
-        let balance = 1;
-        for (let i = position - 2; i >= 0; i--) {
-            if (code[i] === char) balance++;
-            else if (code[i] === openChar) balance--;
-            if (balance === 0) {
-                return [i, position - 1];
+        return null;
+    };
+    
+    // Function to find multi-character pairs
+    const findMultiCharPair = (delimiter: string, startPos: number): [number, number] | null => {
+        const nextOccurrence = code.indexOf(delimiter, startPos + delimiter.length);
+        if (nextOccurrence !== -1) {
+            return [startPos, nextOccurrence + delimiter.length - 1];
+        }
+        return null;
+    };
+
+    let bestPair: [number, number] | null = null;
+    let closestDistance = Infinity;
+
+    // Check for enclosing single-character brackets
+    for (let i = position - 1; i >= 0; i--) {
+        if (['(', '{', '['].includes(code[i])) {
+            const pair = findSingleCharPair(i);
+            if (pair && position > pair[0] && position <= pair[1]) {
+                const distance = position - pair[0];
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    bestPair = pair;
+                }
             }
         }
     }
+    
+    // Check for enclosing multi-character delimiters
+    for (const delim of multiCharDelimiters) {
+        let lastIndex = -1;
+        while ((lastIndex = code.lastIndexOf(delim, position - delim.length)) !== -1) {
+            const pair = findMultiCharPair(delim, lastIndex);
+            if (pair && position > pair[0] && position <= pair[1] + 1) {
+                const distance = position - pair[0];
+                 if (distance < closestDistance) {
+                    closestDistance = distance;
+                    bestPair = [pair[0], pair[1] +1]; // Adjust for inclusive end
+                }
+            }
+            if (lastIndex === 0) break;
+            position = lastIndex; // Continue search from before this found delimiter
+        }
+    }
 
-    return null;
+    return bestPair;
 };
 
 
@@ -283,10 +313,18 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         const lineStartPos = currentPos;
 
         const renderTokens = (text: string, startOffset: number = 0) => {
+          let textPos = 0;
           return parseCode(text).map((token, tokenIndex) => {
-              const tokenStart = lineStartPos + startOffset;
-              const isBracketMatch = matchedBrackets && (tokenStart === matchedBrackets[0] || tokenStart === matchedBrackets[1]);
-              startOffset += token.value.length;
+              const tokenStart = lineStartPos + startOffset + textPos;
+              const tokenEnd = tokenStart + token.value.length;
+              
+              const isBracketMatch = matchedBrackets && (
+                (tokenStart >= matchedBrackets[0] && tokenEnd <= matchedBrackets[0] + 1) ||
+                (tokenStart >= matchedBrackets[1] && tokenEnd <= matchedBrackets[1] + 1)
+              );
+
+              textPos += token.value.length;
+
               return (
                   <span
                       key={tokenIndex}
