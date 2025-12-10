@@ -18,17 +18,7 @@ export default function SessionPage() {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
   const isMobile = useIsMobile();
-  const fs = useCompilerFs({
-    initialCode: `function factorial(n) {
-  if (n === 0) {
-    return 1;
-  }
-  return n * factorial(n - 1);
-}
-
-const result = factorial(3);
-console.log(result);`
-  });
+  const fs = useCompilerFs();
   const compilerRef = useRef<CompilerRef>(null);
 
   const [activeLine, setActiveLine] = useState(0);
@@ -317,7 +307,6 @@ console.log(result);`
                     <Compiler
                     ref={compilerRef}
                     {...fs}
-                    code={fs.code}
                     onCodeChange={handleCodeChange}
                     EditorComponent={GridEditor} 
                     onToggleDebugger={() => setShowDebugger(s => !s)}
@@ -331,11 +320,10 @@ console.log(result);`
                 {SidePanelOutput}
             </div>
         ) : (
-            <div className="h-[calc(100vh-4rem)] p-4">
+            <div className="p-4 h-full">
                 <Compiler
                     ref={compilerRef}
                     {...fs}
-                    code={fs.code}
                     onCodeChange={handleCodeChange}
                     EditorComponent={GridEditor} 
                     onToggleDebugger={() => setShowDebugger(s => !s)}
