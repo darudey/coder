@@ -332,7 +332,7 @@ console.log(result);`
                 {SidePanelOutput}
             </div>
         ) : (
-            <div className="p-4 h-[calc(100vh-6rem)]">
+            <div className="h-[calc(100vh-4rem)]">
                 <Compiler
                     ref={compilerRef}
                     {...fs}
