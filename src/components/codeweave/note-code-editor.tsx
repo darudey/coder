@@ -6,7 +6,7 @@ import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { getTokenStyle, parseCode } from '@/lib/syntax-highlighter';
-import { CoderKeyboard } from './coder-keyboard';
+import { CoderKeyboard } from '@/components/codeweave/coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getSmartIndentation } from '@/lib/indentation';
 
@@ -168,8 +168,8 @@ export const NoteCodeEditor = React.forwardRef<HTMLTextAreaElement, NoteCodeEdit
             }
             break;
           case 'Tab':
-            newCode = code.substring(0, start) + '  ' + code.substring(end);
-            newCursorPosition = start + 2;
+            newCode = code.substring(0, start) + '    ' + code.substring(end);
+            newCursorPosition = start + 4;
             break;
           case 'CapsLock':
           case 'Shift':
