@@ -547,7 +547,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             <div 
               key={i} 
               className={cn(
-                i === cursorLine && "bg-muted/50",
+                i === cursorLine && "bg-slate-700/50",
                 "flex"
               )}
               style={getHighlightStyle(i)}
@@ -562,12 +562,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   return (
     <div
-      className="relative flex border rounded-md bg-white dark:bg-gray-950 min-h-[70vh]"
+      className="relative flex border rounded-md bg-white dark:bg-slate-900 min-h-[70vh]"
     >
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="shrink-0 border-r bg-gray-100 dark:bg-gray-900 py-2"
+        className="shrink-0 border-r bg-gray-100 dark:bg-slate-800 py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
