@@ -569,79 +569,78 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   const highlightedCode = React.useMemo(() => {
     let currentPos = 0;
+    let parserState: 'default' | 'in_multiline_comment' = 'default';
+
     return lines.map((line, i) => {
-        if (!isLineVisible(i)) {
-          currentPos += line.length + 1;
-          return null;
-        };
-
-        const isCollapsed = collapsedLines.has(i);
-        const region = foldableRegions.find(r => r.start === i);
-        const lineStartPos = currentPos;
-
-        const renderTokens = (text: string, startOffset: number = 0) => {
-          let textPos = 0;
-          return parseCode(text).map((token, tokenIndex) => {
-              const tokenStart = lineStartPos + startOffset + textPos;
-              const tokenEnd = tokenStart + token.value.length;
-              
-              const isBracketMatch = matchedBrackets && (
-                (tokenStart >= matchedBrackets[0] && tokenEnd <= matchedBrackets[0] + 1) ||
-                (tokenStart >= matchedBrackets[1] && tokenEnd <= matchedBrackets[1] + 1)
-              );
-
-              textPos += token.value.length;
-
-              return (
-                  <span
-                      key={tokenIndex}
-                      className={cn(isBracketMatch && "bracket-match")}
-                      style={{
-                      ...getTokenStyle(token.type),
-                      display: 'inline',
-                      whiteSpace: 'pre-wrap',
-                      overflowWrap: 'anywhere',
-                      wordBreak: 'normal',
-                      }}
-                  >
-                      {token.value}
-                  </span>
-              );
-          })
-        };
-
-        const lineContent = isCollapsed && region ? (
-            <>
-                {renderTokens(line)}
-                <span 
-                    className="px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground cursor-pointer"
-                    style={{ display: 'inline', whiteSpace: 'pre-wrap' }}
-                    onClick={() => toggleFold(i)}
-                >...</span>
-                {renderTokens('}', line.length + 3)}
-            </>
-        ) : (
-            line === '' ? <>&nbsp;</> : renderTokens(line)
-        );
-        
+      if (!isLineVisible(i)) {
         currentPos += line.length + 1;
+        // Even if not visible, we need to parse it to maintain the state
+        const { finalState } = parseCode(line, parserState);
+        parserState = finalState;
+        return null;
+      }
 
-        return (
-            <div 
-              key={i} 
-              className={cn(
-                i === cursorLine && "bg-slate-700/50",
-                "flex"
-              )}
-              style={getHighlightStyle(i)}
+      const isCollapsed = collapsedLines.has(i);
+      const region = foldableRegions.find(r => r.start === i);
+      const lineStartPos = currentPos;
+      
+      const { tokens, finalState } = parseCode(line, parserState);
+      parserState = finalState;
+
+      const renderTokens = (text: string, localTokens: ReturnType<typeof parseCode>['tokens']) => {
+        let textPos = 0;
+        return localTokens.map((token, tokenIndex) => {
+          const tokenStart = lineStartPos + textPos;
+          const tokenEnd = tokenStart + token.value.length;
+          const isBracketMatch = matchedBrackets && (
+            (tokenStart >= matchedBrackets[0] && tokenEnd <= matchedBrackets[0] + 1) ||
+            (tokenStart >= matchedBrackets[1] && tokenEnd <= matchedBrackets[1] + 1)
+          );
+          textPos += token.value.length;
+          return (
+            <span
+              key={tokenIndex}
+              className={cn(isBracketMatch && "bracket-match")}
+              style={getTokenStyle(token.type)}
             >
-              <div className="flex-grow">
-                {lineContent}
-              </div>
-            </div>
-        );
+              {token.value}
+            </span>
+          );
+        });
+      };
+
+      const lineContent = isCollapsed && region ? (
+        <>
+          {renderTokens(line, tokens)}
+          <span
+            className="px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground cursor-pointer"
+            style={{ display: 'inline', whiteSpace: 'pre-wrap' }}
+            onClick={() => toggleFold(i)}
+          >...</span>
+        </>
+      ) : (
+        line === '' ? <>&nbsp;</> : renderTokens(line, tokens)
+      );
+
+      currentPos += line.length + 1;
+
+      return (
+        <div
+          key={i}
+          className={cn(
+            i === cursorLine && "bg-slate-700/50",
+            "flex"
+          )}
+          style={getHighlightStyle(i)}
+        >
+          <div className="flex-grow">
+            {lineContent}
+          </div>
+        </div>
+      );
     }).filter(Boolean);
-  }, [lines, cursorLine, getHighlightStyle, isLineVisible, collapsedLines, foldableRegions, toggleFold, matchedBrackets]);
+  }, [lines, isLineVisible, collapsedLines, foldableRegions, matchedBrackets, toggleFold, cursorLine, getHighlightStyle]);
+
 
   const gutterRows = React.useMemo(() => {
     return lines.map((line, i) => {

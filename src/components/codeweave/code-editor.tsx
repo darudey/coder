@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Textarea } from '@/components/ui/textarea';
@@ -654,21 +655,17 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   }), []);
   
   const highlightedCode = React.useMemo(() => {
-    const lines = code.split('\n');
+    const { tokens } = parseCode(code);
     return (
-      <>
-        {lines.map((line, lineIndex) => (
-            <div key={lineIndex} className="min-h-[21px]" style={{minHeight: `${fontSize * 1.5}px`}}>
-              {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-                  <span key={tokenIndex} style={getTokenStyle(token.type)}>
+        <>
+            {tokens.map((token, tokenIndex) => (
+                <span key={tokenIndex} style={getTokenStyle(token.type)}>
                     {token.value}
-                  </span>
-                ))}
-            </div>
-        ))}
-      </>
+                </span>
+            ))}
+        </>
     );
-  }, [code, fontSize]);
+}, [code]);
 
   return (
     <>

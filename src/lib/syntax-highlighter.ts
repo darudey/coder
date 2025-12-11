@@ -1,25 +1,5 @@
 
 
-const tokenRegex = new RegExp(
-  [
-    // Comments (Group 1) - Corrected to handle multi-line block comments robustly
-    '(\\/\\/.*|\\/\\*[\\s\\S]*?\\*\\/)',
-    // Strings (Group 2)
-    '(`(?:\\\\`|[^`])*`|"(?:\\\\"|[^"])*"|\'(?:\\\\\'|[^\'])*\')',
-    // Keywords & special values (Group 3)
-    '\\b(function|return|const|let|var|if|else|for|while|switch|case|break|continue|new|this|true|false|null|undefined|typeof|instanceof|async|await|class|extends|super|import|export|from|default|try|catch|finally|debugger|with|yield|in|of)\\b',
-    // Built-in objects (Group 4)
-    '\\b(console|Math|JSON|Date|Array|String|Number|Boolean|RegExp|Error|Promise|window|document)\\b',
-    // Numbers (Group 5)
-    '\\b(\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)\\b',
-    // Identifiers, including properties (Group 6)
-    '([a-zA-Z_$][a-zA-Z0-9_$]*)',
-    // Operators & Punctuation (Group 7)
-    '([\\+\\-\\*/%<>=!&|\\^~\\?:;,.\\(\\){}\\[\\]])',
-  ].join('|'),
-  'g'
-);
-
 type TokenType = 'comment' | 'string' | 'keyword' | 'builtin' | 'function-name' | 'class-name' | 'property' | 'number' | 'operator' | 'default';
 
 interface Token {
@@ -27,73 +7,88 @@ interface Token {
   value: string;
 }
 
-export const parseCode = (code: string): Token[] => {
+type ParserState = 'default' | 'in_multiline_comment';
+
+export const parseCode = (code: string, initialState: ParserState = 'default'): { tokens: Token[], finalState: ParserState } => {
   const tokens: Token[] = [];
-  let lastIndex = 0;
-  let match;
+  let currentState = initialState;
+  let remainingCode = code;
 
-  while ((match = tokenRegex.exec(code)) !== null) {
-    // Text before the match is a 'default' token
-    if (match.index > lastIndex) {
-      tokens.push({
-        type: 'default',
-        value: code.slice(lastIndex, match.index),
-      });
+  const tokenPatterns: { [K in ParserState]: { type: TokenType, regex: RegExp }[] } = {
+    default: [
+      { type: 'comment', regex: /^\/\/.*/ },
+      { type: 'comment', regex: /^\/\*/ },
+      { type: 'string', regex: /^(`(?:\\`|[^`])*`|"(?:\\"|[^"])*"|'(?:\\'|[^'])*')/ },
+      { type: 'keyword', regex: /^\b(function|return|const|let|var|if|else|for|while|switch|case|break|continue|new|this|true|false|null|undefined|typeof|instanceof|async|await|class|extends|super|import|export|from|default|try|catch|finally|debugger|with|yield|in|of)\b/ },
+      { type: 'builtin', regex: /^\b(console|Math|JSON|Date|Array|String|Number|Boolean|RegExp|Error|Promise|window|document)\b/ },
+      { type: 'number', regex: /^\b(\d+(?:\.\d+)?(?:e[+-]?\d+)?)\b/ },
+      { type: 'default', regex: /^[a-zA-Z_$][a-zA-Z0-9_$]*/ },
+      { type: 'operator', regex: /^([\+\-\*\/%<>=!&|\^~\?:;,\.(){}\[\]])/ },
+      { type: 'default', regex: /^\s+/ },
+    ],
+    in_multiline_comment: [
+      { type: 'comment', regex: /^[^\*]+\*+(?!\/)/ },
+      { type: 'comment', regex: /^\*\// },
+      { type: 'comment', regex: /^./ },
+    ],
+  };
+  
+  while (remainingCode.length > 0) {
+    let matched = false;
+    for (const { type, regex } of tokenPatterns[currentState]) {
+      const match = remainingCode.match(regex);
+      if (match) {
+        let value = match[0];
+        if (currentState === 'default') {
+          if (type === 'comment' && value.startsWith('/*')) {
+            currentState = 'in_multiline_comment';
+          }
+        } else if (currentState === 'in_multiline_comment') {
+          if (value.endsWith('*/')) {
+            currentState = 'default';
+          }
+        }
+
+        tokens.push({ type, value });
+        remainingCode = remainingCode.substring(value.length);
+        matched = true;
+        break;
+      }
     }
-    
-    const matchedValue = match[0];
-    let tokenType: TokenType = 'default';
 
-    if (match[1]) tokenType = 'comment';
-    else if (match[2]) tokenType = 'string';
-    else if (match[3]) tokenType = 'keyword';
-    else if (match[4]) tokenType = 'builtin';
-    else if (match[5]) tokenType = 'number';
-    else if (match[6]) tokenType = 'default'; // Initially, all identifiers are default
-    else if (match[7]) tokenType = 'operator';
-
-    tokens.push({ type: tokenType, value: matchedValue });
-    lastIndex = tokenRegex.lastIndex;
+    if (!matched) {
+      tokens.push({ type: 'default', value: remainingCode[0] });
+      remainingCode = remainingCode.substring(1);
+    }
   }
 
-  // Remaining text
-  if (lastIndex < code.length) {
-    tokens.push({
-      type: 'default',
-      value: code.slice(lastIndex),
-    });
-  }
-
-  // Post-processing to identify special identifier types (properties, functions, classes)
+  // Post-processing
   for (let i = 0; i < tokens.length; i++) {
     const currentToken = tokens[i];
 
     if (currentToken.type === 'default' && /^[a-zA-Z_$]/.test(currentToken.value)) {
-        // Check for property (follows a '.')
-        const prevToken = tokens.slice(0, i).reverse().find(t => t.type !== 'default' || t.value.trim() !== '');
-        if (prevToken?.value === '.') {
+        const prevToken = tokens.slice(0, i).reverse().find(t => t.value.trim() !== '');
+        if (prevToken?.value.trim() === '.') {
             currentToken.type = 'property';
             continue;
         }
 
-        // Check for function/class declaration name
         if (prevToken?.type === 'keyword' && (prevToken.value === 'function' || prevToken.value === 'class')) {
             currentToken.type = prevToken.value === 'class' ? 'class-name' : 'function-name';
             continue;
         }
 
-        // Check for function call name
-        const nextToken = tokens.slice(i + 1).find(t => t.type !== 'default' || t.value.trim() !== '');
-        if (nextToken?.value === '(') {
+        const nextToken = tokens.slice(i + 1).find(t => t.value.trim() !== '');
+        if (nextToken?.value.trim() === '(') {
             currentToken.type = 'function-name';
             continue;
         }
     }
   }
 
-
-  return tokens;
+  return { tokens, finalState: currentState };
 };
+
 
 export const getTokenStyle = (type: TokenType): React.CSSProperties => {
     const style: React.CSSProperties = {
