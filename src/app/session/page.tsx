@@ -333,7 +333,7 @@ export default function SessionPage() {
                 {SidePanelOutput}
             </div>
         ) : (
-            <div className="p-4 h-full">
+            <div className="h-full">
                 <Compiler
                     ref={compilerRef}
                     {...fs}
