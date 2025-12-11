@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { diffLines } from 'diff';
 import { Copy, Check, X, Activity } from 'lucide-react';
 import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
 import 'prismjs/themes/prism-tomorrow.css'; // Using a standard theme
 
 // Types
@@ -172,15 +173,6 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<number | null>(null);
 
-  useEffect(() => {
-    // Dynamically import prism components to ensure Prism is defined.
-    try {
-      require('prismjs/components/prism-json');
-    } catch(e) {
-        console.error(e);
-    }
-  }, []);
-
   useEffect(() => () => {
     if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
   }, []);
@@ -266,7 +258,7 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                         {diffLines(expectedOutput, userOutputText).map((part, i) => {
                           const cls = part.added ? 'bg-green-50 dark:bg-green-900/30' : part.removed ? 'bg-red-50 dark:bg-red-900/30' : '';
                           return (
-                            <pre key={i} className={cn('whitespace-pre-wrap font-code p-1', cls)}>
+                            <pre key={i} className={cn('whitespace-pre-wrap break-words font-code p-1', cls)}>
                               {part.value}
                             </pre>
                           );
@@ -277,7 +269,7 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                     <div className="border rounded h-[560px] overflow-auto">
                       <div className="p-2 text-xs text-muted-foreground">Unified Diff</div>
                       <div className="p-2">
-                        <pre className="whitespace-pre-wrap font-code text-sm">
+                        <pre className="whitespace-pre-wrap break-words font-code text-sm">
                           {diffLines(expectedOutput, userOutputText)
                             .map(p => {
                               if (p.added) return p.value.split('\n').map(l => `+ ${l}`).join('\n');
@@ -329,3 +321,5 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 };
 
 export const OutputDisplay = React.memo(MemoizedOutputDisplay);
+
+    
