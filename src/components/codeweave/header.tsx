@@ -186,7 +186,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   const AppearanceMenu = ({className}: {className?: string}) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className={cn("h-8 w-8", className)}>
+        <Button variant="outline" size="icon" className={cn("h-8 w-8 hidden md:inline-flex", className)}>
             <Palette className="w-4 h-4" />
             <span className="sr-only">Appearance</span>
         </Button>
@@ -278,7 +278,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                   <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <AppearanceMenu className="hidden md:inline-flex" />
+              <AppearanceMenu />
               <Button variant="outline" size="icon" onClick={onSettings} className="h-8 w-8">
                 <Settings className="w-4 h-4" />
                 <span className="sr-only">Settings</span>
@@ -331,7 +331,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                   <DropdownMenuItem onClick={onSaveToDrive}>Save to Google Drive</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <AppearanceMenu className="hidden md:inline-flex" />
+              <AppearanceMenu />
                <Button variant="outline" size="icon" onClick={toggleTheme} className="h-8 w-8 hidden md:inline-flex">
                 <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
