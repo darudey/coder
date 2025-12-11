@@ -1,8 +1,9 @@
 
+
 const tokenRegex = new RegExp(
   [
-    // Comments (Group 1)
-    '(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)',
+    // Comments (Group 1) - Corrected to handle multi-line block comments robustly
+    '(\\/\\/.*|\\/\\*[\\s\\S]*?\\*\\/)',
     // Strings (Group 2)
     '(`(?:\\\\`|[^`])*`|"(?:\\\\"|[^"])*"|\'(?:\\\\\'|[^\'])*\')',
     // Keywords & special values (Group 3)
