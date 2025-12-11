@@ -1,13 +1,7 @@
 
 'use client';
 
-import React, {
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-} from 'react';
+import React from 'react';
 import * as acorn from 'acorn';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -108,25 +102,25 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   lineExecutionCounts = {},
 }) => {
   const { settings } = useSettings();
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const overlayRef = useRef<HTMLDivElement | null>(null);
-  const gutterRef = useRef<HTMLDivElement | null>(null);
-  const measureRef = useRef<HTMLDivElement | null>(null);
-  const [cursorLine, setCursorLine] = useState(0);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const overlayRef = React.useRef<HTMLDivElement | null>(null);
+  const gutterRef = React.useRef<HTMLDivElement | null>(null);
+  const measureRef = React.useRef<HTMLDivElement | null>(null);
+  const [cursorLine, setCursorLine] = React.useState(0);
 
-  const [foldableRegions, setFoldableRegions] = useState<FoldableRegion[]>([]);
-  const [collapsedLines, setCollapsedLines] = useState<Set<number>>(new Set());
-  const [matchedBrackets, setMatchedBrackets] = useState<[number, number] | null>(null);
-  const [lineHeights, setLineHeights] = useState<number[]>([]);
+  const [foldableRegions, setFoldableRegions] = React.useState<FoldableRegion[]>([]);
+  const [collapsedLines, setCollapsedLines] = React.useState<Set<number>>(new Set());
+  const [matchedBrackets, setMatchedBrackets] = React.useState<[number, number] | null>(null);
+  const [lineHeights, setLineHeights] = React.useState<number[]>([]);
 
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionPos, setSuggestionPos] = useState<Partial<React.CSSProperties>>({});
-  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [suggestions, setSuggestions] = React.useState<Suggestion[]>([]);
+  const [suggestionPos, setSuggestionPos] = React.useState<Partial<React.CSSProperties>>({});
+  const [activeSuggestion, setActiveSuggestion] = React.useState(0);
   const debouncedCode = useDebounce(code, 150);
 
   const fontSize = settings.editorFontSize ?? 14;
 
-  const textStyle = useMemo<React.CSSProperties>(() => ({
+  const textStyle = React.useMemo<React.CSSProperties>(() => ({
     fontFamily: 'var(--font-code)',
     fontSize,
     lineHeight: 1.5,
@@ -136,9 +130,9 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     tabSize: 4,
   }), [fontSize]);
 
-  const lines = useMemo(() => code.split('\n'), [code]);
+  const lines = React.useMemo(() => code.split('\n'), [code]);
 
-    const updateSuggestions = useCallback(() => {
+    const updateSuggestions = React.useCallback(() => {
         const textarea = textareaRef.current;
         if (!textarea) return;
 
@@ -174,11 +168,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         }
     }, [code]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     updateSuggestions();
   }, [debouncedCode, updateSuggestions]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     try {
       const regions: FoldableRegion[] = [];
       const tokens = acorn.tokenizer(code, {
@@ -207,7 +201,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     }
   }, [code]);
 
-  const isLineVisible = useCallback((lineNumber: number) => {
+  const isLineVisible = React.useCallback((lineNumber: number) => {
     for (const collapsedStartLine of collapsedLines) {
         const region = foldableRegions.find(r => r.start === collapsedStartLine);
         if (region && lineNumber > region.start && lineNumber <= region.end) {
@@ -217,7 +211,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     return true;
   }, [collapsedLines, foldableRegions]);
 
-  const toggleFold = useCallback((lineNumber: number) => {
+  const toggleFold = React.useCallback((lineNumber: number) => {
     setCollapsedLines(prev => {
       const newSet = new Set(prev);
       if (newSet.has(lineNumber)) {
@@ -229,7 +223,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     });
   }, []);
 
-  const computeWrappedRows = useCallback(() => {
+  const computeWrappedRows = React.useCallback(() => {
     const measure = measureRef.current;
     const ta = textareaRef.current;
     if (!measure || !ta) return;
@@ -260,7 +254,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     setLineHeights(heights);
   }, [lines, fontSize, isLineVisible]);
 
-  const handleSelectionChange = useCallback(() => {
+  const handleSelectionChange = React.useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     const index = ta.selectionStart ?? 0;
@@ -280,7 +274,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   }, [code]);
 
-  const handleEnterPress = useCallback(() => {
+  const handleEnterPress = React.useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -299,7 +293,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     });
 }, [code, onCodeChange]);
 
-  const handleNavigateSuggestions = useCallback((direction: 'next' | 'prev') => {
+  const handleNavigateSuggestions = React.useCallback((direction: 'next' | 'prev') => {
       if (suggestions.length === 0) return;
       if (direction === 'next') {
           setActiveSuggestion(prev => (prev + 1) % suggestions.length);
@@ -308,7 +302,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       }
   }, [suggestions.length]);
 
-  const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
+  const handleSuggestionSelection = React.useCallback((suggestion: Suggestion) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -327,9 +321,54 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     });
   }, [code, onCodeChange]);
 
-    const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const handleNativeKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
+
+        if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const lines = code.split('\n');
+            
+            let startLine = code.substring(0, start).split('\n').length - 1;
+            let endLine = code.substring(0, end).split('\n').length - 1;
+
+            if (end > 0 && code[end-1] === '\n') {
+                endLine--;
+            }
+
+            const linesToToggle = lines.slice(startLine, endLine + 1);
+            const areAllCommented = linesToToggle.every(line => line.trim().startsWith('//'));
+            
+            let newLines = [...lines];
+            let charChange = 0;
+            let firstLineChange = 0;
+
+            for (let i = startLine; i <= endLine; i++) {
+                if (areAllCommented) {
+                    const originalLine = newLines[i];
+                    newLines[i] = newLines[i].replace(/^\s*\/\/\s?/, '');
+                    const change = originalLine.length - newLines[i].length;
+                    if (i === startLine) firstLineChange = -change;
+                    charChange -= change;
+                } else {
+                    newLines[i] = `// ${newLines[i]}`;
+                    if (i === startLine) firstLineChange = 3;
+                    charChange += 3;
+                }
+            }
+            
+            const newCode = newLines.join('\n');
+            onCodeChange(newCode);
+
+            requestAnimationFrame(() => {
+                textarea.selectionStart = start + firstLineChange;
+                textarea.selectionEnd = end + charChange;
+                textarea.focus();
+            });
+            return;
+        }
 
         if ((e.shiftKey || e.altKey) && e.key === ' ') {
             e.preventDefault();
@@ -459,7 +498,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
     }, [code, onCodeChange, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     
@@ -485,12 +524,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     };
   }, [handleSelectionChange, computeWrappedRows]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     computeWrappedRows();
     handleSelectionChange();
   }, [code, computeWrappedRows, handleSelectionChange, collapsedLines]);
 
-  const syncScroll = useCallback(() => {
+  const syncScroll = React.useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     const scrollTop = ta.scrollTop;
@@ -509,7 +548,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     };
   };
 
-  const highlightedCode = useMemo(() => {
+  const highlightedCode = React.useMemo(() => {
     let currentPos = 0;
     return lines.map((line, i) => {
         if (!isLineVisible(i)) {
@@ -585,7 +624,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     }).filter(Boolean);
   }, [lines, cursorLine, getHighlightStyle, isLineVisible, collapsedLines, foldableRegions, toggleFold, matchedBrackets]);
 
-  const gutterRows = useMemo(() => {
+  const gutterRows = React.useMemo(() => {
     return lines.map((line, i) => {
       if (!isLineVisible(i)) return null;
 

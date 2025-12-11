@@ -2,7 +2,7 @@
 'use client';
 
 import { Textarea } from '@/components/ui/textarea';
-import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import React, from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoderKeyboard } from './coder-keyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -27,24 +27,24 @@ interface CodeEditorProps {
 }
 
 const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onUndo, onRedo, onDeleteFile, hasActiveFile, onRun }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const gutterRef = useRef<HTMLDivElement>(null);
-  const mirrorRef = useRef<HTMLDivElement>(null);
-  const editorContainerRef = useRef<HTMLDivElement>(null);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const gutterRef = React.useRef<HTMLDivElement>(null);
+  const mirrorRef = React.useRef<HTMLDivElement>(null);
+  const editorContainerRef = React.useRef<HTMLDivElement>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
   const isMobile = useIsMobile();
-  const [ctrlActive, setCtrlActive] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [ctrlActive, setCtrlActive] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const { settings, setSettings } = useSettings();
   const fontSize = settings.editorFontSize;
-  const spacePressTimestampsRef = useRef<number[]>([]);
+  const spacePressTimestampsRef = React.useRef<number[]>([]);
 
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionPos, setSuggestionPos] = useState<Partial<React.CSSProperties>>({});
-  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [suggestions, setSuggestions] = React.useState<Suggestion[]>([]);
+  const [suggestionPos, setSuggestionPos] = React.useState<Partial<React.CSSProperties>>({});
+  const [activeSuggestion, setActiveSuggestion] = React.useState(0);
   const debouncedCode = useDebounce(code, 150);
 
-  const updateSuggestions = useCallback(() => {
+  const updateSuggestions = React.useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -80,19 +80,19 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     }
   }, [code, isMobile]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     updateSuggestions();
   }, [debouncedCode, updateSuggestions]);
 
 
-  const syncScroll = useCallback(() => {
+  const syncScroll = React.useCallback(() => {
     if (textareaRef.current && gutterRef.current && editorContainerRef.current) {
         const scrollTop = textareaRef.current.scrollTop;
         gutterRef.current.scrollTop = scrollTop;
     }
   }, []);
 
-  const updateLineNumbers = useCallback(() => {
+  const updateLineNumbers = React.useCallback(() => {
       const ta = textareaRef.current;
       const gutter = gutterRef.current;
       const mirror = mirrorRef.current;
@@ -131,7 +131,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   }, []);
 
 
-  useEffect(() => {
+  React.useEffect(() => {
     updateLineNumbers();
     const handleResize = () => updateLineNumbers();
     window.addEventListener('resize', handleResize);
@@ -141,7 +141,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     }
   }, [code, updateLineNumbers, fontSize]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea || !isMobile) return;
 
@@ -168,7 +168,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 
   }, [isMobile, code]);
 
-  const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
+  const handleSuggestionSelection = React.useCallback((suggestion: Suggestion) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -187,7 +187,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     });
   }, [code, onCodeChange, isMobile]);
 
-  const handleNavigateSuggestions = useCallback((direction: 'next' | 'prev') => {
+  const handleNavigateSuggestions = React.useCallback((direction: 'next' | 'prev') => {
       if (suggestions.length === 0) return;
       if (direction === 'next') {
           setActiveSuggestion(prev => (prev + 1) % suggestions.length);
@@ -196,7 +196,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       }
   }, [suggestions.length]);
 
-  const handleEnterPress = useCallback(() => {
+  const handleEnterPress = React.useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -215,7 +215,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     });
 }, [code, onCodeChange]);
 
-  const handleKeyPress = useCallback(async (key: string) => {
+  const handleKeyPress = React.useCallback(async (key: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -365,7 +365,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     });
   }, [code, onCodeChange, onUndo, onRedo, ctrlActive, hasActiveFile, handleEnterPress]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const keyboard = document.getElementById('coder-keyboard');
       const target = event.target as Node;
@@ -384,9 +384,55 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     };
   }, [isMobile]);
   
-  const handleNativeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleNativeKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+
+     if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const lines = code.split('\n');
+        
+        let startLine = code.substring(0, start).split('\n').length - 1;
+        let endLine = code.substring(0, end).split('\n').length - 1;
+
+        if (end > 0 && code[end-1] === '\n') {
+            endLine--;
+        }
+
+        const linesToToggle = lines.slice(startLine, endLine + 1);
+        const areAllCommented = linesToToggle.every(line => line.trim().startsWith('//'));
+        
+        let newLines = [...lines];
+        let charChange = 0;
+        let firstLineChange = 0;
+
+        for (let i = startLine; i <= endLine; i++) {
+            if (areAllCommented) {
+                const originalLine = newLines[i];
+                newLines[i] = newLines[i].replace(/^\s*\/\/\s?/, '');
+                const change = originalLine.length - newLines[i].length;
+                if (i === startLine) firstLineChange = -change;
+                charChange -= change;
+            } else {
+                newLines[i] = `// ${newLines[i]}`;
+                if (i === startLine) firstLineChange = 3;
+                charChange += 3;
+            }
+        }
+        
+        const newCode = newLines.join('\n');
+        onCodeChange(newCode);
+
+        requestAnimationFrame(() => {
+            textarea.selectionStart = start + firstLineChange;
+            textarea.selectionEnd = end + charChange;
+            textarea.focus();
+        });
+        return;
+    }
+
 
     if ((e.shiftKey || e.altKey) && e.key === ' ') {
         e.preventDefault();
@@ -596,7 +642,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     }
   }
 
-  const editorStyles: React.CSSProperties = useMemo(() => ({
+  const editorStyles: React.CSSProperties = React.useMemo(() => ({
       fontFamily: 'var(--font-code)',
       fontSize: 'var(--editor-font-size)',
       lineHeight: '1.5',
@@ -607,7 +653,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
       tabSize: 4,
   }), []);
   
-  const highlightedCode = useMemo(() => {
+  const highlightedCode = React.useMemo(() => {
     const lines = code.split('\n');
     return (
       <>
@@ -727,3 +773,5 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
 };
 
 export const CodeEditor = React.memo(MemoizedCodeEditor);
+
+    

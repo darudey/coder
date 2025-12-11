@@ -72,6 +72,7 @@ export function AboutContent() {
             <FeatureCard title="Keyboard Shortcuts" icon={<Keyboard className="text-primary" />} badge="Desktop">
                  <p>Speed up your workflow on a desktop with these handy keyboard shortcuts.</p>
                  <ul className="space-y-2">
+                    <li className="flex items-center justify-between"><span>Toggle Comment</span> <Key>Ctrl/Cmd + /</Key></li>
                     <li className="flex items-center justify-between"><span>Undo</span> <Key>Ctrl/Cmd + Z</Key></li>
                     <li className="flex items-center justify-between"><span>Redo</span> <Key>Ctrl/Cmd + Y</Key></li>
                     <li className="flex items-center justify-between"><span>Copy Line</span> <Key>Ctrl/Cmd + C</Key></li>
