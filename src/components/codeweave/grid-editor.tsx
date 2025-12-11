@@ -562,12 +562,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   return (
     <div
-      className="relative flex border rounded-md bg-background min-h-[70vh]"
+      className="relative flex border rounded-md bg-white dark:bg-gray-950 min-h-[70vh]"
     >
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="shrink-0 border-r bg-muted py-2"
+        className="shrink-0 border-r bg-gray-100 dark:bg-gray-900 py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
@@ -576,7 +576,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       />
 
       {/* Editor area */}
-      <div className="relative flex-1 h-full overflow-hidden">
+      <div className="relative flex-1 overflow-hidden">
         {/* Overlay text mirror */}
         <div
           ref={overlayRef}
