@@ -304,6 +304,25 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         const textarea = textareaRef.current;
         if (!textarea) return;
 
+        if ((e.shiftKey || e.altKey) && e.key === ' ') {
+            e.preventDefault();
+            const currentPos = textarea.selectionStart;
+            const textAfter = code.substring(currentPos);
+            
+            if (textAfter.length > 0) {
+                // Regex to find the start of the next word, symbol, or space sequence
+                const match = textAfter.match(/(\s+)|(\w+)|(\S)/);
+                if (match) {
+                    const jumpTo = currentPos + (match.index || 0) + match[0].length;
+                    requestAnimationFrame(() => {
+                        textarea.selectionStart = jumpTo;
+                        textarea.selectionEnd = jumpTo;
+                    });
+                }
+            }
+            return;
+        }
+
         if (suggestions.length > 0) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -660,4 +679,5 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
 
