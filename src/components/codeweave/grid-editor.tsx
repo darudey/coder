@@ -217,7 +217,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const ta = textareaRef.current;
     if (!measure || !gutter || !ta) return;
 
-    measure.style.width = `${ta.clientWidth}px`;
+    measure.style.width = `${ta.getBoundingClientRect().width}px`;
     gutter.innerHTML = '';
     const maxLineNumber = lines.length;
     const gutterWidth = String(maxLineNumber).length * (fontSize * 0.6) + 32; // char width + padding + icon
@@ -229,11 +229,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
         const text = lines[i] === '' ? '\u00A0' : lines[i];
         measure.textContent = text;
-        // PATCH: Ensure measure div wraps exactly like editor
-        measure.style.whiteSpace = 'pre-wrap';
-        measure.style.overflowWrap = 'anywhere';
         
-        // PATCHED: true wrapped height
         const height = measure.offsetHeight;
 
         const div = document.createElement('div');
@@ -562,7 +558,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   return (
     <div
-      className="relative flex border rounded-md bg-background min-h-[70vh] overflow-hidden"
+      className="relative flex border rounded-md bg-background min-h-[70vh]"
     >
       {/* Gutter with dynamic wrapped rows */}
       <div
@@ -583,9 +579,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           className="absolute inset-0 pointer-events-none px-3 py-2"
           style={{
             ...textStyle,
-            whiteSpace: 'pre-wrap',
-            overflowWrap: 'anywhere',
-            wordBreak: 'normal',
           }}
         >
             {highlightedCode}
@@ -601,7 +594,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           className={cn(
             'absolute inset-0 w-full h-full resize-none border-0 bg-transparent',
             'focus-visible:ring-0 focus-visible:ring-offset-0 text-transparent caret-foreground',
-            'px-3 py-2 font-code'
+            'px-3 py-2'
           )}
           style={textStyle}
           spellCheck={false}
@@ -621,7 +614,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <div
           ref={measureRef}
           className="absolute invisible pointer-events-none"
-          style={{ ...textStyle, padding: 0, border: 0 }}
+          style={{ ...textStyle, padding: 0, border: 0, left: 0, top: 0 }}
         />
       </div>
     </div>
