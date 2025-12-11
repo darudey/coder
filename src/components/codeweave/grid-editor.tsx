@@ -562,7 +562,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   return (
     <div
-      className="relative flex border rounded-md bg-white dark:bg-slate-900 min-h-[70vh]"
+      className="relative flex border rounded-md bg-white dark:bg-[#202938] min-h-[70vh]"
     >
       {/* Gutter with dynamic wrapped rows */}
       <div
