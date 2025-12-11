@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -96,7 +95,7 @@ const HeaderBar: React.FC<{
         )}
       </div>
 
-      <kbd className="h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+      <kbd className="h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 hidden md:inline-flex">
         <span className="text-xs">Shift</span>+<span className="text-xs">Enter</span>
       </kbd>
 
@@ -164,7 +163,7 @@ const OutputBlock: React.FC<{
   useEffect(() => {
     async function highlight() {
       const Prism = (await import('prismjs')).default;
-      await import('prismjs/components/prism-javascript');
+      await import('prismjs/components/prism-json');
       await import('prismjs/themes/prism.css');
       Prism.highlightAll();
     }
@@ -184,7 +183,18 @@ const OutputBlock: React.FC<{
   }, [content, autoScroll]);
 
   // Convert ANSI -> HTML then syntax-highlight code blocks inside
-  const html = useMemo(() => AnsiToHtml(content), [content]);
+  const html = useMemo(() => {
+    let output = content;
+    try {
+        const parsed = JSON.parse(content);
+        output = JSON.stringify(parsed, null, 2);
+        return `<pre><code class="language-json">${output}</code></pre>`;
+    } catch(e) {
+        // Not JSON, just treat as plain text
+    }
+
+    return AnsiToHtml(output);
+  }, [content]);
 
   // split into lines for advanced rendering
   const rawLines = useMemo(() => html.split('\n'), [html]);
@@ -393,14 +403,24 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
           )}
 
           {/* issues area */}
-          {issues.length > 0 && (
-            <div className="border-t px-3 py-2 text-xs text-amber-800">
-              <div className="font-semibold">Hints</div>
-              <ul className="list-disc pl-5 mt-1">
-                {issues.map((it, i) => (
-                  <li key={i}>{it}</li>
-                ))}
-              </ul>
+          {(issues.length > 0 || output.aiAnalysis) && (
+            <div className="border-t px-3 py-2 text-xs">
+              <div className="font-semibold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                Analysis
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {issues.length > 0 && (
+                    <ul className="list-disc pl-5 mt-1">
+                        {issues.map((it, i) => (
+                        <li key={i}>{it}</li>
+                        ))}
+                    </ul>
+                  )}
+                  {output.aiAnalysis && (
+                      <div dangerouslySetInnerHTML={{ __html: output.aiAnalysis.replace(/\n/g, '<br />') }} />
+                  )}
+              </div>
             </div>
           )}
         </div>

@@ -91,7 +91,6 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
     
         const newGutterWidth = (String(lines.length).length * 8 + 16);
         gutter.style.width = `${newGutterWidth}px`;
-        ta.style.paddingLeft = `${newGutterWidth + 8}px`;
 
         const computedStyle = getComputedStyle(ta);
         const paddingTop = parseFloat(computedStyle.paddingTop);
@@ -120,17 +119,23 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
 
     const highlightedCode = React.useMemo(() => {
         const lines = initialCode.split('\n');
+        let parserState: 'default' | 'in_multiline_comment' = 'default';
+        
         return (
             <>
-                {lines.map((line, lineIndex) => (
-                    <div key={lineIndex} className="min-h-[21px]">
-                        {line === '' ? <>&nbsp;</> : parseCode(line).map((token, tokenIndex) => (
-                            <span key={tokenIndex} style={getTokenStyle(token.type)}>
-                                {token.value}
-                            </span>
-                        ))}
-                    </div>
-                ))}
+                {lines.map((line, lineIndex) => {
+                    const { tokens, finalState } = parseCode(line, parserState);
+                    parserState = finalState;
+                    return (
+                         <div key={lineIndex} className="min-h-[21px]">
+                            {line === '' ? <>&nbsp;</> : tokens.map((token, tokenIndex) => (
+                                <span key={tokenIndex} style={getTokenStyle(token.type)}>
+                                    {token.value}
+                                </span>
+                            ))}
+                        </div>
+                    )
+                })}
             </>
         );
     }, [initialCode]);
@@ -142,6 +147,19 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
         whiteSpace: 'pre-wrap',
         overflowWrap: 'anywhere',
     };
+
+    const outputHtml = useMemo(() => {
+        if (!output) return '';
+        let content = output.output;
+        try {
+            const parsed = JSON.parse(content);
+            content = JSON.stringify(parsed, null, 2);
+            return `<pre><code class="language-json">${content}</code></pre>`;
+        } catch(e) {
+            // Not JSON
+        }
+        return AnsiToHtml(content);
+    }, [output]);
 
     return (
         <div className="my-4 border rounded-lg overflow-hidden not-prose bg-background">
@@ -212,7 +230,7 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
                                     "whitespace-pre-wrap",
                                     output.type === 'error' ? 'text-red-500' : 'text-foreground'
                                 )}
-                                dangerouslySetInnerHTML={{ __html: AnsiToHtml(output.output) }}
+                                dangerouslySetInnerHTML={{ __html: outputHtml }}
                             />
                         )}
                     </ScrollArea>
