@@ -26,7 +26,7 @@ import { useSettings } from '@/hooks/use-settings';
 import * as acorn from 'acorn';
 
 export interface RunResult {
-    output: string;
+    output: any[][];
     type: 'result' | 'error';
     aiAnalysis?: string;
     lineNumber?: number;
@@ -76,14 +76,14 @@ export interface CompilerRef {
 const runCodeOnClient = (code: string): Promise<RunResult> => {
     return new Promise((resolve) => {
         if (typeof window === 'undefined') {
-            resolve({ output: '', type: 'result' });
+            resolve({ output: [], type: 'result' });
             return;
         }
         const worker = new Worker('/runner.js');
         const timeout = setTimeout(() => {
             worker.terminate();
             resolve({
-                output: 'Execution timed out. Your code may have an infinite loop.',
+                output: [['Execution timed out. Your code may have an infinite loop.']],
                 type: 'error',
             });
         }, 5000); // 5-second timeout
@@ -98,7 +98,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
             clearTimeout(timeout);
             worker.terminate();
             resolve({
-                output: `Worker error: ${e.message}`,
+                output: [[`Worker error: ${e.message}`]],
                 type: 'error',
             });
         };
@@ -314,7 +314,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         acorn.parse(code, { ecmaVersion: 'latest', silent: false });
     } catch (e: any) {
         const result: RunResult = {
-            output: `SyntaxError: ${e.message}`,
+            output: [[`SyntaxError: ${e.message}`]],
             type: 'error',
             lineNumber: e.loc?.line,
         };
@@ -643,6 +643,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 

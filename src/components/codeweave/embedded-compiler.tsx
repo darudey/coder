@@ -9,9 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { DotLoader } from './dot-loader';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import AnsiToHtml from '@/lib/ansi-to-html';
 import type { RunResult } from './compiler';
 import { getTokenStyle, parseCode } from '@/lib/syntax-highlighter';
+import { OutputDisplay } from './output-display';
+
 
 interface EmbeddedCompilerProps {
     initialCode: string;
@@ -20,14 +21,14 @@ interface EmbeddedCompilerProps {
 const runCodeOnClient = (code: string): Promise<RunResult> => {
     return new Promise((resolve) => {
         if (typeof window === 'undefined') {
-            resolve({ output: '', type: 'result' });
+            resolve({ output: [], type: 'result' });
             return;
         }
         const worker = new Worker('/runner.js');
         const timeout = setTimeout(() => {
             worker.terminate();
             resolve({
-                output: 'Execution timed out. Your code may have an infinite loop.',
+                output: [['Execution timed out. Your code may have an infinite loop.']],
                 type: 'error',
             });
         }, 3000);
@@ -42,7 +43,7 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
             clearTimeout(timeout);
             worker.terminate();
             resolve({
-                output: `Worker error: ${e.message}`,
+                output: [[`Worker error: ${e.message}`]],
                 type: 'error',
             });
         };
@@ -148,19 +149,6 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
         overflowWrap: 'anywhere',
     };
 
-    const outputHtml = useMemo(() => {
-        if (!output) return '';
-        let content = output.output;
-        try {
-            const parsed = JSON.parse(content);
-            content = JSON.stringify(parsed, null, 2);
-            return `<pre><code class="language-json">${content}</code></pre>`;
-        } catch(e) {
-            // Not JSON
-        }
-        return AnsiToHtml(content);
-    }, [output]);
-
     return (
         <div className="my-4 border rounded-lg overflow-hidden not-prose bg-background">
             <div ref={editorWrapperRef} className="relative group">
@@ -215,27 +203,9 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
                     )}
                 </Button>
             </div>
-            {(output || isCompiling) && (
-                <div ref={outputRef} className="p-3 text-xs font-code bg-muted/50">
-                    <ScrollArea className="max-h-40">
-                        {isCompiling && (
-                             <div className="flex items-center text-muted-foreground">
-                                <DotLoader className="w-8" />
-                                <span className="ml-2">Running...</span>
-                             </div>
-                        )}
-                        {output && (
-                            <pre
-                                className={cn(
-                                    "whitespace-pre-wrap",
-                                    output.type === 'error' ? 'text-red-500' : 'text-foreground'
-                                )}
-                                dangerouslySetInnerHTML={{ __html: outputHtml }}
-                            />
-                        )}
-                    </ScrollArea>
-                </div>
-            )}
+            <div ref={outputRef}>
+                <OutputDisplay output={output} isCompiling={isCompiling} />
+            </div>
         </div>
     );
 };

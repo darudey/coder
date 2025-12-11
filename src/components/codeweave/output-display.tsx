@@ -6,38 +6,43 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { DotLoader } from './dot-loader';
-import AnsiToHtml from '@/lib/ansi-to-html';
 import { cn } from '@/lib/utils';
 import { diffLines } from 'diff';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FixedSizeList as VirtualList } from 'react-window';
 import { Copy, Check, X, Activity } from 'lucide-react';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
+import 'prismjs/themes/prism-tomorrow.css'; // Using a standard theme
 
 // Types
 import type { RunResult } from './compiler';
 
 /* ------------------- Helpers ------------------- */
 const getErrorLine = (output: RunResult | null): string | null => {
-    if (!output) return null;
-    if (output.lineNumber) return String(output.lineNumber);
+    if (!output || output.type !== 'error' || !output.output[0]?.[0]) return null;
+    const errorMessage = output.output[0][0];
 
-    // This regex specifically looks for the line number associated with the anonymous script execution.
-    const match = output.output.match(/<anonymous>:(\d+):(\d+)/);
+    const match = errorMessage.match(/at line (\d+)/);
     if (match && match[1]) {
-      // There is a consistent offset of 2 lines from the web worker's boilerplate.
-      // Subtracting 2 gives the correct line number from the editor.
-      const lineNumber = parseInt(match[1], 10);
+        return match[1];
+    }
+    
+    const anotherMatch = errorMessage.match(/<anonymous>:(\d+):(\d+)/);
+    if (anotherMatch && anotherMatch[1]) {
+      const lineNumber = parseInt(anotherMatch[1], 10);
       if (!isNaN(lineNumber) && lineNumber > 2) {
         return (lineNumber - 2).toString();
       }
-      return match[1]; // Fallback if parsing or subtraction fails
+      return anotherMatch[1];
     }
     return null;
   };
 
 
-const detectBeginnerIssues = (text: string) => {
-  if (!text) return [];
+const detectBeginnerIssues = (output: RunResult | null) => {
+  if (!output || output.type !== 'error' || !output.output[0]?.[0]) return [];
+  const text = output.output[0][0];
+
   const issues: string[] = [];
   if (/while\s*\(true\)|for\s*\(;\s*;\s*\)/.test(text)) {
     issues.push('Possible infinite loop detected (while(true) or for(;;)).');
@@ -118,134 +123,60 @@ const HeaderBar: React.FC<{
 
 HeaderBar.displayName = 'HeaderBar';
 
-/* ------------------- Output renderer ------------------- */
+const formatValue = (value: any): { content: string, isJson: boolean } => {
+    if (typeof value === 'string') {
+        return { content: value, isJson: false };
+    }
+    if (typeof value === 'object' && value !== null) {
+        return { content: JSON.stringify(value, null, 2), isJson: true };
+    }
+    return { content: String(value), isJson: false };
+}
 
-const LineRendered = ({ line, idx, isError }: { line: string; idx: number; isError?: boolean }) => (
-  <div className="flex min-w-0">
-    <div className="select-none pr-3 text-xs text-muted-foreground tabular-nums">{idx + 1}</div>
-    <div className={cn('whitespace-pre-wrap font-code flex-1', isError ? 'text-destructive' : 'text-foreground')} style={{ wordBreak: 'break-word' }}>
-      <span dangerouslySetInnerHTML={{ __html: line }} />
-    </div>
-  </div>
-);
-LineRendered.displayName = 'LineRendered';
+const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args, type }) => {
+    const formattedArgs = args.map(formatValue);
 
-const VirtualizedLines = ({ lines, isError }: { lines: string[]; isError?: boolean }) => {
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
-    <div style={style} className="px-4 py-1">
-      <LineRendered line={lines[index]} idx={index} isError={isError} />
-    </div>
-  );
-
-  return (
-    <VirtualList
-      height={600}
-      itemCount={lines.length}
-      itemSize={22}
-      width="100%"
-      className="overflow-auto"
-    >
-      {Row}
-    </VirtualList>
-  );
-};
-VirtualizedLines.displayName = 'VirtualizedLines';
+    return (
+        <div className={cn('whitespace-pre-wrap font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
+            {formattedArgs.map((arg, index) => (
+                <span key={index}>
+                    {arg.isJson ? (
+                        <pre className="p-0 m-0 bg-transparent"><code className="language-json" dangerouslySetInnerHTML={{ __html: Prism.highlight(arg.content, Prism.languages.json, 'json') }} /></pre>
+                    ) : (
+                        arg.content
+                    )}
+                    {index < formattedArgs.length - 1 && ' '}
+                </span>
+            ))}
+        </div>
+    )
+}
 
 const OutputBlock: React.FC<{
-  content: string;
+  outputLines: any[][];
   type: 'result' | 'error';
-  autoScroll?: boolean;
-  collapseThreshold?: number;
-}> = ({ content, type, autoScroll = true, collapseThreshold = 800 }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [expanded, setExpanded] = useState(() => content.length < collapseThreshold);
+}> = ({ outputLines, type }) => {
 
   useEffect(() => {
-    async function highlight() {
-      const Prism = (await import('prismjs')).default;
-      await import('prismjs/components/prism-json');
-      await import('prismjs/themes/prism.css');
-      Prism.highlightAll();
-    }
-    highlight();
-  }, [content]);
-
-  useEffect(() => {
-    setExpanded(content.length < collapseThreshold);
-  }, [content, collapseThreshold]);
-
-  useEffect(() => {
-    if (!autoScroll) return;
-    // Scroll to bottom when new content arrives
-    const el = containerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [content, autoScroll]);
-
-  // Convert ANSI -> HTML then syntax-highlight code blocks inside
-  const html = useMemo(() => {
-    let output = content;
-    try {
-        const parsed = JSON.parse(content);
-        output = JSON.stringify(parsed, null, 2);
-        return `<pre><code class="language-json">${output}</code></pre>`;
-    } catch(e) {
-        // Not JSON, just treat as plain text
-    }
-
-    return AnsiToHtml(output);
-  }, [content]);
-
-  // split into lines for advanced rendering
-  const rawLines = useMemo(() => html.split('\n'), [html]);
-
-  // determine if we should use virtualization
-  const useVirtual = rawLines.length > 2000;
+    Prism.highlightAll();
+  }, [outputLines]);
+  
+  if (!outputLines || outputLines.length === 0) {
+      return null;
+  }
 
   return (
     <div className="h-full flex flex-col">
-      <div ref={containerRef} className="flex-grow overflow-auto">
-        <div className="px-2 py-3">
-          <AnimatePresence initial={false} mode="wait">
-            <motion.div key={expanded ? 'expanded' : 'collapsed'}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-            >
-              {expanded ? (
-                useVirtual ? (
-                  <VirtualizedLines lines={rawLines} isError={type === 'error'} />
-                ) : (
-                  <div className="space-y-1">
-                    {rawLines.map((line, i) => (
-                      <div key={i} className="px-2">
-                        <LineRendered line={line || '\u00A0'} idx={i} isError={type === 'error'} />
-                      </div>
-                    ))}
-                  </div>
-                )
-              ) : (
-                <div className="prose max-h-[240px] overflow-hidden text-sm" style={{ wordWrap: 'break-word' }}>
-                  <div dangerouslySetInnerHTML={{ __html: html.slice(0, collapseThreshold) }} />
-                  {html.length > collapseThreshold && <span>... </span>}
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {content.length > collapseThreshold && (
-        <div className="px-3 py-2 border-t flex items-center justify-between">
-          <div className="text-xs text-muted-foreground">Output length: {content.length} chars</div>
-          <button
-            className="text-sm px-2 py-1 rounded hover:bg-muted"
-            onClick={() => setExpanded(s => !s)}
-          >
-            {expanded ? 'Collapse' : 'Show more'}
-          </button>
-        </div>
-      )}
+        <ScrollArea className="flex-grow">
+            <div className="px-4 py-3 space-y-2">
+                {outputLines.map((args, i) => (
+                    <div className="flex min-w-0" key={i}>
+                        <div className="select-none pr-4 text-xs text-muted-foreground tabular-nums">{i + 1}</div>
+                        <OutputLine args={args} type={type} />
+                    </div>
+                ))}
+            </div>
+        </ScrollArea>
     </div>
   );
 };
@@ -275,28 +206,26 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 
   const runTime = (output as any)?.durationMs ?? (output as any)?.timeMs ?? null;
 
-  const issues = useMemo(() => detectBeginnerIssues((output as any)?.output ?? ''), [output]);
+  const issues = useMemo(() => detectBeginnerIssues(output), [output]);
+  
+  const userOutputText = useMemo(() => {
+    if (!output) return '';
+    return output.output.map(line => line.map(arg => {
+        if (typeof arg === 'object') return JSON.stringify(arg);
+        return String(arg);
+    }).join(' ')).join('\n');
+  }, [output]);
 
   const onCopy = useCallback(async () => {
-    const text = (output as any)?.output ?? '';
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(userOutputText);
       setCopied(true);
       if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
       copyTimeout.current = window.setTimeout(() => setCopied(false), 2000);
     } catch (e) {
-      // fallback
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
-      if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
-      copyTimeout.current = window.setTimeout(() => setCopied(false), 2000);
+      console.error('Failed to copy to clipboard');
     }
-  }, [output]);
+  }, [userOutputText]);
 
   // Loading
   if (isCompiling) return <LoadingState isAiChecking={isAiChecking} />;
@@ -307,13 +236,12 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
       <p className="text-muted-foreground p-4">Click "Run" to execute the code and see the output here.</p>
     );
 
-  const userOutput = (output as any).output ?? '';
   const outputType = (output as any).type ?? 'result';
 
   const errorLine = getErrorLine(output);
 
   // pass/fail detection for expected output
-  const passed = typeof expectedOutput === 'string' ? expectedOutput.trim() === userOutput.trim() : null;
+  const passed = typeof expectedOutput === 'string' ? expectedOutput.trim() === userOutputText.trim() : null;
 
   /* ------------- Render with enhanced UI ------------- */
   return (
@@ -337,22 +265,18 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
               </TabsList>
 
               <TabsContent value="user" className="flex-grow overflow-hidden mt-0">
-                <ScrollArea className="h-full">
-                  <div className="h-full">
+                <div className="h-full">
                     {errorLine && (
                       <div className="m-4 text-sm font-semibold text-destructive/80">Error on line {errorLine}</div>
                     )}
-                    <OutputBlock content={userOutput} type={outputType} />
-                  </div>
-                </ScrollArea>
+                    <OutputBlock outputLines={output.output} type={outputType} />
+                </div>
               </TabsContent>
 
               <TabsContent value="required" className="flex-grow overflow-hidden mt-0">
-                <ScrollArea className="h-full">
                   <div className="h-full">
-                    <OutputBlock content={expectedOutput} type="result" />
+                    <OutputBlock outputLines={[[expectedOutput]]} type="result" />
                   </div>
-                </ScrollArea>
               </TabsContent>
 
               <TabsContent value="diff" className="flex-grow overflow-hidden mt-0">
@@ -361,9 +285,8 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                     <div className="border rounded h-[560px] overflow-auto">
                       <div className="p-2 text-xs text-muted-foreground">Your Output</div>
                       <div className="p-2">
-                        {/* pretty print lines with diffs */}
-                        {diffLines(expectedOutput, userOutput).map((part, i) => {
-                          const cls = part.added ? 'bg-green-50' : part.removed ? 'bg-red-50' : '';
+                        {diffLines(expectedOutput, userOutputText).map((part, i) => {
+                          const cls = part.added ? 'bg-green-50 dark:bg-green-900/30' : part.removed ? 'bg-red-50 dark:bg-red-900/30' : '';
                           return (
                             <pre key={i} className={cn('whitespace-pre-wrap font-code p-1', cls)}>
                               {part.value}
@@ -377,7 +300,7 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                       <div className="p-2 text-xs text-muted-foreground">Unified Diff</div>
                       <div className="p-2">
                         <pre className="whitespace-pre-wrap font-code text-sm">
-                          {diffLines(expectedOutput, userOutput)
+                          {diffLines(expectedOutput, userOutputText)
                             .map(p => {
                               if (p.added) return p.value.split('\n').map(l => `+ ${l}`).join('\n');
                               if (p.removed) return p.value.split('\n').map(l => `- ${l}`).join('\n');
@@ -392,14 +315,12 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
               </TabsContent>
             </Tabs>
           ) : (
-            <ScrollArea className="h-full">
               <div className="h-full">
                 {errorLine && (
                   <div className="m-4 text-sm font-semibold text-destructive/80">Error on line {errorLine}</div>
                 )}
-                <OutputBlock content={userOutput} type={outputType} />
+                <OutputBlock outputLines={output.output} type={outputType} />
               </div>
-            </ScrollArea>
           )}
 
           {/* issues area */}

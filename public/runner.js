@@ -1,49 +1,49 @@
+// A more robust runner that captures logs, errors, and handles timeouts
+
+// Override console.log to capture output
+const originalLog = console.log;
+const outputBuffer = [];
+console.log = (...args) => {
+    // Instead of stringifying, we keep the structure
+    outputBuffer.push(args);
+};
+
 self.onmessage = (e) => {
-  const { code } = e.data;
-  const capturedLogs = [];
-  const originalConsoleLog = self.console.log;
+    const { code } = e.data;
+    outputBuffer.length = 0; // Clear buffer for new run
 
-  self.console.log = (...args) => {
-    capturedLogs.push(
-      args
-        .map((arg) => {
-          try {
-            if (arg instanceof Error) {
-              return arg.stack;
+    try {
+        const result = eval(code);
+
+        // If the last statement was an expression, its result is returned.
+        // We add it to the output buffer as if it were logged.
+        if (result !== undefined) {
+             outputBuffer.push([result]);
+        }
+        
+        self.postMessage({
+            output: outputBuffer, // Send the structured buffer
+            type: 'result'
+        });
+
+    } catch (err) {
+        let errorMessage = 'An unknown error occurred.';
+        if (err instanceof Error) {
+            errorMessage = `${err.name}: ${err.message}`;
+            if (err.stack) {
+                // Try to extract a meaningful line number from the stack
+                const stackMatch = err.stack.match(/<anonymous>:(\d+):(\d+)/);
+                if (stackMatch) {
+                    errorMessage += ` (at line ${parseInt(stackMatch[1], 10) - 2})`;
+                }
             }
-            if (typeof arg === 'object' && arg !== null) {
-              return JSON.stringify(arg, null, 2);
-            }
-            return String(arg);
-          } catch (error) {
-            return '[Unserializable Object]';
-          }
-        })
-        .join(' ')
-    );
-  };
+        } else {
+            errorMessage = String(err);
+        }
 
-  try {
-    let result = new Function(code)();
-    self.console.log = originalConsoleLog;
-
-    let output = capturedLogs.join('\n');
-
-    if (result !== undefined) {
-      const resultString = JSON.stringify(result, null, 2);
-      output = output ? `${output}\n${resultString}` : resultString;
-    } else if (capturedLogs.length === 0) {
-      output = 'undefined';
+        self.postMessage({
+            output: [[errorMessage]], // Keep structure consistent
+            type: 'error'
+        });
     }
-    self.postMessage({ output, type: 'result' });
-  } catch (err) {
-    self.console.log = originalConsoleLog;
-    let errorMessage = 'An unknown error occurred.';
-    if (err instanceof Error) {
-        errorMessage = `${err.name}: ${err.message}\n${err.stack}`;
-    } else {
-        errorMessage = String(err);
-    }
-    self.postMessage({ output: errorMessage, type: 'error' });
-  }
 };
