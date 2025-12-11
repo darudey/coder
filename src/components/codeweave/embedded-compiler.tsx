@@ -119,24 +119,14 @@ export const EmbeddedCompiler: React.FC<EmbeddedCompilerProps> = ({ initialCode 
     }, [initialCode]);
 
     const highlightedCode = React.useMemo(() => {
-        const lines = initialCode.split('\n');
-        let parserState: 'default' | 'in_multiline_comment' = 'default';
-        
+        const { tokens } = parseCode(initialCode);
         return (
             <>
-                {lines.map((line, lineIndex) => {
-                    const { tokens, finalState } = parseCode(line, parserState);
-                    parserState = finalState;
-                    return (
-                         <div key={lineIndex} className="min-h-[21px]">
-                            {line === '' ? <>&nbsp;</> : tokens.map((token, tokenIndex) => (
-                                <span key={tokenIndex} style={getTokenStyle(token.type)}>
-                                    {token.value}
-                                </span>
-                            ))}
-                        </div>
-                    )
-                })}
+                {tokens.map((token, tokenIndex) => (
+                    <span key={tokenIndex} style={getTokenStyle(token.type)}>
+                        {token.value}
+                    </span>
+                ))}
             </>
         );
     }, [initialCode]);

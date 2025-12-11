@@ -90,7 +90,7 @@ const HeaderBar: React.FC<{
     <div className="flex items-center justify-between px-3 py-2 border-b">
       <div className="flex items-center gap-3">
         {typeof runTime === 'number' && (
-          <div className="text-xs text-muted-foreground">Execution: {runTime}ms</div>
+          <div className="text-xs text-muted-foreground">Execution: {runTime.toFixed(2)}ms</div>
         )}
         {isError && <div className="text-xs text-destructive">Error</div>}
         {passed !== null && typeof passed !== 'undefined' && (
@@ -123,31 +123,10 @@ const HeaderBar: React.FC<{
 
 HeaderBar.displayName = 'HeaderBar';
 
-const formatValue = (value: any): { content: string, isJson: boolean } => {
-    if (typeof value === 'string') {
-        return { content: value, isJson: false };
-    }
-    if (typeof value === 'object' && value !== null) {
-        return { content: JSON.stringify(value, null, 2), isJson: true };
-    }
-    return { content: String(value), isJson: false };
-}
-
 const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args, type }) => {
-    const formattedArgs = args.map(formatValue);
-
     return (
         <div className={cn('whitespace-pre-wrap font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
-            {formattedArgs.map((arg, index) => (
-                <span key={index}>
-                    {arg.isJson ? (
-                        <pre className="p-0 m-0 bg-transparent"><code className="language-json" dangerouslySetInnerHTML={{ __html: Prism.highlight(arg.content, Prism.languages.json, 'json') }} /></pre>
-                    ) : (
-                        arg.content
-                    )}
-                    {index < formattedArgs.length - 1 && ' '}
-                </span>
-            ))}
+            {args.join(' ')}
         </div>
     )
 }
@@ -156,11 +135,6 @@ const OutputBlock: React.FC<{
   outputLines: any[][];
   type: 'result' | 'error';
 }> = ({ outputLines, type }) => {
-
-  useEffect(() => {
-    Prism.highlightAll();
-  }, [outputLines]);
-  
   if (!outputLines || outputLines.length === 0) {
       return null;
   }
@@ -204,16 +178,13 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
     if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
   }, []);
 
-  const runTime = (output as any)?.durationMs ?? (output as any)?.timeMs ?? null;
+  const runTime = output?.durationMs;
 
   const issues = useMemo(() => detectBeginnerIssues(output), [output]);
   
   const userOutputText = useMemo(() => {
     if (!output) return '';
-    return output.output.map(line => line.map(arg => {
-        if (typeof arg === 'object') return JSON.stringify(arg);
-        return String(arg);
-    }).join(' ')).join('\n');
+    return output.output.map(line => line.join(' ')).join('\n');
   }, [output]);
 
   const onCopy = useCallback(async () => {

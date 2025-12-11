@@ -30,6 +30,7 @@ export interface RunResult {
     type: 'result' | 'error';
     aiAnalysis?: string;
     lineNumber?: number;
+    durationMs?: number;
 }
 
 export interface Settings {
@@ -643,6 +644,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 
