@@ -117,6 +117,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const [foldableRegions, setFoldableRegions] = useState<FoldableRegion[]>([]);
   const [collapsedLines, setCollapsedLines] = useState<Set<number>>(new Set());
   const [matchedBrackets, setMatchedBrackets] = useState<[number, number] | null>(null);
+  const [lineHeights, setLineHeights] = useState<number[]>([]);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
@@ -212,60 +213,34 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   const computeWrappedRows = useCallback(() => {
     const measure = measureRef.current;
-    const gutter = gutterRef.current;
     const ta = textareaRef.current;
-    if (!measure || !gutter || !ta) return;
-    
-    const computedStyle = getComputedStyle(ta);
-    const paddingLeft = parseFloat(computedStyle.paddingLeft);
-    const paddingRight = parseFloat(computedStyle.paddingRight);
-    
-    measure.style.width = `${ta.clientWidth - paddingLeft - paddingRight}px`;
-    gutter.innerHTML = '';
-    const maxLineNumber = lines.length;
-    const gutterWidth = String(maxLineNumber).length * (fontSize * 0.6) + 32; // char width + padding + icon
-    gutter.style.width = `${gutterWidth}px`;
+    if (!measure || !ta) return;
 
+    const computedStyle = getComputedStyle(ta);
+    const paddingLeft = parseFloat(computedStyle.paddingLeft || '0');
+    const paddingRight = parseFloat(computedStyle.paddingRight || '0');
+    measure.style.width = `${ta.clientWidth - paddingLeft - paddingRight}px`;
+
+    const heights: number[] = [];
 
     for (let i = 0; i < lines.length; i++) {
-        if (!isLineVisible(i)) continue;
+        if (!isLineVisible(i)) {
+        heights.push(0);
+        continue;
+        }
 
         const text = lines[i] === '' ? '\u00A0' : lines[i];
         measure.textContent = text;
-        
-        const height = measure.offsetHeight;
 
-        const div = document.createElement('div');
-        div.style.height = `${height}px`;
-        div.className = 'flex items-start justify-end px-2 gap-1';
+        const height =
+        measure.offsetHeight ||
+        parseFloat(getComputedStyle(measure).lineHeight || `${fontSize * 1.5}px`);
 
-        const lineNumSpan = document.createElement('span');
-        lineNumSpan.className = cn('text-xs text-muted-foreground', i === cursorLine && 'text-foreground font-semibold');
-        lineNumSpan.textContent = String(i + 1);
-        
-        div.appendChild(lineNumSpan);
-        
-        const isFoldable = foldableRegions.some(r => r.start === i);
-        const isCollapsed = collapsedLines.has(i);
-        
-        if (isFoldable) {
-            const chevronWrapper = document.createElement('div');
-            chevronWrapper.className = cn('cursor-pointer text-muted-foreground transition-transform', isCollapsed && '-rotate-90');
-            chevronWrapper.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`;
-            chevronWrapper.onclick = (e) => {
-                e.stopPropagation();
-                toggleFold(i);
-            };
-            div.appendChild(chevronWrapper);
-        } else {
-            const placeholder = document.createElement('div');
-            placeholder.style.width = '14px';
-            div.appendChild(placeholder);
-        }
-        
-        gutter.appendChild(div);
+        heights.push(height);
     }
-  }, [lines, fontSize, cursorLine, foldableRegions, collapsedLines, isLineVisible, toggleFold]);
+
+    setLineHeights(heights);
+  }, [lines, fontSize, isLineVisible]);
 
   const handleSelectionChange = useCallback(() => {
     const ta = textareaRef.current;
@@ -559,20 +534,80 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     }).filter(Boolean);
   }, [lines, cursorLine, getHighlightStyle, isLineVisible, collapsedLines, foldableRegions, toggleFold, matchedBrackets]);
 
+  const gutterRows = useMemo(() => {
+    return lines.map((line, i) => {
+      if (!isLineVisible(i)) return null;
+
+      const isFoldable = foldableRegions.some(r => r.start === i);
+      const isCollapsed = collapsedLines.has(i);
+      const height = lineHeights[i] ?? (fontSize * 1.5);
+
+      return (
+        <div
+          key={i}
+          className="flex items-start justify-end px-2 gap-1"
+          style={{
+            height,
+            fontFamily: 'var(--font-code)',
+            fontSize,
+            lineHeight: 1.5,
+          }}
+        >
+          {/* Line number */}
+          <span
+            className={cn(
+              'text-xs text-muted-foreground',
+              i === cursorLine && 'text-foreground font-semibold'
+            )}
+          >
+            {i + 1}
+          </span>
+
+          {/* Folding icon or placeholder */}
+          {isFoldable ? (
+            <div
+              className={cn(
+                'cursor-pointer text-muted-foreground transition-transform',
+                isCollapsed && '-rotate-90'
+              )}
+              onClick={() => toggleFold(i)}
+            >
+              <ChevronDown size={14} />
+            </div>
+          ) : (
+            <div style={{ width: 14 }} />
+          )}
+        </div>
+      );
+    });
+  }, [
+    lines,
+    lineHeights,
+    fontSize,
+    cursorLine,
+    foldableRegions,
+    collapsedLines,
+    isLineVisible,
+    toggleFold,
+  ]);
+
   return (
     <div
       className="relative flex border rounded-md bg-white dark:bg-[#202938] min-h-[70vh]"
     >
-      {/* Gutter with dynamic wrapped rows */}
-      <div
-        ref={gutterRef}
-        className="shrink-0 border-r bg-gray-100 dark:bg-[#111828] py-2"
-        style={{
-          fontFamily: 'var(--font-code)',
-          fontSize,
-          lineHeight: 1.5,
-        }}
-      />
+        <div
+            ref={gutterRef}
+            className="shrink-0 border-r bg-gray-100 dark:bg-[#111828] py-2"
+            style={{
+                fontFamily: 'var(--font-code)',
+                fontSize,
+                lineHeight: 1.5,
+                willChange: 'transform',
+            }}
+        >
+            {gutterRows}
+        </div>
+
 
       {/* Editor area */}
       <div className="relative flex-1 overflow-hidden">
@@ -625,3 +660,4 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
