@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot, BookOpen, SkipForward } from "lucide-react";
+import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot, BookOpen, SkipForward, ArrowDown, ArrowUp } from "lucide-react";
 
 export function AboutContent() {
 
@@ -56,7 +56,7 @@ export function AboutContent() {
                 <p>Quickly navigate through your code with these spacebar-powered shortcuts.</p>
                  <ul className="list-disc pl-5 space-y-2">
                     <li><strong className="flex items-center gap-2">Jump Forward:</strong> Press <Key>Shift</Key> or <Key>Alt</Key> + <Key>Space</Key> to jump the cursor to the beginning of the next word, symbol, or block of spaces.</li>
-                    <li><strong className="flex items-center gap-2">Jump Out of Pairs:</strong> When your cursor is just inside a closing symbol like `)` or `\'\'\'`, press <Key>Space</Key> three times quickly to jump the cursor just outside of it.</li>
+                    <li><strong className="flex items-center gap-2">Jump Out of Pairs:</strong> When your cursor is just inside a closing symbol like `)` or `'''`, press <Key>Space</Key> three times quickly to jump the cursor just outside of it.</li>
                 </ul>
             </FeatureCard>
 
@@ -78,6 +78,7 @@ export function AboutContent() {
                     <li className="flex items-center justify-between"><span>Paste</span> <Key>Ctrl/Cmd + V</Key></li>
                     <li className="flex items-center justify-between"><span>Delete File</span> <Key>Ctrl/Cmd + D</Key></li>
                     <li className="flex items-center justify-between"><span>Indent (Tab)</span> <Key>Tab</Key></li>
+                    <li className="flex items-center justify-between"><span>Navigate suggestions</span> <div><ArrowUp className="inline h-4 w-4" /> <ArrowDown className="inline h-4 w-4" /></div></li>
                     <li className="flex items-center justify-between"><span>Select suggestion</span> <div><Key>Enter</Key> or <Key>Tab</Key></div></li>
                  </ul>
             </FeatureCard>
