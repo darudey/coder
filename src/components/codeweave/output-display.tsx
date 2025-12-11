@@ -128,7 +128,7 @@ const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args,
             try {
                 const jsonString = JSON.stringify(arg, null, 2);
                 const highlighted = Prism.highlight(jsonString, Prism.languages.json, 'json');
-                return <pre key={i} className="inline" dangerouslySetInnerHTML={{ __html: highlighted }} />;
+                return <pre key={i} className="inline whitespace-pre-wrap break-all" dangerouslySetInnerHTML={{ __html: highlighted }} />;
             } catch (e) {
                 return <span key={i}>[Circular Object]</span>;
             }
@@ -137,7 +137,7 @@ const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args,
     });
 
     return (
-        <div className={cn('whitespace-pre-wrap [overflow-wrap:anywhere] font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
+        <div className={cn('font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
             {formattedArgs.map((arg, i) => (
                 <React.Fragment key={i}>
                     {i > 0 && ' '}
