@@ -128,7 +128,7 @@ const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args,
             try {
                 const jsonString = JSON.stringify(arg, null, 2);
                 const highlighted = Prism.highlight(jsonString, Prism.languages.json, 'json');
-                return <pre key={i} className="inline whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlighted }} />;
+                return <pre key={i} className="inline" dangerouslySetInnerHTML={{ __html: highlighted }} />;
             } catch (e) {
                 return <span key={i}>[Circular Object]</span>;
             }
@@ -137,7 +137,7 @@ const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args,
     });
 
     return (
-        <div className={cn('whitespace-pre-wrap break-words font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
+        <div className={cn('whitespace-pre-wrap [overflow-wrap:anywhere] font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
             {formattedArgs.map((arg, i) => (
                 <React.Fragment key={i}>
                     {i > 0 && ' '}
@@ -193,8 +193,12 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 
   useEffect(() => {
     // Dynamically import prism components to ensure Prism is defined.
-    if (typeof window !== 'undefined' && !Prism.languages.json) {
-      import('prismjs/components/prism-json').catch(e => console.error(e));
+    try {
+      if (typeof window !== 'undefined' && !Prism.languages.json) {
+        import('prismjs/components/prism-json');
+      }
+    } catch(e) {
+        console.error(e);
     }
   }, []);
 
