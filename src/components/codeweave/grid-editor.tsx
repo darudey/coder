@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, {
@@ -233,11 +234,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         measure.style.overflowWrap = 'anywhere';
         
         // PATCHED: true wrapped height
-        const height = Math.max(measure.offsetHeight, fontSize * 1.5);
+        const height = measure.offsetHeight;
 
         const div = document.createElement('div');
         div.style.height = `${height}px`;
-        div.className = 'flex items-center justify-end px-2 gap-1';
+        div.className = 'flex items-start justify-end px-2 gap-1';
 
         const lineNumSpan = document.createElement('span');
         lineNumSpan.className = cn('text-xs text-muted-foreground', i === cursorLine && 'text-foreground font-semibold');
