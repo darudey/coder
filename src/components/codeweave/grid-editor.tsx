@@ -216,8 +216,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const gutter = gutterRef.current;
     const ta = textareaRef.current;
     if (!measure || !gutter || !ta) return;
-
-    measure.style.width = `${ta.getBoundingClientRect().width}px`;
+    
+    const computedStyle = getComputedStyle(ta);
+    const paddingLeft = parseFloat(computedStyle.paddingLeft);
+    const paddingRight = parseFloat(computedStyle.paddingRight);
+    
+    measure.style.width = `${ta.clientWidth - paddingLeft - paddingRight}px`;
     gutter.innerHTML = '';
     const maxLineNumber = lines.length;
     const gutterWidth = String(maxLineNumber).length * (fontSize * 0.6) + 32; // char width + padding + icon
