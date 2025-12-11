@@ -6,8 +6,10 @@ import type { Suggestion } from "@/lib/autocomplete";
 
 interface AutocompleteDropdownProps {
   suggestions: Suggestion[];
-  top: number;
-  left: number;
+  top?: number;
+  left?: number;
+  right?: number;
+  bottom?: number;
   onSelect: (suggestion: Suggestion) => void;
   activeIndex: number;
 }
@@ -16,6 +18,8 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
   suggestions,
   top,
   left,
+  right,
+  bottom,
   onSelect,
   activeIndex,
 }) => {
@@ -24,7 +28,7 @@ export const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
   return (
     <ul
       className="absolute z-50 w-48 bg-white border border-gray-200 rounded-md shadow-lg dark:bg-gray-800 dark:border-gray-700"
-      style={{ top, left }}
+      style={{ top, left, right, bottom }}
     >
       {suggestions.map((suggestion, index) => (
         <li

@@ -120,7 +120,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const [lineHeights, setLineHeights] = useState<number[]>([]);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
+  const [suggestionPos, setSuggestionPos] = useState<Partial<React.CSSProperties>>({});
   const [activeSuggestion, setActiveSuggestion] = useState(0);
   const debouncedCode = useDebounce(code, 150);
 
@@ -146,15 +146,33 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         if (newSuggestions.length > 0) {
             setSuggestions(newSuggestions);
             setActiveSuggestion(0);
+            
             const coords = getCaretCoordinates(textarea, textarea.selectionStart);
-            setSuggestionPos({
-                top: coords.top + coords.height,
-                left: coords.left - (word.length * (fontSize * 0.6)), // Approximate char width
-            });
+            const editorRect = textarea.getBoundingClientRect();
+            const dropdownWidth = 200; // Approximate width of the dropdown
+            const dropdownHeight = 200; // Approximate height of the dropdown
+
+            let newPos: Partial<React.CSSProperties> = {};
+
+            // Horizontal positioning
+            if (coords.left + dropdownWidth > editorRect.width) {
+                newPos.right = editorRect.width - coords.left;
+            } else {
+                newPos.left = coords.left;
+            }
+            
+            // Vertical positioning
+            if (coords.top + coords.height + dropdownHeight > editorRect.height) {
+                newPos.bottom = editorRect.height - coords.top;
+            } else {
+                newPos.top = coords.top + coords.height;
+            }
+
+            setSuggestionPos(newPos);
         } else {
             setSuggestions([]);
         }
-    }, [code, fontSize]);
+    }, [code]);
 
   useEffect(() => {
     updateSuggestions();
@@ -660,8 +678,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         {suggestions.length > 0 && (
           <AutocompleteDropdown 
             suggestions={suggestions} 
-            top={suggestionPos.top} 
-            left={suggestionPos.left}
+            {...suggestionPos}
             onSelect={handleSuggestionSelection}
             activeIndex={activeSuggestion}
           />
@@ -679,5 +696,3 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
-
-

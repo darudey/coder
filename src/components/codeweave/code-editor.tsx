@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Textarea } from '@/components/ui/textarea';
@@ -41,7 +40,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
   const spacePressTimestampsRef = useRef<number[]>([]);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
+  const [suggestionPos, setSuggestionPos] = useState<Partial<React.CSSProperties>>({});
   const [activeSuggestion, setActiveSuggestion] = useState(0);
   const debouncedCode = useDebounce(code, 150);
 
@@ -49,19 +48,37 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    const { suggestions, word } = getSuggestions(code, textarea.selectionStart, isMobile);
-    if(suggestions.length > 0) {
-        setSuggestions(suggestions);
+    const { suggestions: newSuggestions, word } = getSuggestions(code, textarea.selectionStart, isMobile);
+    if (newSuggestions.length > 0) {
+        setSuggestions(newSuggestions);
         setActiveSuggestion(0);
+        
         const coords = getCaretCoordinates(textarea, textarea.selectionStart);
-        setSuggestionPos({
-            top: coords.top + coords.height,
-            left: coords.left - (word.length * (fontSize * 0.6)), // Approximate char width
-        });
+        const editorRect = textarea.getBoundingClientRect();
+        const dropdownWidth = 200; // Approximate width of the dropdown
+        const dropdownHeight = 200; // Approximate height of the dropdown
+
+        let newPos: Partial<React.CSSProperties> = {};
+
+        // Horizontal positioning
+        if (coords.left + dropdownWidth > editorRect.width) {
+            newPos.right = editorRect.width - coords.left;
+        } else {
+            newPos.left = coords.left;
+        }
+        
+        // Vertical positioning
+        if (coords.top + coords.height + dropdownHeight > editorRect.height) {
+            newPos.bottom = editorRect.height - coords.top;
+        } else {
+            newPos.top = coords.top + coords.height;
+        }
+
+        setSuggestionPos(newPos);
     } else {
         setSuggestions([]);
     }
-  }, [code, fontSize, isMobile]);
+  }, [code, isMobile]);
 
   useEffect(() => {
     updateSuggestions();
@@ -645,8 +662,7 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
                 {suggestions.length > 0 && (
                   <AutocompleteDropdown 
                     suggestions={suggestions} 
-                    top={suggestionPos.top} 
-                    left={suggestionPos.left}
+                    {...suggestionPos}
                     onSelect={handleSuggestionSelection}
                     activeIndex={activeSuggestion}
                   />
