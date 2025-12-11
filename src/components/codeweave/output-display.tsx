@@ -123,7 +123,7 @@ HeaderBar.displayName = 'HeaderBar';
 
 const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args, type }) => {
     return (
-        <div className={cn('whitespace-pre-wrap font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
+        <div className={cn('whitespace-pre-wrap break-words font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
             {args.join(' ')}
         </div>
     )
@@ -174,7 +174,11 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 
   useEffect(() => {
     // Dynamically import prism components to ensure Prism is defined.
-    import('prismjs/components/prism-json');
+    try {
+      require('prismjs/components/prism-json');
+    } catch(e) {
+        console.error(e);
+    }
   }, []);
 
   useEffect(() => () => {
