@@ -292,7 +292,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev - 1);
+      setHistoryIndex(prev => prev + 1);
     }
   }, [historyIndex, history.length, setHistoryIndex]);
 
@@ -643,6 +643,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 

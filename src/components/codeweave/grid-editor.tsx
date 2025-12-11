@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -13,6 +14,7 @@ import { getSuggestions, type Suggestion } from '@/lib/autocomplete';
 import { useDebounce } from '@/hooks/use-debounce';
 import { getCaretCoordinates } from '@/lib/caret-position';
 import { getSmartIndentation } from '@/lib/indentation';
+import 'acorn-walk';
 
 
 export interface OverlayEditorProps {
@@ -20,6 +22,8 @@ export interface OverlayEditorProps {
   onCodeChange: (code: string) => void;
   activeLine?: number;
   lineExecutionCounts?: Record<number, number>;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 interface FoldableRegion {
@@ -100,6 +104,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   onCodeChange,
   activeLine = 0,
   lineExecutionCounts = {},
+  onUndo,
+  onRedo,
 }) => {
   const { settings } = useSettings();
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -325,6 +331,19 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         const textarea = textareaRef.current;
         if (!textarea) return;
 
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                onUndo();
+                return;
+            }
+            if (e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                onRedo();
+                return;
+            }
+        }
+
         if ((e.ctrlKey || e.metaKey) && e.key === '/') {
             e.preventDefault();
             const start = textarea.selectionStart;
@@ -496,7 +515,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             return;
         }
 
-    }, [code, onCodeChange, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions]);
+    }, [code, onCodeChange, onUndo, onRedo, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions]);
 
   React.useEffect(() => {
     const ta = textareaRef.current;
