@@ -8,10 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { DotLoader } from './dot-loader';
 import { cn } from '@/lib/utils';
 import { diffLines } from 'diff';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Activity } from 'lucide-react';
 import Prism from 'prismjs';
-import 'prismjs/components/prism-json';
 import 'prismjs/themes/prism-tomorrow.css'; // Using a standard theme
 
 // Types
@@ -173,6 +171,11 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Dynamically import prism components to ensure Prism is defined.
+    import('prismjs/components/prism-json');
+  }, []);
 
   useEffect(() => () => {
     if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
