@@ -331,6 +331,41 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         const textarea = textareaRef.current;
         if (!textarea) return;
 
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '/') {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+
+            if (start === end) return;
+            
+            const selectedText = code.substring(start, end);
+            const textBefore = code.substring(start - 2, start);
+            const textAfter = code.substring(end, end + 2);
+
+            let newCode;
+            let newSelectionStart = start;
+            let newSelectionEnd = end;
+
+            if (textBefore === '/*' && textAfter === '*/') {
+                newCode = code.substring(0, start - 2) + selectedText + code.substring(end + 2);
+                newSelectionStart = start - 2;
+                newSelectionEnd = end - 2;
+            } else {
+                newCode = code.substring(0, start) + '/*' + selectedText + '*/' + code.substring(end);
+                newSelectionStart = start;
+                newSelectionEnd = end + 4;
+            }
+            
+            onCodeChange(newCode);
+
+            requestAnimationFrame(() => {
+                textarea.selectionStart = newSelectionStart;
+                textarea.selectionEnd = newSelectionEnd;
+                textarea.focus();
+            });
+            return;
+        }
+
         if (e.ctrlKey || e.metaKey) {
             if (e.key.toLowerCase() === 'z') {
                 e.preventDefault();
