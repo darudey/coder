@@ -198,7 +198,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     return true;
   }, [collapsedLines, foldableRegions]);
 
-  const toggleFold = (lineNumber: number) => {
+  const toggleFold = useCallback((lineNumber: number) => {
     setCollapsedLines(prev => {
       const newSet = new Set(prev);
       if (newSet.has(lineNumber)) {
@@ -208,7 +208,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       }
       return newSet;
     });
-  };
+  }, []);
 
   const computeWrappedRows = useCallback(() => {
     const measure = measureRef.current;
