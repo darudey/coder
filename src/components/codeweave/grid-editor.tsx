@@ -299,6 +299,15 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     });
 }, [code, onCodeChange]);
 
+  const handleNavigateSuggestions = useCallback((direction: 'next' | 'prev') => {
+      if (suggestions.length === 0) return;
+      if (direction === 'next') {
+          setActiveSuggestion(prev => (prev + 1) % suggestions.length);
+      } else {
+          setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
+      }
+  }, [suggestions.length]);
+
   const handleSuggestionSelection = useCallback((suggestion: Suggestion) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -324,18 +333,23 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
         if ((e.shiftKey || e.altKey) && e.key === ' ') {
             e.preventDefault();
-            const currentPos = textarea.selectionStart;
-            const textAfter = code.substring(currentPos);
-            
-            if (textAfter.length > 0) {
-                // Regex to find the start of the next word, symbol, or space sequence
-                const match = textAfter.match(/(\s+)|(\w+)|(\S)/);
-                if (match) {
-                    const jumpTo = currentPos + (match.index || 0) + match[0].length;
-                    requestAnimationFrame(() => {
-                        textarea.selectionStart = jumpTo;
-                        textarea.selectionEnd = jumpTo;
-                    });
+            if (suggestions.length > 0) {
+                // If suggestions are open, navigate them
+                handleNavigateSuggestions('next');
+            } else {
+                // Otherwise, perform quick-jump
+                const currentPos = textarea.selectionStart;
+                const textAfter = code.substring(currentPos);
+                
+                if (textAfter.length > 0) {
+                    const match = textAfter.match(/(\s+)|(\w+)|(\S)/);
+                    if (match) {
+                        const jumpTo = currentPos + (match.index || 0) + match[0].length;
+                        requestAnimationFrame(() => {
+                            textarea.selectionStart = jumpTo;
+                            textarea.selectionEnd = jumpTo;
+                        });
+                    }
                 }
             }
             return;
@@ -344,12 +358,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         if (suggestions.length > 0) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setActiveSuggestion(prev => (prev + 1) % suggestions.length);
+                handleNavigateSuggestions('next');
                 return;
             }
             if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setActiveSuggestion(prev => (prev - 1 + suggestions.length) % suggestions.length);
+                handleNavigateSuggestions('prev');
                 return;
             }
             if (e.key === 'Enter' || e.key === 'Tab') {
@@ -443,7 +457,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             return;
         }
 
-    }, [code, onCodeChange, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress]);
+    }, [code, onCodeChange, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions]);
 
   useEffect(() => {
     const ta = textareaRef.current;

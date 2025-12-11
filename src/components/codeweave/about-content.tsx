@@ -56,6 +56,7 @@ export function AboutContent() {
                 <p>Quickly navigate through your code with these spacebar-powered shortcuts.</p>
                  <ul className="list-disc pl-5 space-y-2">
                     <li><strong className="flex items-center gap-2">Jump Forward:</strong> Press <Key>Shift</Key> or <Key>Alt</Key> + <Key>Space</Key> to jump the cursor to the beginning of the next word, symbol, or block of spaces.</li>
+                    <li><strong className="flex items-center gap-2">Cycle Suggestions:</strong> When the suggestion box is open, press <Key>Shift</Key> + <Key>Space</Key> to cycle through the available autocomplete suggestions.</li>
                     <li><strong className="flex items-center gap-2">Jump Out of Pairs:</strong> When your cursor is just inside a closing symbol like `)` or `'''`, press <Key>Space</Key> three times quickly to jump the cursor just outside of it.</li>
                 </ul>
             </FeatureCard>
