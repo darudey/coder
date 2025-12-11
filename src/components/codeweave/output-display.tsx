@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { diffLines } from 'diff';
 import { Copy, Check, X, Activity } from 'lucide-react';
 import Prism from 'prismjs';
-import 'prismjs/components/prism-json';
+// Do not import prism-json directly here, it will be loaded dynamically.
 import 'prismjs/themes/prism-tomorrow.css'; // Using a standard theme
 
 // Types
@@ -123,9 +123,27 @@ const HeaderBar: React.FC<{
 HeaderBar.displayName = 'HeaderBar';
 
 const OutputLine: React.FC<{ args: any[], type: 'result' | 'error' }> = ({ args, type }) => {
+    const formattedArgs = args.map((arg, i) => {
+        if (typeof arg === 'object' && arg !== null) {
+            try {
+                const jsonString = JSON.stringify(arg, null, 2);
+                const highlighted = Prism.highlight(jsonString, Prism.languages.json, 'json');
+                return <pre key={i} className="inline whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlighted }} />;
+            } catch (e) {
+                return <span key={i}>[Circular Object]</span>;
+            }
+        }
+        return <span key={i}>{String(arg)}</span>;
+    });
+
     return (
         <div className={cn('whitespace-pre-wrap break-words font-code flex-1', type === 'error' ? 'text-red-500' : 'text-foreground')}>
-            {args.join(' ')}
+            {formattedArgs.map((arg, i) => (
+                <React.Fragment key={i}>
+                    {i > 0 && ' '}
+                    {arg}
+                </React.Fragment>
+            ))}
         </div>
     )
 }
@@ -173,6 +191,13 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<number | null>(null);
 
+  useEffect(() => {
+    // Dynamically import prism components to ensure Prism is defined.
+    if (typeof window !== 'undefined' && !Prism.languages.json) {
+      import('prismjs/components/prism-json').catch(e => console.error(e));
+    }
+  }, []);
+
   useEffect(() => () => {
     if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
   }, []);
@@ -183,7 +208,10 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   
   const userOutputText = useMemo(() => {
     if (!output) return '';
-    return output.output.map(line => line.join(' ')).join('\n');
+    return output.output.map(line => line.map(arg => {
+        if (typeof arg === 'object' && arg !== null) return JSON.stringify(arg);
+        return String(arg);
+    }).join(' ')).join('\n');
   }, [output]);
 
   const onCopy = useCallback(async () => {
@@ -309,7 +337,7 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                     </ul>
                   )}
                   {output.aiAnalysis && (
-                      <div dangerouslySetInnerHTML={{ __html: output.aiAnalysis.replace(/\n/g, '<br />') }} />
+                      <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: output.aiAnalysis.replace(/\n/g, '<br />') }} />
                   )}
               </div>
             </div>
@@ -321,5 +349,3 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
 };
 
 export const OutputDisplay = React.memo(MemoizedOutputDisplay);
-
-    
