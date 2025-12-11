@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, {
@@ -567,7 +566,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       {/* Gutter with dynamic wrapped rows */}
       <div
         ref={gutterRef}
-        className="shrink-0 border-r bg-gray-100 dark:bg-slate-800 py-2"
+        className="shrink-0 border-r bg-gray-100 dark:bg-[#111828] py-2"
         style={{
           fontFamily: 'var(--font-code)',
           fontSize,
