@@ -15,8 +15,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 };
 
-const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff00a0"/><stop offset="100%" style="stop-color:#00bfff"/></linearGradient></defs><rect width="100" height="100" rx="20" ry="20" fill="url(#g)"/><path d="M22 35 L45 50 L22 65" stroke="white" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M48 62 H80" stroke="white" stroke-width="10" fill="none" stroke-linecap="round"/></svg>`;
-const faviconHref = `data:image/svg+xml;base64,${btoa(faviconSvg)}`;
+const faviconHref = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICAgIDxkZWZzPgogICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZjAwYTAiLz4KICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMGJmZmYiLz4KICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KCiAgICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiByeT0iMjAiIGZpbGw9InVybCgjZykiIC8+CgogICAgPCEtLSBDbGVhbiwgbm9uLWJsb2F0ZWQgYXJyb3cgLS0+CiAgICA8cGF0aAogICAgICBkPSJNMjIgMzUgTDQ1IDUwIEwyMiA2NSIKICAgICAgc3Ryb2tlPSJ3aGl0ZSIKICAgICAgc3Ryb2tlLXdpZHRoPSIxMCIKICAgICAgZmlsbD0ibm9uZSIKICAgICAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogICAgICBzdHJva2UtbGluZWpvaW49InJvdW5kIgogICAgLz4KCiAgICA8IS0tIEJhbGFuY2VkIGhvcml6b250YWwgbGluZSAtLT4KICAgIDxwYXRoCiAgICAgIGQ9Ik00OCA2MiBINDgwIgogICAgICBzdHJva2U9IndoaXRlIgogICAgICBzdHJva2Utd2lkdGg9IjEwIgogICAgICBmaWxsPSJub25lIgogICAgICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgICAvPgo8L3N2Zz4=";
 
 export default function RootLayout({
   children,
