@@ -471,6 +471,22 @@ const MemoizedCodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, onU
         return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+        e.preventDefault();
+        const currentPos = textarea.selectionStart;
+        const textBefore = code.substring(0, currentPos);
+        const reversedText = textBefore.split('').reverse().join('');
+        
+        const match = reversedText.match(/(\s+)|(\w+)|(\S)/);
+        if (match) {
+            const jumpTo = currentPos - (match.index || 0) - match[0].length;
+            requestAnimationFrame(() => {
+                textarea.selectionStart = jumpTo;
+                textarea.selectionEnd = jumpTo;
+            });
+        }
+        return;
+    }
 
     if ((e.shiftKey || e.altKey) && e.key === ' ') {
         e.preventDefault();
