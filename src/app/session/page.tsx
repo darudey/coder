@@ -350,6 +350,7 @@ export default function SessionPage() {
                     hasActiveFile={!!fs.activeFile}
                     onRun={handleRun}
                     variant="default"
+                    onResetDebugger={reset}
                 />
             </div>
         )}
@@ -379,6 +380,8 @@ declare module '@/components/codeweave/grid-editor' {
         onResetDebugger?: () => void;
     }
 }
+
+    
 
     
 
