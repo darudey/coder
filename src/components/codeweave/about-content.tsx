@@ -49,7 +49,7 @@ export function AboutContent() {
                     <li className="flex items-center justify-between"><span>Indent (Tab)</span> <Key>Tab</Key></li>
                     <li className="flex items-center justify-between"><span>Navigate suggestions</span> <div><Key>Shift</Key>+<Key>Space</Key> or <ArrowUp className="inline h-4 w-4" /> <ArrowDown className="inline h-4 w-4" /></div></li>
                     <li className="flex items-center justify-between"><span>Select suggestion</span> <div><Key>Enter</Key> or <Key>Tab</Key></div></li>
-                    <li className="flex items-center justify-between"><span>Dismiss suggestions</span> <Key>Esc</Key></li>
+                    <li className="flex items-center justify-between"><span>Dismiss suggestions / Reset Debugger</span> <Key>Esc</Key></li>
                  </ul>
             </FeatureCard>
         </div>
