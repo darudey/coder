@@ -19,7 +19,8 @@ import { Copy, Grab, X, GripHorizontal, Play, Zap } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
-import { useCompilerFs, type ActiveFile, type FileSystem } from '@/hooks/use-compiler-fs';
+import { useCompilerFs } from '@/hooks/use-compiler-fs';
+import type { ActiveFile, FileSystem } from '@/hooks/use-compiler-fs-provider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { useSettings } from '@/hooks/use-settings';
@@ -126,7 +127,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const isMobile = useIsMobile();
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
   
-  const fs = useCompilerFs({ initialCode, onCodeChange, variant });
+  const fs = useCompilerFs({ onCodeChange, initialCode });
 
   const code = props.code ?? fs.code;
   const setCode = props.setCode ?? fs.setCode;
@@ -644,6 +645,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 

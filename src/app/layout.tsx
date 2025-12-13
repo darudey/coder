@@ -19,9 +19,14 @@ const faviconHref = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53M
 
 export default function RootLayout({
   children,
+  params
 }: Readonly<{
   children: React.ReactNode;
+  params: { id?: string };
 }>) {
+  // Check if we are on a share page to pass initialCode
+  const initialCode = (children as any)?.props?.childProp?.segment === 's' ? (children as any).props.childProp.initialCode : null;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -38,7 +43,7 @@ export default function RootLayout({
           <AuthProvider>
             <GoogleDriveProvider>
               <CoursesProvider>
-                <CompilerFsProvider>
+                <CompilerFsProvider initialCode={initialCode}>
                   <MainLayout>
                     {children}
                   </MainLayout>

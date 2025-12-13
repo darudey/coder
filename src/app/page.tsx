@@ -11,11 +11,11 @@ import { OutputDisplay } from '@/components/codeweave/output-display';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCompilerFs } from '@/hooks/use-compiler-fs';
 
-export default function Home() {
+export default function Home({ initialCode }: { initialCode?: string | null }) {
   const { settings } = useSettings();
   const compilerRef = useRef<CompilerRef>(null);
   const isMobile = useIsMobile();
-  const fs = useCompilerFs({});
+  const fs = useCompilerFs({ initialCode });
   
   const [output, setOutput] = useState<RunResult | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);

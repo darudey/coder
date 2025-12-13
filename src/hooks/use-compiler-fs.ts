@@ -5,6 +5,7 @@ import { useCallback, useContext } from 'react';
 import { CompilerFsContext } from './use-compiler-fs-provider';
 
 interface UseCompilerFsProps {
+    initialCode?: string | null;
     onCodeChange?: (code: string) => void;
 }
 
