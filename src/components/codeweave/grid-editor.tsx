@@ -732,7 +732,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           }}
         >
           {hasContent && (
-            <div className="absolute inset-0 flex items-center justify-start px-1">
+            <div className="absolute inset-0 flex items-center justify-start">
               <div
                 className="w-6 h-full flex items-center justify-center cursor-pointer"
                 onClick={() => onStartDebuggerFromLine(i)}
@@ -741,11 +741,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                     "w-3 h-3 transition-colors",
                     isActiveLine 
                       ? "text-green-500 fill-green-500" 
-                      : "text-green-500/0 group-hover/gutter-line:text-green-500/50 active:fill-green-500/50"
+                      : "text-green-500/0 fill-transparent group-hover/gutter-line:text-green-500 active:fill-green-500/50"
                 )} />
               </div>
               <div 
-                className="w-6 h-full flex items-center justify-center cursor-pointer"
+                className="w-6 h-full flex items-center justify-center cursor-pointer -ml-1"
                 onClick={() => onToggleBreakpoint(i)}
               >
                 <div className={cn(
