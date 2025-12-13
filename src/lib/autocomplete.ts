@@ -193,7 +193,7 @@ export const getSuggestions = (code: string, cursorPosition: number, isMobile: b
         }
 
         const wordsInCode = [...new Set(code.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [])]
-            .filter(word => word.length >= 3)
+            .filter(word => word.length >= 1)
             .filter(word => !keywords.some(kw => kw.value === word))
             .map(word => ({ value: word, type: 'variable' as const }));
         
