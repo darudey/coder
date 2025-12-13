@@ -253,6 +253,12 @@ export default function SessionPage() {
   }
 
   const handleStartFromLine = useCallback((lineNumber: number) => {
+    if (activeLine === lineNumber && showDebugger) {
+        reset();
+        setShowDebugger(false);
+        return;
+    }
+    
     let targetStep = 1;
     for (let i = 1; i < timeline.length; i++) {
         if (timeline[i].line >= lineNumber) {
@@ -262,7 +268,7 @@ export default function SessionPage() {
     }
     setCurrentStep(targetStep);
     setShowDebugger(true);
-  }, [timeline]);
+  }, [timeline, activeLine, showDebugger, reset]);
 
   const handleRun = useCallback(async () => {
     if (compilerRef.current) {
