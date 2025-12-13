@@ -721,7 +721,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       return (
         <div
           key={i}
-          className="flex items-start justify-end pr-2 gap-1 group"
+          className="group relative flex items-start justify-end pr-2"
           style={{
             height,
             fontFamily: 'var(--font-code)',
@@ -729,19 +729,24 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
-            <div className="flex-1 flex items-center justify-center cursor-pointer group/play" onClick={(e) => { e.stopPropagation(); onStartDebuggerFromLine(i)}}>
-                <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover/play:opacity-50" />
-            </div>
             <div 
-                className="w-4 h-full flex items-center justify-center cursor-pointer"
-                onClick={(e) => {e.stopPropagation(); onToggleBreakpoint(i)}}
+              className="absolute inset-0 flex items-center justify-start gap-1"
+              onClick={(e) => {e.stopPropagation();}}
             >
-                <div className={cn(
-                  "w-2 h-2 rounded-full transition-colors",
-                  hasBreakpoint 
-                    ? "bg-red-500" 
-                    : "bg-transparent group-hover:bg-red-500/50"
-                )} />
+              <div className="flex-1 flex items-center justify-center cursor-pointer" onClick={() => onStartDebuggerFromLine(i)}>
+                  <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-50" />
+              </div>
+              <div 
+                  className="w-4 h-full flex items-center justify-center cursor-pointer"
+                  onClick={() => onToggleBreakpoint(i)}
+              >
+                  <div className={cn(
+                    "w-2 h-2 rounded-full transition-colors",
+                    hasBreakpoint 
+                      ? "bg-red-500" 
+                      : "bg-transparent group-hover:bg-red-500/50"
+                  )} />
+              </div>
             </div>
 
           {/* Line number */}
@@ -787,7 +792,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   return (
     <div
-      className="relative flex border rounded-md bg-white dark:bg-[#202938] min-h-[70vh] group"
+      className="relative flex border rounded-md bg-white dark:bg-[#202938] min-h-[70vh]"
     >
         <div
             ref={gutterRef}
