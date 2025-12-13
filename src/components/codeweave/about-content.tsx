@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpen, Zap, SkipForward, SkipBack, Keyboard, MoveHorizontal, MousePointerClick, ArrowUp, ArrowDown } from "lucide-react";
+import { BookOpen, Zap, SkipForward, SkipBack, Keyboard, MoveHorizontal, MousePointerClick, ArrowUp, ArrowDown, GitCommit } from "lucide-react";
 import { FeatureCard, Key } from './about-helpers';
 import React from 'react';
 
@@ -16,6 +16,14 @@ export function AboutContent() {
 
              <FeatureCard title="AI-Powered Debugger" icon={<Zap className="text-primary"/>}>
                 <p>Leveraging Google's Gemini models via Genkit, the app offers an AI-driven debugger to help you visualize your code's execution step-by-step and fix bugs faster.</p>
+            </FeatureCard>
+
+            <FeatureCard title="Debugger Breakpoints" icon={<GitCommit className="text-primary"/>} badge="Desktop">
+                <p>Set breakpoints to pause the debugger at specific lines of code, allowing you to inspect the program state without manually stepping through every line.</p>
+                 <ul className="list-disc pl-5 space-y-2">
+                    <li><strong className="flex items-center gap-2"><MousePointerClick size={16} /> Set/Remove Breakpoint:</strong> Click on the gutter area next to a line number to toggle a breakpoint. A red dot will appear to indicate an active breakpoint.</li>
+                    <li><strong className="flex items-center gap-2"><SkipForward size={16} /> Run to Breakpoint:</strong> When you press the "Play" button, the debugger will run and automatically pause execution when it hits a line with a breakpoint.</li>
+                </ul>
             </FeatureCard>
             
             <FeatureCard title="Quick-Jump" icon={<SkipForward className="text-primary"/>} badge="Desktop">
