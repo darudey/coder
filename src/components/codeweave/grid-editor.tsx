@@ -24,6 +24,7 @@ export interface OverlayEditorProps {
   lineExecutionCounts?: Record<number, number>;
   onUndo: () => void;
   onRedo: () => void;
+  onResetDebugger?: () => void;
 }
 
 interface FoldableRegion {
@@ -106,6 +107,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   lineExecutionCounts = {},
   onUndo,
   onRedo,
+  onResetDebugger,
 }) => {
   const { settings } = useSettings();
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -482,7 +484,14 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                 return;
             }
             if (e.key === 'Escape') {
+                e.preventDefault();
                 setSuggestions([]);
+                return;
+            }
+        } else if (e.key === 'Escape') {
+            if (onResetDebugger) {
+                e.preventDefault();
+                onResetDebugger();
                 return;
             }
         }
@@ -567,7 +576,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             return;
         }
 
-    }, [code, onCodeChange, onUndo, onRedo, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions]);
+    }, [code, onCodeChange, onUndo, onRedo, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger]);
 
   React.useEffect(() => {
     const ta = textareaRef.current;
@@ -819,3 +828,5 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
+    

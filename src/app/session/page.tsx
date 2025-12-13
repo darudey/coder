@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -321,7 +322,7 @@ export default function SessionPage() {
                     ref={compilerRef}
                     {...fs}
                     onCodeChange={handleCodeChange}
-                    EditorComponent={GridEditor} 
+                    EditorComponent={(props: any) => <GridEditor {...props} onResetDebugger={reset} />}
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
@@ -338,7 +339,7 @@ export default function SessionPage() {
                     ref={compilerRef}
                     {...fs}
                     onCodeChange={handleCodeChange}
-                    EditorComponent={GridEditor} 
+                    EditorComponent={(props: any) => <GridEditor {...props} onResetDebugger={reset} />}
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
@@ -371,5 +372,8 @@ export default function SessionPage() {
 declare module '@/components/codeweave/grid-editor' {
     interface OverlayEditorProps {
         lineExecutionCounts?: Record<number, number>;
+        onResetDebugger?: () => void;
     }
 }
+
+    
