@@ -718,6 +718,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       const height = lineHeights[i] ?? (fontSize * 1.5);
       const hasBreakpoint = breakpoints.has(i);
       const isActiveLine = activeLine === i;
+      const hasContent = line.trim().length > 0;
 
       return (
         <div
@@ -730,29 +731,30 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
-          <div className="absolute inset-0 flex items-center justify-between px-1">
-            <div 
-              className="flex-1 flex items-center justify-center cursor-pointer h-full"
-              onClick={() => onStartDebuggerFromLine(i)}
-            >
-                <PlayIcon className={cn(
-                    "w-3 h-3 text-green-500 transition-opacity",
-                    isActiveLine ? "opacity-100 fill-green-500" : "opacity-0 group-hover/gutter-line:opacity-100 fill-transparent stroke-current"
+        {hasContent && (
+           <div className="absolute inset-0 flex items-center justify-between px-1">
+              <div 
+                className="flex-1 flex items-center justify-center cursor-pointer h-full"
+                onClick={() => onStartDebuggerFromLine(i)}
+              >
+                  <PlayIcon className={cn(
+                      "w-3 h-3 text-green-500 transition-opacity",
+                      isActiveLine ? "opacity-100 fill-green-500" : "opacity-0 group-hover/gutter-line:opacity-100 fill-transparent stroke-current active:fill-green-500"
+                  )} />
+              </div>
+              <div 
+                className="w-4 h-full flex items-center justify-center cursor-pointer"
+                onClick={() => onToggleBreakpoint(i)}
+              >
+                <div className={cn(
+                    "w-2 h-2 rounded-full transition-all",
+                    hasBreakpoint 
+                      ? "bg-red-500 opacity-100 group-hover/gutter-line:ring-2 group-hover/gutter-line:ring-red-500/50" 
+                      : "bg-red-500/0 group-hover/gutter-line:bg-red-500/50"
                 )} />
+              </div>
             </div>
-            <div 
-              className="w-4 h-full flex items-center justify-center cursor-pointer"
-              onClick={() => onToggleBreakpoint(i)}
-            >
-              <div className={cn(
-                  "w-2 h-2 rounded-full transition-all",
-                  hasBreakpoint 
-                    ? "bg-red-500" 
-                    : "bg-red-500/0 group-hover/gutter-line:bg-red-500/50",
-                  hasBreakpoint && cursorLine === i && "ring-2 ring-red-500/50"
-              )} />
-            </div>
-          </div>
+        )}
 
           <div className="flex items-center justify-end w-full h-full pr-2 pl-10">
             <span
@@ -864,6 +866,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
 
 
 
