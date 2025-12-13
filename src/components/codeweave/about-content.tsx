@@ -1,55 +1,17 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { File, Folder, Plus, Keyboard, Sparkles, MoveHorizontal, MousePointerClick, CornerDownLeft, Database, Bot, BookOpen, SkipForward, ArrowDown, ArrowUp, Zap, SkipBack, Play } from "lucide-react";
+import { BookOpen, Zap, SkipForward, SkipBack, Keyboard, MoveHorizontal, MousePointerClick, ArrowUp, ArrowDown } from "lucide-react";
+import { FeatureCard, Key } from './about-helpers';
+import React from 'react';
 
 export function AboutContent() {
-
-  const FeatureCard = ({ title, icon, badge, children }: { title: string, icon: React.ReactNode, badge?: string, children: React.ReactNode }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3">
-          {icon}
-          <span className="text-lg">{title}</span>
-          {badge && <Badge variant="secondary">{badge}</Badge>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="text-sm text-muted-foreground space-y-2">
-        {children}
-      </CardContent>
-    </Card>
-  );
-
-  const Key = ({ children }: { children: React.ReactNode }) => (
-    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-md dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">
-      {children}
-    </kbd>
-  );
-
   return (
     <div className="space-y-6 text-sm py-4">
         
         <div className="space-y-4">
             <FeatureCard title="Interactive Courses" icon={<BookOpen className="text-primary"/>}>
                 <p>Learn web development from the ground up with structured courses. Each chapter includes video lectures, detailed notes, and hands-on coding exercises with automated checks to test your knowledge.</p>
-            </FeatureCard>
-
-            <FeatureCard title="Smart Editing" icon={<Sparkles className="text-primary"/>}>
-                <p>The editor automatically color-codes your JavaScript to make it more readable and provides intelligent suggestions to speed up your coding.</p>
-                 <ul className="list-disc pl-5 space-y-1">
-                    <li><strong className="flex items-center gap-2">Auto-Pairing:</strong> Automatically inserts a closing character when you type `(`, `{`, `[`, `'`, or `"`.</li>
-                    <li><strong className="flex items-center gap-2">Smart Deletion:</strong> Pressing <Key>Backspace</Key> between an empty pair like `()` will delete both characters at once.</li>
-                </ul>
-            </FeatureCard>
-            
-            <FeatureCard title="Offline-First File System" icon={<Database className="text-primary"/>}>
-                <p>All your code is saved directly in your browser using IndexedDB—no account needed! You can organize your work into folders and files, and it's all available even when you're offline.</p>
-                <ul className="list-disc pl-5 space-y-1">
-                    <li>Click the <Plus className="inline h-4 w-4 mx-1"/> button in the settings panel or the tab bar to create a new file.</li>
-                    <li>Double-click a tab to rename a file.</li>
-                </ul>
             </FeatureCard>
 
              <FeatureCard title="AI-Powered Debugger" icon={<Zap className="text-primary"/>}>
@@ -87,16 +49,6 @@ export function AboutContent() {
                     <li className="flex items-center justify-between"><span>Navigate suggestions</span> <div><Key>Shift</Key>+<Key>Space</Key> or <ArrowUp className="inline h-4 w-4" /> <ArrowDown className="inline h-4 w-4" /></div></li>
                     <li className="flex items-center justify-between"><span>Select suggestion</span> <div><Key>Enter</Key> or <Key>Tab</Key></div></li>
                     <li className="flex items-center justify-between"><span>Dismiss suggestions</span> <Key>Esc</Key></li>
-                 </ul>
-            </FeatureCard>
-
-             <FeatureCard title="Virtual Keyboard Shortcuts" icon={<Keyboard className="text-primary" />} badge="Mobile">
-                 <p>Use the <Key>Ctrl</Key> key on the virtual keyboard to activate shortcuts for common actions.</p>
-                 <ul className="space-y-2">
-                    <li className="flex items-center justify-between"><span>Undo / Redo</span> <div><Key>Ctrl</Key> + <Key>Z</Key> / <Key>Y</Key></div></li>
-                    <li className="flex items-center justify-between"><span>Select All</span> <div><Key>Ctrl</Key> + <Key>A</Key></div></li>
-                     <li className="flex items-center justify-between"><span>Copy / Cut / Paste</span> <div><Key>Ctrl</Key> + <Key>C</Key> / <Key>X</Key> / <Key>V</Key></div></li>
-                    <li className="flex items-center justify-between"><span>Bold / Italic / Underline</span> <div><Key>Ctrl</Key> + <Key>B</Key> / <Key>I</Key> / <Key>U</Key></div></li>
                  </ul>
             </FeatureCard>
         </div>
