@@ -127,7 +127,7 @@ const DraggablePanel: React.FC<{
 
     return (
         <Card 
-            className="fixed flex flex-col shadow-2xl z-50 floating-panel"
+            className="fixed flex flex-col shadow-2xl z-[2000] floating-panel"
             style={{ 
               top: position.top, 
               left: position.left, 
