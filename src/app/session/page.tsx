@@ -25,6 +25,10 @@ const factorialCode = `function factorial(n) {
 
 console.log(factorial(5));`;
 
+// Define the editor component outside of the main page component
+const MemoizedGridEditor = (props: any) => <GridEditor {...props} />;
+
+
 export default function SessionPage() {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
@@ -322,7 +326,7 @@ export default function SessionPage() {
                     ref={compilerRef}
                     {...fs}
                     onCodeChange={handleCodeChange}
-                    EditorComponent={(props: any) => <GridEditor {...props} onResetDebugger={reset} />}
+                    EditorComponent={MemoizedGridEditor}
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
@@ -339,7 +343,7 @@ export default function SessionPage() {
                     ref={compilerRef}
                     {...fs}
                     onCodeChange={handleCodeChange}
-                    EditorComponent={(props: any) => <GridEditor {...props} onResetDebugger={reset} />}
+                    EditorComponent={MemoizedGridEditor}
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
@@ -375,5 +379,7 @@ declare module '@/components/codeweave/grid-editor' {
         onResetDebugger?: () => void;
     }
 }
+
+    
 
     
