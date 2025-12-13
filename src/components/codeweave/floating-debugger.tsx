@@ -448,7 +448,10 @@ export const FloatingDebugger = ({
         <DraggablePanel
             title="Debugger"
             onClose={onClose}
-            initialPosition={{ top: 80, left: window.innerWidth - 400 }}
+            initialPosition={{ 
+                top: (window.innerHeight - 500) / 2, 
+                left: (window.innerWidth - 350) / 2 
+            }}
             initialSize={{ width: 350, height: 500 }}
             headerControls={headerControls}
         >
