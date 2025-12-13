@@ -730,13 +730,18 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           }}
         >
             <div className="flex-1 flex items-center justify-center cursor-pointer group/play" onClick={(e) => { e.stopPropagation(); onStartDebuggerFromLine(i)}}>
-                <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover/play:opacity-100" />
+                <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover/play:opacity-50" />
             </div>
             <div 
                 className="w-4 h-full flex items-center justify-center cursor-pointer"
                 onClick={(e) => {e.stopPropagation(); onToggleBreakpoint(i)}}
             >
-                <div className={cn("w-2 h-2 rounded-full", hasBreakpoint ? "bg-red-500" : "bg-transparent group-hover:bg-red-500/50")} />
+                <div className={cn(
+                  "w-2 h-2 rounded-full transition-colors",
+                  hasBreakpoint 
+                    ? "bg-red-500" 
+                    : "bg-transparent group-hover:bg-red-500/50"
+                )} />
             </div>
 
           {/* Line number */}
