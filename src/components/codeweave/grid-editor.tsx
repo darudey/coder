@@ -735,8 +735,9 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
               onClick={() => onStartDebuggerFromLine(i)}
             >
                 <PlayIcon className={cn(
-                  "w-3 h-3 transition-colors text-green-500 fill-transparent",
-                  "group-hover/gutter-line:fill-green-500/20 active:fill-green-500 active:scale-110"
+                    "w-3 h-3 text-green-500 opacity-0 group-hover/gutter-line:opacity-100 transition-opacity",
+                    "fill-transparent stroke-current", // Default to outline
+                    "active:fill-green-500 active:scale-110" // Solid fill only on click
                 )} />
             </div>
             <div 
@@ -862,4 +863,5 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
 
