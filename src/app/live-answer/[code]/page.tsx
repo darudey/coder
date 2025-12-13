@@ -78,33 +78,34 @@ export default function LiveAnswerSessionPage({ params }: LiveAnswerPageProps) {
                 if (docSnap.exists()) {
                     const data = docSnap.data() as LiveSession;
                     
-                    if (data.isUsed && data.studentId !== user.uid) {
+                    // Check if the session is already claimed by another user.
+                    if (data.studentId && data.studentId !== user.uid) {
                         setAccessDenied("This session code has already been used by another student.");
                         setIsLoading(false);
                         unsub(); // Stop listening if access is denied
                         return;
                     }
-                    
-                    if (!data.isUsed) {
+
+                    // If the session is unclaimed, claim it.
+                    if (!data.studentId) {
                         await updateDoc(sessionRef, {
-                            isUsed: true,
                             studentId: user.uid
                         });
-                        // The snapshot will update with the new data, so we don't set state here.
+                        // The snapshot will trigger again with the updated data, so we can wait for that.
+                        // We don't set state here to avoid race conditions.
                     } else {
+                        // The session is confirmed to be ours, update the local state.
                         setSession(data);
-                        // Handle question selection
                         if (!selectedQuestionId && data.questions.length > 0) {
                             const firstQuestionId = data.questions[0].id;
                             setSelectedQuestionId(firstQuestionId);
                             setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
                         } else if (selectedQuestionId && !data.questions.some(q => q.id === selectedQuestionId)) {
-                            // If the current question was deleted by the teacher, switch to the first one.
                             const firstQuestionId = data.questions[0]?.id || null;
-                             setSelectedQuestionId(firstQuestionId);
-                             if(firstQuestionId) {
+                            setSelectedQuestionId(firstQuestionId);
+                            if(firstQuestionId) {
                                 setCurrentCode(data.answers?.[firstQuestionId] || data.questions[0].initialCode);
-                             }
+                            }
                         }
                     }
                     
