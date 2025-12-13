@@ -45,6 +45,7 @@ interface CompilerProps {
   onCodeChange?: (code: string) => void;
   EditorComponent?: React.FC<any>;
   onToggleDebugger?: () => void;
+  onResetDebugger?: () => void;
   activeLine?: number;
   lineExecutionCounts?: Record<number, number>;
   code?: string;
@@ -120,6 +121,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     activeLine, 
     lineExecutionCounts,
     onRun: onRunProp,
+    onResetDebugger,
     ...props
 }, ref) => {
   const { toast } = useToast();
@@ -567,6 +569,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
                 onRun={effectiveOnRun}
                 activeLine={activeLine}
                 lineExecutionCounts={lineExecutionCounts}
+                onResetDebugger={onResetDebugger}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -645,6 +648,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 

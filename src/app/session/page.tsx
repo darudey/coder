@@ -333,6 +333,7 @@ export default function SessionPage() {
                     hasActiveFile={!!fs.activeFile}
                     onRun={handleRun}
                     variant="default"
+                    onResetDebugger={reset}
                     />
                 </div>
                 {SidePanelOutput}
@@ -374,9 +375,8 @@ export default function SessionPage() {
 }
 
 // Add new prop to Compiler's EditorComponent
-declare module '@/components/codeweave/grid-editor' {
-    interface OverlayEditorProps {
-        lineExecutionCounts?: Record<number, number>;
+declare module '@/components/codeweave/compiler' {
+    interface CompilerProps {
         onResetDebugger?: () => void;
     }
 }
