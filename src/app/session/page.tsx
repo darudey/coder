@@ -10,7 +10,7 @@ import { generateTimeline } from '@/engine/interpreter';
 import { useCompilerFs } from '@/hooks/use-compiler-fs';
 import { OutputDisplay } from '@/components/codeweave/output-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Grab, X, GripHorizontal, PlayIcon } from 'lucide-react';
+import { Play, Grab, X, GripHorizontal, PlayIcon, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useSettings } from '@/hooks/use-settings';
@@ -196,6 +196,7 @@ export default function SessionPage() {
   const reset = useCallback(() => {
     setCurrentStep(1);
     setLineExecutionCounts({});
+    setIsPlaying(false);
   }, []);
 
   // PLAY LOGIC
@@ -250,6 +251,18 @@ export default function SessionPage() {
         return newSet;
     });
   }
+
+  const handleStartFromLine = useCallback((lineNumber: number) => {
+    let targetStep = 1;
+    for (let i = 1; i < timeline.length; i++) {
+        if (timeline[i].line >= lineNumber) {
+            targetStep = i;
+            break;
+        }
+    }
+    setCurrentStep(targetStep);
+    setShowDebugger(true);
+  }, [timeline]);
 
   const handleRun = useCallback(async () => {
     if (compilerRef.current) {
@@ -359,6 +372,7 @@ export default function SessionPage() {
                     onResetDebugger={reset}
                     breakpoints={breakpoints}
                     onToggleBreakpoint={handleToggleBreakpoint}
+                    onStartDebuggerFromLine={handleStartFromLine}
                     />
                 </div>
                 {SidePanelOutput}
@@ -379,6 +393,7 @@ export default function SessionPage() {
                     onResetDebugger={reset}
                     breakpoints={breakpoints}
                     onToggleBreakpoint={handleToggleBreakpoint}
+                    onStartDebuggerFromLine={handleStartFromLine}
                 />
             </div>
         )}
@@ -407,13 +422,6 @@ declare module '@/components/codeweave/compiler' {
         onResetDebugger?: () => void;
         breakpoints?: Set<number>;
         onToggleBreakpoint?: (lineNumber: number) => void;
+        onStartDebuggerFromLine?: (lineNumber: number) => void;
     }
 }
-
-    
-
-    
-
-    
-
-

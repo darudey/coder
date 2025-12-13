@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { useSettings } from '@/hooks/use-settings';
 import { parseCode, getTokenStyle } from '@/lib/syntax-highlighter';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, PlayIcon } from 'lucide-react';
 import { AutocompleteDropdown } from './autocomplete-dropdown';
 import { getSuggestions, type Suggestion } from '@/lib/autocomplete';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -27,6 +27,7 @@ export interface OverlayEditorProps {
   onResetDebugger?: () => void;
   breakpoints?: Set<number>;
   onToggleBreakpoint?: (lineNumber: number) => void;
+  onStartDebuggerFromLine?: (lineNumber: number) => void;
 }
 
 interface FoldableRegion {
@@ -112,6 +113,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   onResetDebugger,
   breakpoints = new Set(),
   onToggleBreakpoint = () => {},
+  onStartDebuggerFromLine = () => {},
 }) => {
   const { settings } = useSettings();
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -719,7 +721,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       return (
         <div
           key={i}
-          className="flex items-start justify-end pr-2 gap-1"
+          className="flex items-start justify-end pr-2 gap-1 group"
           style={{
             height,
             fontFamily: 'var(--font-code)',
@@ -727,9 +729,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
+            <div className="flex-1 flex items-center justify-center cursor-pointer" onClick={(e) => { e.stopPropagation(); onStartDebuggerFromLine(i)}}>
+                <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
+            </div>
             <div 
                 className="w-4 h-full flex items-center justify-center cursor-pointer"
-                onClick={() => onToggleBreakpoint(i)}
+                onClick={(e) => {e.stopPropagation(); onToggleBreakpoint(i)}}
             >
                 <div className={cn("w-2 h-2 rounded-full", hasBreakpoint ? "bg-red-500" : "bg-transparent group-hover:bg-red-500/50")} />
             </div>
@@ -751,7 +756,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                 'cursor-pointer text-muted-foreground transition-transform',
                 isCollapsed && '-rotate-90'
               )}
-              onClick={() => toggleFold(i)}
+              onClick={(e) => {e.stopPropagation(); toggleFold(i)}}
             >
               <ChevronDown size={14} />
             </div>
@@ -772,6 +777,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     toggleFold,
     breakpoints,
     onToggleBreakpoint,
+    onStartDebuggerFromLine
   ]);
 
   return (
@@ -842,5 +848,3 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
-
-    

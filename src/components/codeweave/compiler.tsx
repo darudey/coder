@@ -15,7 +15,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
-import { Copy, Grab, X, GripHorizontal, Play, Zap } from 'lucide-react';
+import { Copy, Grab, X, GripHorizontal, Play, Zap, RefreshCw } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
@@ -50,6 +50,7 @@ interface CompilerProps {
   lineExecutionCounts?: Record<number, number>;
   breakpoints?: Set<number>;
   onToggleBreakpoint?: (lineNumber: number) => void;
+  onStartDebuggerFromLine?: (lineNumber: number) => void;
   code?: string;
   fileSystem?: FileSystem;
   openFiles?: ActiveFile[];
@@ -126,6 +127,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     onResetDebugger,
     breakpoints,
     onToggleBreakpoint,
+    onStartDebuggerFromLine,
     ...props
 }, ref) => {
   const { toast } = useToast();
@@ -576,6 +578,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
                 onResetDebugger={onResetDebugger}
                 breakpoints={breakpoints}
                 onToggleBreakpoint={onToggleBreakpoint}
+                onStartDebuggerFromLine={onStartDebuggerFromLine}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -652,17 +655,3 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
