@@ -729,8 +729,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
-            <div className="flex-1 flex items-center justify-center cursor-pointer" onClick={(e) => { e.stopPropagation(); onStartDebuggerFromLine(i)}}>
-                <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
+            <div className="flex-1 flex items-center justify-center cursor-pointer group/play" onClick={(e) => { e.stopPropagation(); onStartDebuggerFromLine(i)}}>
+                <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover/play:opacity-100" />
             </div>
             <div 
                 className="w-4 h-full flex items-center justify-center cursor-pointer"
