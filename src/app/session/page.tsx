@@ -26,7 +26,8 @@ const factorialCode = `function factorial(n) {
 console.log(factorial(5));`;
 
 // Define the editor component outside of the main page component
-const MemoizedGridEditor = (props: any) => <GridEditor {...props} />;
+const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />);
+MemoizedGridEditor.displayName = 'MemoizedGridEditor';
 
 
 export default function SessionPage() {
@@ -55,6 +56,8 @@ export default function SessionPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
   const [panelWidth, setPanelWidth] = useState(30);
+
+  const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
 
   // State for draggable panel
   const [position, setPosition] = React.useState({ top: 80, left: window.innerWidth / 2 + 100 });
@@ -205,12 +208,20 @@ export default function SessionPage() {
           setIsPlaying(false);
           return s;
         }
+        
+        // Check for breakpoint
+        const nextState = timeline[s + 1];
+        if (nextState && breakpoints.has(nextState.line)) {
+            setIsPlaying(false);
+            return s + 1; // Move to the breakpoint line and stop
+        }
+
         return s + 1;
       });
     }, 900);
 
     return () => clearInterval(id);
-  }, [isPlaying, timeline.length]);
+  }, [isPlaying, timeline, breakpoints]);
 
   const play = () => setIsPlaying(true);
   const pause = () => setIsPlaying(false);
@@ -227,6 +238,18 @@ export default function SessionPage() {
       });
     }
   }, [currentState]);
+
+  const handleToggleBreakpoint = (lineNumber: number) => {
+    setBreakpoints(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(lineNumber)) {
+            newSet.delete(lineNumber);
+        } else {
+            newSet.add(lineNumber);
+        }
+        return newSet;
+    });
+  }
 
   const handleRun = useCallback(async () => {
     if (compilerRef.current) {
@@ -334,6 +357,8 @@ export default function SessionPage() {
                     onRun={handleRun}
                     variant="default"
                     onResetDebugger={reset}
+                    breakpoints={breakpoints}
+                    onToggleBreakpoint={handleToggleBreakpoint}
                     />
                 </div>
                 {SidePanelOutput}
@@ -352,6 +377,8 @@ export default function SessionPage() {
                     onRun={handleRun}
                     variant="default"
                     onResetDebugger={reset}
+                    breakpoints={breakpoints}
+                    onToggleBreakpoint={handleToggleBreakpoint}
                 />
             </div>
         )}
@@ -378,6 +405,8 @@ export default function SessionPage() {
 declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
         onResetDebugger?: () => void;
+        breakpoints?: Set<number>;
+        onToggleBreakpoint?: (lineNumber: number) => void;
     }
 }
 
@@ -386,4 +415,5 @@ declare module '@/components/codeweave/compiler' {
     
 
     
+
 

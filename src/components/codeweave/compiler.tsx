@@ -48,6 +48,8 @@ interface CompilerProps {
   onResetDebugger?: () => void;
   activeLine?: number;
   lineExecutionCounts?: Record<number, number>;
+  breakpoints?: Set<number>;
+  onToggleBreakpoint?: (lineNumber: number) => void;
   code?: string;
   fileSystem?: FileSystem;
   openFiles?: ActiveFile[];
@@ -122,6 +124,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     lineExecutionCounts,
     onRun: onRunProp,
     onResetDebugger,
+    breakpoints,
+    onToggleBreakpoint,
     ...props
 }, ref) => {
   const { toast } = useToast();
@@ -570,6 +574,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
                 activeLine={activeLine}
                 lineExecutionCounts={lineExecutionCounts}
                 onResetDebugger={onResetDebugger}
+                breakpoints={breakpoints}
+                onToggleBreakpoint={onToggleBreakpoint}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -648,6 +654,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 

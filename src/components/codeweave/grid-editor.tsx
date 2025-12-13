@@ -25,6 +25,8 @@ export interface OverlayEditorProps {
   onUndo: () => void;
   onRedo: () => void;
   onResetDebugger?: () => void;
+  breakpoints?: Set<number>;
+  onToggleBreakpoint?: (lineNumber: number) => void;
 }
 
 interface FoldableRegion {
@@ -108,6 +110,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   onUndo,
   onRedo,
   onResetDebugger,
+  breakpoints = new Set(),
+  onToggleBreakpoint = () => {},
 }) => {
   const { settings } = useSettings();
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -710,11 +714,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       const isFoldable = foldableRegions.some(r => r.start === i);
       const isCollapsed = collapsedLines.has(i);
       const height = lineHeights[i] ?? (fontSize * 1.5);
+      const hasBreakpoint = breakpoints.has(i);
 
       return (
         <div
           key={i}
-          className="flex items-start justify-end px-2 gap-1"
+          className="flex items-start justify-end pr-2 gap-1"
           style={{
             height,
             fontFamily: 'var(--font-code)',
@@ -722,6 +727,13 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
+            <div 
+                className="w-4 h-full flex items-center justify-center cursor-pointer"
+                onClick={() => onToggleBreakpoint(i)}
+            >
+                <div className={cn("w-2 h-2 rounded-full", hasBreakpoint ? "bg-red-500" : "bg-transparent group-hover:bg-red-500/50")} />
+            </div>
+
           {/* Line number */}
           <span
             className={cn(
@@ -758,11 +770,13 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     collapsedLines,
     isLineVisible,
     toggleFold,
+    breakpoints,
+    onToggleBreakpoint,
   ]);
 
   return (
     <div
-      className="relative flex border rounded-md bg-white dark:bg-[#202938] min-h-[70vh]"
+      className="relative flex border rounded-md bg-white dark:bg-[#202938] min-h-[70vh] group"
     >
         <div
             ref={gutterRef}
