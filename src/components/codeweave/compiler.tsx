@@ -561,7 +561,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         {editorVisible ? (
             <EditorComponent
                 code={code || ''}
-                onCodeChange={handleCodeChange}
+                onCodeChange={onCodeChange ? onCodeChange : handleCodeChange}
                 onUndo={undo}
                 onRedo={redo}
                 onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
@@ -648,6 +648,7 @@ CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
 
     
+
 
 
 
