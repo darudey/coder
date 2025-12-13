@@ -219,7 +219,4 @@ body {
     .bracket-match {
       @apply bg-primary/20 rounded-sm;
     }
-    .ring-breakpoint {
-      --tw-ring-color: hsl(var(--destructive) / 0.5);
-    }
 }

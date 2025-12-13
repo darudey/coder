@@ -721,7 +721,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       return (
         <div
           key={i}
-          className="group/gutter relative flex items-start justify-end pr-2"
+          className="group/gutter-line relative flex items-start justify-end"
           style={{
             height,
             fontFamily: 'var(--font-code)',
@@ -735,9 +735,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
               onClick={() => onStartDebuggerFromLine(i)}
             >
                 <PlayIcon className={cn(
-                  "w-3 h-3 transition-colors text-transparent",
-                  "group-hover/gutter:text-green-500/50",
-                  "active:text-green-500 active:scale-110"
+                  "w-3 h-3 transition-colors text-green-500 fill-transparent",
+                  "group-hover/gutter-line:fill-green-500/20 active:fill-green-500 active:scale-110"
                 )} />
             </div>
             <div 
@@ -746,9 +745,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             >
               <div className={cn(
                   "w-2 h-2 rounded-full transition-all",
-                  "group-hover/gutter:bg-red-500/50",
-                  hasBreakpoint && "bg-red-500",
-                  hasBreakpoint && cursorLine === i && "ring-2 ring-breakpoint"
+                  hasBreakpoint 
+                    ? "bg-red-500" 
+                    : "bg-red-500/0 group-hover/gutter-line:bg-red-500/50",
+                  hasBreakpoint && cursorLine === i && "ring-2 ring-red-500/50"
               )} />
             </div>
           </div>
@@ -756,7 +756,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           {/* Line number */}
           <span
             className={cn(
-              'text-xs text-muted-foreground',
+              'text-xs text-muted-foreground pr-2',
               i === cursorLine && 'text-foreground font-semibold'
             )}
           >
@@ -862,3 +862,4 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
