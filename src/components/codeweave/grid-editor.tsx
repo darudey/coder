@@ -721,7 +721,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       return (
         <div
           key={i}
-          className="group relative flex items-start justify-end pr-2"
+          className="group/gutter relative flex items-start justify-end pr-2"
           style={{
             height,
             fontFamily: 'var(--font-code)',
@@ -729,25 +729,29 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
+          <div className="absolute inset-0 flex items-center justify-start gap-1">
             <div 
-              className="absolute inset-0 flex items-center justify-start gap-1"
-              onClick={(e) => {e.stopPropagation();}}
+              className="flex-1 flex items-center justify-center cursor-pointer h-full"
+              onClick={() => onStartDebuggerFromLine(i)}
             >
-              <div className="flex-1 flex items-center justify-center cursor-pointer" onClick={() => onStartDebuggerFromLine(i)}>
-                  <PlayIcon className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-50" />
-              </div>
-              <div 
-                  className="w-4 h-full flex items-center justify-center cursor-pointer"
-                  onClick={() => onToggleBreakpoint(i)}
-              >
-                  <div className={cn(
-                    "w-2 h-2 rounded-full transition-colors",
-                    hasBreakpoint 
-                      ? "bg-red-500" 
-                      : "bg-transparent group-hover:bg-red-500/50"
-                  )} />
-              </div>
+                <PlayIcon className={cn(
+                  "w-3 h-3 transition-colors text-transparent",
+                  "group-hover/gutter:text-green-500/50",
+                  "active:text-green-500 active:scale-110"
+                )} />
             </div>
+            <div 
+              className="w-4 h-full flex items-center justify-center cursor-pointer"
+              onClick={() => onToggleBreakpoint(i)}
+            >
+              <div className={cn(
+                  "w-2 h-2 rounded-full transition-all",
+                  "group-hover/gutter:bg-red-500/50",
+                  hasBreakpoint && "bg-red-500",
+                  hasBreakpoint && cursorLine === i && "ring-2 ring-breakpoint"
+              )} />
+            </div>
+          </div>
 
           {/* Line number */}
           <span
