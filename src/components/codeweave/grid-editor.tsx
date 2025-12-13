@@ -731,19 +731,21 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
-        {hasContent && (
-           <div className="absolute inset-0 flex items-center justify-between px-1">
-              <div 
-                className="flex-1 flex items-center justify-center cursor-pointer h-full"
+          {hasContent && (
+            <div className="absolute inset-0 flex items-center justify-start px-1">
+              <div
+                className="w-6 h-full flex items-center justify-center cursor-pointer"
                 onClick={() => onStartDebuggerFromLine(i)}
               >
-                  <PlayIcon className={cn(
-                      "w-3 h-3 text-green-500 transition-opacity",
-                      isActiveLine ? "opacity-100 fill-green-500" : "opacity-0 group-hover/gutter-line:opacity-100 fill-transparent stroke-current active:fill-green-500"
-                  )} />
+                <PlayIcon className={cn(
+                    "w-3 h-3 transition-colors",
+                    isActiveLine 
+                      ? "text-green-500 fill-green-500" 
+                      : "text-green-500/0 group-hover/gutter-line:text-green-500/50 active:fill-green-500/50"
+                )} />
               </div>
               <div 
-                className="w-4 h-full flex items-center justify-center cursor-pointer"
+                className="w-6 h-full flex items-center justify-center cursor-pointer"
                 onClick={() => onToggleBreakpoint(i)}
               >
                 <div className={cn(
@@ -754,7 +756,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                 )} />
               </div>
             </div>
-        )}
+          )}
 
           <div className="flex items-center justify-end w-full h-full pr-2 pl-10">
             <span
@@ -866,7 +868,3 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
-
-
-
-
