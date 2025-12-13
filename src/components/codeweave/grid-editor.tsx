@@ -717,11 +717,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       const isCollapsed = collapsedLines.has(i);
       const height = lineHeights[i] ?? (fontSize * 1.5);
       const hasBreakpoint = breakpoints.has(i);
+      const isActiveLine = activeLine === i;
 
       return (
         <div
           key={i}
-          className="group/gutter-line relative flex items-start justify-end"
+          className="group/gutter-line relative flex items-start"
           style={{
             height,
             fontFamily: 'var(--font-code)',
@@ -729,15 +730,14 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             lineHeight: 1.5,
           }}
         >
-          <div className="absolute inset-0 flex items-center justify-start gap-1">
+          <div className="absolute inset-0 flex items-center justify-between px-1">
             <div 
               className="flex-1 flex items-center justify-center cursor-pointer h-full"
               onClick={() => onStartDebuggerFromLine(i)}
             >
                 <PlayIcon className={cn(
-                    "w-3 h-3 text-green-500 opacity-0 group-hover/gutter-line:opacity-100 transition-opacity",
-                    "fill-transparent stroke-current", // Default to outline
-                    "active:fill-green-500 active:scale-110" // Solid fill only on click
+                    "w-3 h-3 text-green-500 transition-opacity",
+                    isActiveLine ? "opacity-100 fill-green-500" : "opacity-0 group-hover/gutter-line:opacity-100 fill-transparent stroke-current"
                 )} />
             </div>
             <div 
@@ -754,30 +754,30 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             </div>
           </div>
 
-          {/* Line number */}
-          <span
-            className={cn(
-              'text-xs text-muted-foreground pr-2',
-              i === cursorLine && 'text-foreground font-semibold'
-            )}
-          >
-            {i + 1}
-          </span>
-
-          {/* Folding icon or placeholder */}
-          {isFoldable ? (
-            <div
+          <div className="flex items-center justify-end w-full h-full pr-2 pl-10">
+            <span
               className={cn(
-                'cursor-pointer text-muted-foreground transition-transform',
-                isCollapsed && '-rotate-90'
+                'text-xs text-muted-foreground',
+                i === cursorLine && 'text-foreground font-semibold'
               )}
-              onClick={(e) => {e.stopPropagation(); toggleFold(i)}}
             >
-              <ChevronDown size={14} />
-            </div>
-          ) : (
-            <div style={{ width: 14 }} />
-          )}
+              {i + 1}
+            </span>
+
+            {isFoldable ? (
+              <div
+                className={cn(
+                  'cursor-pointer text-muted-foreground transition-transform ml-1',
+                  isCollapsed && '-rotate-90'
+                )}
+                onClick={(e) => {e.stopPropagation(); toggleFold(i)}}
+              >
+                <ChevronDown size={14} />
+              </div>
+            ) : (
+              <div style={{ width: 14 }} className="ml-1" />
+            )}
+          </div>
         </div>
       );
     });
@@ -791,6 +791,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     isLineVisible,
     toggleFold,
     breakpoints,
+    activeLine,
     onToggleBreakpoint,
     onStartDebuggerFromLine
   ]);
@@ -863,5 +864,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
 
 
