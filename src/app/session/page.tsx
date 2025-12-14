@@ -334,8 +334,8 @@ export default function SessionPage() {
   );
 
   const SidePanelOutput = (
-    <div className="h-full flex flex-col overflow-hidden">
-        <Card className="flex-grow flex flex-col">
+    <div className="flex flex-col min-h-0">
+        <Card className="flex flex-col flex-1 min-h-0">
             <CardHeader className="flex flex-row items-center p-2 border-b">
                 <div className="flex items-center gap-1 flex-1">
                     <Button variant="ghost" size="xs" className="h-6 px-1 text-xs" onClick={() => setPanelWidth(20)}>20%</Button>
@@ -349,7 +349,7 @@ export default function SessionPage() {
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="p-0 flex-grow overflow-auto">
+            <CardContent className="p-0 flex flex-col flex-1 min-h-0">
                 <OutputDisplay output={output} isCompiling={isCompiling} />
             </CardContent>
         </Card>
@@ -381,7 +381,7 @@ export default function SessionPage() {
                     onStartDebuggerFromLine={handleStartFromLine}
                     />
                 </div>
-                {SidePanelOutput}
+                <div className="h-full min-h-0 flex flex-col">{SidePanelOutput}</div>
             </div>
         ) : (
             <div className="h-full">
@@ -431,5 +431,3 @@ declare module '@/components/codeweave/compiler' {
         onStartDebuggerFromLine?: (lineNumber: number) => void;
     }
 }
-
-    
