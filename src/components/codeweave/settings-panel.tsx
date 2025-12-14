@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import React, { FC, useRef } from 'react';
-import type { FileSystem } from '@/hooks/use-compiler-fs';
+import type { FileSystem } from '@/hooks/use-compiler-fs-provider';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { useState, useEffect } from 'react';
@@ -28,6 +28,7 @@ import { Switch } from '../ui/switch';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { buttonVariants } from '../ui/button';
 import { cn } from '@/lib/utils';
+import { useCompilerFs } from '@/hooks/use-compiler-fs';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -51,7 +52,7 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
   const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   const { settings, setSettings, theme, setTheme } = useSettings();
-  const isMobile = useIsMobile();
+  const { addFile } = useCompilerFs();
   const { 
     isApiLoaded,
     isSignedIn,
@@ -107,15 +108,11 @@ export const SettingsPanel: FC<SettingsPanelProps> = ({
     const reader = new FileReader();
     reader.onload = (e) => {
         const content = e.target?.result as string;
-        // Use the addFile function which is now passed down or accessible
-        // For now, we assume a function like this exists.
-        // This part needs to be connected to the new `addFile` in useCompilerFs
-        onLoadFile('Uploaded Files', file.name); // This might need adjustment
+        addFile('Uploaded Files', file.name, content);
         toast({
             title: 'File Uploaded',
             description: `${file.name} has been added to your files.`,
         });
-        // Reset file input so the same file can be uploaded again
         if(fileInputRef.current) {
             fileInputRef.current.value = '';
         }
