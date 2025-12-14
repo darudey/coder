@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React from 'react';
@@ -24,6 +23,7 @@ export interface OverlayEditorProps {
   lineExecutionCounts?: Record<number, number>;
   onUndo: () => void;
   onRedo: () => void;
+  onRun: () => void;
   onResetDebugger?: () => void;
   breakpoints?: Set<number>;
   onToggleBreakpoint?: (lineNumber: number) => void;
@@ -110,6 +110,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   lineExecutionCounts = {},
   onUndo,
   onRedo,
+  onRun,
   onResetDebugger,
   breakpoints = new Set(),
   onToggleBreakpoint = () => {},
@@ -474,6 +475,12 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             });
             return;
         }
+        
+        if (e.shiftKey && e.key === 'Enter') {
+            e.preventDefault();
+            onRun();
+            return;
+        }
 
         if ((e.shiftKey || e.altKey) && e.key === ' ') {
             e.preventDefault();
@@ -608,7 +615,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             return;
         }
 
-    }, [code, onCodeChange, onUndo, onRedo, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger]);
+    }, [code, onCodeChange, onUndo, onRedo, onRun, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger]);
 
   React.useEffect(() => {
     const ta = textareaRef.current;
@@ -758,7 +765,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           }}
         >
           {hasContent && (
-            <div className="absolute inset-0 flex items-center justify-start">
+            <div className="absolute inset-0 flex items-center">
               <div
                 className="w-6 h-full flex items-center justify-center cursor-pointer"
                 onClick={() => onStartDebuggerFromLine(i)}
