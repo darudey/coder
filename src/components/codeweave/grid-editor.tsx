@@ -141,6 +141,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
     wordBreak: 'normal',
+    // @ts-ignore
     tabSize: 4,
   }), [fontSize]);
 
@@ -338,6 +339,31 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const handleNativeKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
+
+        if(e.altKey && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            const currentPos = textarea.selectionStart;
+            const nextLinePos = code.indexOf('\n', currentPos);
+            const newPos = nextLinePos === -1 ? code.length : nextLinePos + 1;
+            requestAnimationFrame(() => {
+                textarea.selectionStart = newPos;
+                textarea.selectionEnd = newPos;
+            });
+            return;
+        }
+
+        if(e.altKey && e.key.toLowerCase() === 'w') {
+            e.preventDefault();
+            const currentPos = textarea.selectionStart;
+            const prevLineBreak = code.lastIndexOf('\n', currentPos - 2);
+            const startOfLine = prevLineBreak === -1 ? 0 : prevLineBreak + 1;
+            
+            requestAnimationFrame(() => {
+                textarea.selectionStart = startOfLine;
+                textarea.selectionEnd = startOfLine;
+            });
+            return;
+        }
 
         if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
             e.preventDefault();
@@ -741,11 +767,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                     "w-3 h-3 transition-colors",
                     isActiveLine 
                       ? "text-green-500 fill-green-500" 
-                      : "text-green-500/0 fill-transparent group-hover/gutter-line:text-green-500 active:fill-green-500/50"
+                      : "text-transparent fill-transparent group-hover/gutter-line:text-green-500 active:fill-green-500/50"
                 )} />
               </div>
               <div 
-                className="w-6 h-full flex items-center justify-center cursor-pointer -ml-1"
+                className="w-6 h-full flex items-center justify-center cursor-pointer ml-[-0.25rem] mr-1"
                 onClick={() => onToggleBreakpoint(i)}
               >
                 <div className={cn(
