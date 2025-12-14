@@ -302,13 +302,13 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev + 1);
+      setHistoryIndex(prev => prev - 1);
     }
   }, [historyIndex, history.length, setHistoryIndex]);
 
   const handleRun = useCallback(async (): Promise<RunResult> => {
     // Determine if we should open a modal/floating panel
-    const showFloating = isMobile ? globalSettings.outputMode === 'floating' : globalSettings.outputMode === 'floating';
+    const showFloating = globalSettings.outputMode === 'floating';
     
     if (variant !== 'minimal' && showFloating) {
         setIsCompiling(true);
@@ -363,7 +363,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     }
     
     return result;
-  }, [code, settings.errorChecking, variant, isMobile, globalSettings]);
+  }, [code, settings.errorChecking, variant, globalSettings]);
 
   useImperativeHandle(ref, () => ({
     run: handleRun,

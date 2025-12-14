@@ -16,7 +16,23 @@ import 'prismjs/themes/prism-tomorrow.css'; // Using a standard theme
 // Types
 import type { RunResult } from './compiler';
 
+
+/**
+ * OUTPUT DISPLAY
+ * - Handles rendering only
+ * - NO state mutation except local UI state
+ * - Expects RunResult to be normalized
+ * - Do NOT add runtime logic here
+ */
+
+
 /* ------------------- Helpers ------------------- */
+
+/**
+ * BEST-EFFORT error line detection.
+ * Not guaranteed across engines.
+ * Do NOT add more regex here.
+ */
 const getErrorLine = (output: RunResult | null): string | null => {
     if (!output || output.type !== 'error' || !output.output[0]?.[0]) return null;
     const errorMessage = output.output[0][0];
@@ -155,17 +171,24 @@ const OutputBlock: React.FC<{
   if (!outputLines || outputLines.length === 0) {
       return null;
   }
+  const MAX_LINES = 500;
+  const safeLines = outputLines.length > MAX_LINES ? outputLines.slice(0, MAX_LINES) : outputLines;
 
   return (
     <div className="h-full flex flex-col">
         <ScrollArea className="flex-grow">
             <div className="px-4 py-3 space-y-2">
-                {outputLines.map((args, i) => (
+                {safeLines.map((args, i) => (
                     <div className="flex min-w-0" key={i}>
                         <div className="select-none pr-4 text-xs text-muted-foreground tabular-nums">{i + 1}</div>
                         <OutputLine args={args} type={type} />
                     </div>
                 ))}
+                {outputLines.length > MAX_LINES && (
+                    <div className="text-xs text-muted-foreground px-4 py-2 border-t">
+                        Output truncated ({MAX_LINES} lines shown)
+                    </div>
+                )}
             </div>
         </ScrollArea>
     </div>
@@ -191,6 +214,24 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<number | null>(null);
 
+  const normalizedOutput = useMemo(() => {
+    if (!output) return null;
+    
+    return {
+      ...output,
+      flatText: output.output
+        .map(line =>
+          line.map(arg =>
+            typeof arg === 'object' && arg !== null
+              ? JSON.stringify(arg)
+              : String(arg)
+          ).join(' ')
+        )
+        .join('\n'),
+      lines: output.output
+    };
+  }, [output]);
+
   useEffect(() => {
     // Dynamically import prism components to ensure Prism is defined.
     try {
@@ -198,7 +239,9 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
             import('prismjs/components/prism-json');
         }
     } catch(e) {
-        console.error(e);
+        if (process.env.NODE_ENV === 'development') {
+            console.error(e);
+        }
     }
   }, []);
 
@@ -206,17 +249,10 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
     if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
   }, []);
 
-  const runTime = output?.durationMs;
-
-  const issues = useMemo(() => detectBeginnerIssues(output), [output]);
+  const runTime = normalizedOutput?.durationMs;
+  const issues = useMemo(() => detectBeginnerIssues(output), [output?.type, output?.output?.[0]?.[0]]);
   
-  const userOutputText = useMemo(() => {
-    if (!output) return '';
-    return output.output.map(line => line.map(arg => {
-        if (typeof arg === 'object' && arg !== null) return JSON.stringify(arg);
-        return String(arg);
-    }).join(' ')).join('\n');
-  }, [output]);
+  const userOutputText = normalizedOutput?.flatText ?? '';
 
   const onCopy = useCallback(async () => {
     try {
@@ -225,7 +261,9 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
       if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
       copyTimeout.current = window.setTimeout(() => setCopied(false), 2000);
     } catch (e) {
-      console.error('Failed to copy to clipboard');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to copy to clipboard');
+      }
     }
   }, [userOutputText]);
 
@@ -233,17 +271,18 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
   if (isCompiling) return <LoadingState isAiChecking={isAiChecking} />;
 
   // Empty
-  if (!output)
+  if (!normalizedOutput)
     return (
       <p className="text-muted-foreground p-4">Click "Run" to execute the code and see the output here.</p>
     );
 
-  const outputType = (output as any).type ?? 'result';
-
-  const errorLine = getErrorLine(output);
-
-  // pass/fail detection for expected output
+  const outputType = normalizedOutput.type;
+  const errorLine = getErrorLine(normalizedOutput);
   const passed = typeof expectedOutput === 'string' ? expectedOutput.trim() === userOutputText.trim() : null;
+
+  const safeAiHtml = normalizedOutput.aiAnalysis?.startsWith('<')
+    ? normalizedOutput.aiAnalysis
+    : normalizedOutput.aiAnalysis?.replace(/\n/g, '<br />');
 
   /* ------------- Render with enhanced UI ------------- */
   return (
@@ -271,7 +310,7 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                     {errorLine && (
                       <div className="m-4 text-sm font-semibold text-destructive/80">Error on line {errorLine}</div>
                     )}
-                    <OutputBlock outputLines={output.output} type={outputType} />
+                    <OutputBlock outputLines={normalizedOutput.lines} type={outputType} />
                 </div>
               </TabsContent>
 
@@ -321,12 +360,12 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                 {errorLine && (
                   <div className="m-4 text-sm font-semibold text-destructive/80">Error on line {errorLine}</div>
                 )}
-                <OutputBlock outputLines={output.output} type={outputType} />
+                <OutputBlock outputLines={normalizedOutput.lines} type={outputType} />
               </div>
           )}
 
           {/* issues area */}
-          {(issues.length > 0 || output.aiAnalysis) && (
+          {(issues.length > 0 || normalizedOutput.aiAnalysis) && (
             <div className="border-t px-3 py-2 text-xs">
               <div className="font-semibold flex items-center gap-2">
                 <Activity className="w-4 h-4 text-primary" />
@@ -340,8 +379,8 @@ const MemoizedOutputDisplay: React.FC<OutputDisplayProps> = ({
                         ))}
                     </ul>
                   )}
-                  {output.aiAnalysis && (
-                      <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: output.aiAnalysis.replace(/\n/g, '<br />') }} />
+                  {safeAiHtml && (
+                      <div className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: safeAiHtml }} />
                   )}
               </div>
             </div>
