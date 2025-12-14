@@ -1,7 +1,7 @@
 
 'use client';
 
-import { BookOpen, Zap, SkipForward, SkipBack, Keyboard, MoveHorizontal, MousePointerClick, ArrowUp, ArrowDown, GitCommit } from "lucide-react";
+import { BookOpen, Zap, SkipForward, SkipBack, Keyboard, MoveHorizontal, MousePointerClick, ArrowUp, ArrowDown, GitCommit, ArrowLeft, ArrowRight } from "lucide-react";
 import { FeatureCard, Key } from './about-helpers';
 import React from 'react';
 
@@ -29,8 +29,8 @@ export function AboutContent() {
             <FeatureCard title="Quick-Jump" icon={<SkipForward className="text-primary"/>} badge="Desktop">
                 <p>Quickly navigate through your code with these spacebar-powered shortcuts.</p>
                  <ul className="list-disc pl-5 space-y-2">
-                    <li><strong className="flex items-center gap-2"><SkipForward size={16} /> Jump Forward:</strong> Press <Key>Shift</Key> or <Key>Alt</Key> + <Key>Space</Key> to jump the cursor to the beginning of the next word or symbol.</li>
-                    <li><strong className="flex items-center gap-2"><SkipBack size={16} /> Jump Backward:</strong> Press <Key>Ctrl</Key> or <Key>Cmd</Key> + <Key>Space</Key> to jump to the beginning of the previous word or symbol.</li>
+                    <li><strong className="flex items-center gap-2"><ArrowRight size={16} /> Jump Forward:</strong> Press <Key>Shift</Key> or <Key>Alt</Key> + <Key>Space</Key> to jump the cursor to the beginning of the next word or symbol.</li>
+                    <li><strong className="flex items-center gap-2"><ArrowLeft size={16} /> Jump Backward:</strong> Press <Key>Ctrl</Key> or <Key>Cmd</Key> + <Key>Space</Key> to jump to the beginning of the previous word or symbol.</li>
                     <li><strong className="flex items-center gap-2">Cycle Suggestions:</strong> When the suggestion box is open, press <Key>Shift</Key> + <Key>Space</Key> to cycle through the available autocomplete suggestions.</li>
                     <li><strong className="flex items-center gap-2">Jump Out of Pairs:</strong> When your cursor is just inside a closing symbol like `)` or `'`, press <Key>Space</Key> three times quickly to jump the cursor just outside of it.</li>
                 </ul>
@@ -49,6 +49,8 @@ export function AboutContent() {
                  <ul className="space-y-2">
                     <li className="flex items-center justify-between"><span>New File</span> <div><Key>Alt</Key> + <Key>N</Key></div></li>
                     <li className="flex items-center justify-between"><span>Run Code</span> <div><Key>Shift</Key> + <Key>Enter</Key></div></li>
+                    <li className="flex items-center justify-between"><span>Jump to Next Line</span> <div><Key>Alt</Key> + <Key>S</Key></div></li>
+                    <li className="flex items-center justify-between"><span>Jump to Previous Line</span> <div><Key>Alt</Key> + <Key>W</Key></div></li>
                     <li className="flex items-center justify-between"><span>Toggle Line Comment</span> <Key>Ctrl/Cmd + /</Key></li>
                     <li className="flex items-center justify-between"><span>Toggle Block Comment</span> <div><Key>Ctrl/Cmd</Key> + <Key>Shift</Key> + <Key>/</Key></div></li>
                     <li className="flex items-center justify-between"><span>Undo / Redo</span> <div><Key>Ctrl/Cmd</Key> + <Key>Z</Key> / <Key>Y</Key></div></li>
