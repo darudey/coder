@@ -49,8 +49,8 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
         const remoteCode = snap.val();
         if (typeof remoteCode !== 'string') return;
 
-        // Prevent echo loop and unnecessary updates
-        if (remoteCode !== code) {
+        // Prevent echo loop by checking if the remote code is what we just wrote
+        if (remoteCode !== lastWrittenRef.current) {
           setIsRemoteUpdate(true);
           setCode(remoteCode);
         }
@@ -58,15 +58,17 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
     })();
 
     return () => unsub?.();
-  }, [connectId, code]);
+  }, [connectId]);
 
   // 🔹 Push local changes (debounced)
   useEffect(() => {
-    if (!connectId || isRemoteUpdate) {
-      // If it's a remote update, just reset the flag and do nothing.
-      if(isRemoteUpdate) setIsRemoteUpdate(false);
+    // If it's a remote update, just reset the flag and do nothing.
+    if (isRemoteUpdate) {
+      setIsRemoteUpdate(false);
       return;
     }
+    
+    if (!connectId) return;
     
     // Only write if the debounced code is different from the last written code
     if (debouncedCode === lastWrittenRef.current) {
