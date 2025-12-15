@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -31,13 +30,13 @@ const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />)
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
 
 
-export default function SessionPage({ connectId }: { connectId?: string }) {
+export default function SessionPage({ connectId, initialCode }: { connectId?: string, initialCode?: string | null }) {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
 
-  const fs = useCompilerFs({ initialCode: factorialCode });
+  const fs = useCompilerFs({ initialCode: initialCode ?? factorialCode });
   const { connectedUsers } = usePresence(connectId);
   
   const handleCodeChange = useCallback((newCode: string) => {
@@ -435,5 +434,8 @@ declare module '@/components/codeweave/compiler' {
         breakpoints?: Set<number>;
         onToggleBreakpoint?: (lineNumber: number) => void;
         onStartDebuggerFromLine?: (lineNumber: number) => void;
+        initialCode?: string | null;
     }
 }
+
+    

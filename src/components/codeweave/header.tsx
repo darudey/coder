@@ -28,9 +28,11 @@ import { Slider } from '../ui/slider';
 import { Label } from '../ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { PresenceDisplay, type ConnectedUser } from './presence-display';
-import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { getClientDb } from '@/lib/firebase';
+import { addDoc, collection } from 'firebase/firestore';
+import { useCompilerFs } from '@/hooks/use-compiler-fs';
 
 interface HeaderProps {
   onRun?: () => void;
@@ -178,16 +180,38 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   const { settings, setSettings, toggleTheme } = useSettings();
   const { toast } = useToast();
   const router = useRouter();
+  const { code } = useCompilerFs();
 
-  const handleConnect = () => {
-    const newConnectId = nanoid(8);
-    const url = `${window.location.origin}/connect/${newConnectId}`;
-    navigator.clipboard.writeText(url);
-    toast({
-      title: 'Link Copied!',
-      description: 'A shareable link to this session has been copied to your clipboard.',
-    });
-    router.push(`/connect/${newConnectId}`);
+  const handleConnect = async () => {
+    const codeToShare = code;
+    if (!codeToShare) {
+        toast({ title: 'Error', description: 'There is no code to share.', variant: 'destructive' });
+        return;
+    }
+
+    try {
+        const db = await getClientDb();
+        if (!db) {
+            toast({ title: 'Error', description: 'Failed to connect to the database.', variant: 'destructive' });
+            return;
+        }
+        const docRef = await addDoc(collection(db, "shares"), {
+            code: codeToShare,
+        });
+
+        const newConnectId = docRef.id;
+        const url = `${window.location.origin}/connect/${newConnectId}`;
+        navigator.clipboard.writeText(url);
+        toast({
+          title: 'Link Copied!',
+          description: 'A shareable link to this session has been copied to your clipboard.',
+        });
+        router.push(`/connect/${newConnectId}`);
+
+    } catch (e: any) {
+        console.error("Connection failed: ", e);
+        toast({ title: 'Error', description: 'Failed to create connection link. Please try again.', variant: 'destructive' });
+    }
   };
 
   const MainNav = ({className}: {className?: string}) => (
@@ -339,7 +363,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                     <span className="sr-only">Debug</span>
                 </Button>
               )}
-               <Button variant="outline" size="icon" onClick={handleConnect} disabled={!!connectId} className="h-8 w-8">
+               <Button variant="outline" size="icon" onClick={handleConnect} disabled={!!connectId || isCompiling} className="h-8 w-8">
                 <LinkIcon className="w-4 h-4" />
                 <span className="sr-only">Connect</span>
               </Button>
@@ -378,3 +402,5 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
+
+    
