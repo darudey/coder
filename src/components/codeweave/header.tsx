@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette, Grid, Zap, Link as LinkIcon } from 'lucide-react';
 import React from 'react';
-import type { ActiveFile } from './compiler';
+import type { ActiveFile } from '@/hooks/use-compiler-fs';
 import { DotLoader } from './dot-loader';
 import { LogoIcon } from './logo-icon';
 import { cn } from '@/lib/utils';

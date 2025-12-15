@@ -1,5 +1,7 @@
 
-import Home from "@/app/page";
+'use client';
+
+import SessionPage from "@/app/session/page";
 
 interface ConnectPageProps {
     params: {
@@ -8,7 +10,7 @@ interface ConnectPageProps {
 }
 
 export default function ConnectPage({ params }: ConnectPageProps) {
-    // This page reuses the main Home component but passes the connectId
+    // This page reuses the SessionPage component but passes the connectId
     // which will activate the real-time presence features.
-    return <Home connectId={params.id} />;
+    return <SessionPage connectId={params.id} />;
 }

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useSettings } from '@/hooks/use-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePresence } from '@/hooks/use-presence';
 
 const factorialCode = `function factorial(n) {
   if (n === 0) {
@@ -30,13 +31,14 @@ const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />)
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
 
 
-export default function SessionPage() {
+export default function SessionPage({ connectId }: { connectId?: string }) {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
 
   const fs = useCompilerFs({ initialCode: factorialCode });
+  const { connectedUsers } = usePresence(connectId);
   
   const handleCodeChange = useCallback((newCode: string) => {
     fs.setCode(newCode);
@@ -379,6 +381,8 @@ export default function SessionPage() {
                     breakpoints={breakpoints}
                     onToggleBreakpoint={handleToggleBreakpoint}
                     onStartDebuggerFromLine={handleStartFromLine}
+                    connectedUsers={connectedUsers}
+                    connectId={connectId}
                     />
                 </div>
                 <div className="h-full min-h-0 flex flex-col">{SidePanelOutput}</div>
@@ -400,6 +404,8 @@ export default function SessionPage() {
                     breakpoints={breakpoints}
                     onToggleBreakpoint={handleToggleBreakpoint}
                     onStartDebuggerFromLine={handleStartFromLine}
+                    connectedUsers={connectedUsers}
+                    connectId={connectId}
                 />
             </div>
         )}
