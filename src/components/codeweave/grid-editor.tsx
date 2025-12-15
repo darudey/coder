@@ -31,7 +31,7 @@ export interface OverlayEditorProps {
   onToggleBreakpoint?: (lineNumber: number) => void;
   onStartDebuggerFromLine?: (lineNumber: number) => void;
   remoteCursors?: RemoteCursor[];
-  onCursorChange?: (line: number, ch: number) => void;
+  onCursorChange?: (top: number, left: number, height: number) => void;
 }
 
 interface FoldableRegion {
@@ -142,9 +142,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const [collapsedLines, setCollapsedLines] = React.useState<Set<number>>(new Set());
   const [matchedBrackets, setMatchedBrackets] = React.useState<[number, number] | null>(null);
   const [lineHeights, setLineHeights] = React.useState<number[]>([]);
-  const [lineTops, setLineTops] = React.useState<number[]>([]);
-  const [charWidths, setCharWidths] = React.useState<number[][]>([]);
-
+  
   const [suggestions, setSuggestions] = React.useState<Suggestion[]>([]);
   const [suggestionPos, setSuggestionPos] = React.useState<Partial<React.CSSProperties>>({});
   const [activeSuggestion, setActiveSuggestion] = React.useState(0);
@@ -267,15 +265,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     measure.style.width = `${ta.clientWidth - paddingLeft - paddingRight}px`;
 
     const heights: number[] = [];
-    const tops: number[] = [];
-    const charWidthsByLine: number[][] = [];
     let currentTop = 0;
 
     for (let i = 0; i < lines.length; i++) {
         if (!isLineVisible(i)) {
             heights.push(0);
-            tops.push(currentTop);
-            charWidthsByLine.push([]);
             continue;
         }
 
@@ -284,42 +278,37 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
         const height = measure.offsetHeight || parseFloat(getComputedStyle(measure).lineHeight || `${fontSize * 1.5}px`);
         heights.push(height);
-        tops.push(currentTop);
         currentTop += height;
-        
-        const charWidthsForLine: number[] = [0];
-        for (let j = 0; j < lines[i].length; j++) {
-            measure.textContent = lines[i].substring(0, j + 1);
-            charWidthsForLine.push(measure.offsetWidth);
-        }
-        charWidthsByLine.push(charWidthsForLine);
     }
 
     setLineHeights(heights);
-    setLineTops(tops);
-    setCharWidths(charWidthsByLine);
   }, [lines, fontSize, isLineVisible]);
 
+  const handleCursorMove = React.useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea || !onCursorChange) return;
+    
+    const pos = textarea.selectionStart;
+    const coords = getCaretCoordinates(textarea, pos);
+    onCursorChange(coords.top, coords.left, coords.height);
+
+  }, [onCursorChange]);
+  
   const handleSelectionChange = React.useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     const index = ta.selectionStart ?? 0;
     
     let line = 0;
-    let charPos = 0;
     for (let i = 0; i < index; i++) {
         if (code[i] === '\n') {
             line++;
-            charPos = 0;
-        } else {
-            charPos++;
         }
     }
     setCursorLine(line);
-    onCursorChange?.(line, charPos);
     setMatchedBrackets(findMatchingBracket(code, index));
-
-  }, [code, onCursorChange]);
+    handleCursorMove();
+  }, [code, handleCursorMove]);
 
   const handleEnterPress = React.useCallback(() => {
     const textarea = textareaRef.current;
@@ -894,29 +883,37 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         >
             {highlightedCode}
             {remoteCursors?.map(cursor => {
-                const gutterWidth = gutterRef.current?.offsetWidth ?? 0;
-                const top = lineTops[cursor.line] ?? 0;
-                const left = (charWidths[cursor.line] ? charWidths[cursor.line][cursor.ch] : 0) ?? 0;
                 const color = getUserColor(cursor.userId);
                 
-                if (top === undefined || left === undefined || !isLineVisible(cursor.line)) return null;
+                if (typeof cursor.top !== 'number' || typeof cursor.left !== 'number') return null;
 
                 return (
                     <div
-                        key={cursor.userId}
-                        className="remote-cursor"
-                        style={{ top, left, position: 'absolute', pointerEvents: 'none', zIndex: 50, }}
+                      key={cursor.userId}
+                      className="remote-cursor"
+                      style={{
+                        position: 'absolute',
+                        top: cursor.top,
+                        left: cursor.left,
+                        pointerEvents: 'none',
+                        zIndex: 100,
+                      }}
                     >
-                        <div
-                            className="remote-cursor-caret"
-                            style={{ backgroundColor: color }}
-                        />
-                        <div
-                            className="remote-cursor-label"
-                            style={{ backgroundColor: color }}
-                        >
-                            {cursor.name}
-                        </div>
+                      <div
+                        className="remote-cursor-label"
+                        style={{
+                          backgroundColor: color,
+                        }}
+                      >
+                        {cursor.name}
+                      </div>
+                      <div
+                        className="remote-cursor-caret"
+                        style={{
+                          backgroundColor: color,
+                          height: cursor.height,
+                        }}
+                      />
                     </div>
                 );
             })}
@@ -929,6 +926,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           onChange={(e) => onCodeChange(e.target.value)}
           onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
+          onClick={handleCursorMove}
+          onKeyUp={handleCursorMove}
           className={cn(
             'absolute inset-0 w-full h-full resize-none border-0 bg-transparent',
             'focus-visible:ring-0 focus-visible:ring-offset-0 text-transparent caret-foreground',

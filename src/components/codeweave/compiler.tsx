@@ -32,6 +32,7 @@ import { useRealtimeCode } from '@/hooks/use-realtime-code';
 import { addDoc, collection } from 'firebase/firestore';
 import { useRealtimeCursor, RemoteCursor } from '@/hooks/use-realtime-cursor';
 import { nanoid } from 'nanoid';
+import { useAuth } from '@/hooks/use-auth';
 
 
 export interface RunResult {
@@ -122,9 +123,11 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
+  const { user } = useAuth();
   
   const isRealtime = !!connectId;
-  const myId = useRef(nanoid(8)).current;
+  const myId = useRef(user?.uid || nanoid(8)).current;
+  const myName = user?.displayName ?? undefined;
 
   // --- State Management ---
   const localFs = useCompilerFs();
@@ -133,7 +136,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const { code, setCode, fileSystem, openFiles, activeFileIndex, activeFile, isFsReady, loadFile, addFile, createNewFile, closeTab, deleteFile, renameFile, setActiveFileIndex, history, historyIndex, setHistoryIndex } = isRealtime ? { ...localFs, code: realtimeCode, setCode: setRealtimeCode } : localFs;
   
   const { connectedUsers } = usePresence(connectId);
-  const { cursors, updateCursor } = useRealtimeCursor(connectId, myId);
+  const { cursors, updateCursor } = useRealtimeCursor(connectId, myId, myName);
 
   const [isCompiling, setIsCompiling] = useState(false);
   const [isAiChecking, setIsAiChecking] = useState(false);

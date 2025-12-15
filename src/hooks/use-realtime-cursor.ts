@@ -9,8 +9,9 @@ import throttle from 'lodash.throttle';
 export interface RemoteCursor {
   userId: string;
   name: string;
-  line: number;
-  ch: number;
+  top: number;
+  left: number;
+  height: number;
 }
 
 export function useRealtimeCursor(
@@ -22,7 +23,7 @@ export function useRealtimeCursor(
 
   /* WRITE (throttled) */
   const updateCursor = useRef(
-    throttle(async (line: number, ch: number) => {
+    throttle(async (top: number, left: number, height: number) => {
       if (!connectId || !myId) return;
       const db = await getClientRtdb();
       if (!db) return;
@@ -33,9 +34,10 @@ export function useRealtimeCursor(
       onDisconnect(cursorRef).remove();
 
       await update(cursorRef, {
-        line,
-        ch,
-        name: myName ?? 'Guest', // Ensure name is never undefined
+        top,
+        left,
+        height,
+        name: myName ?? 'Guest',
         updatedAt: serverTimestamp(),
       });
     }, 120)
@@ -62,8 +64,9 @@ export function useRealtimeCursor(
           .map(([userId, v]: any) => ({
             userId,
             name: v.name || 'Guest',
-            line: v.line,
-            ch: v.ch,
+            top: v.top,
+            left: v.left,
+            height: v.height,
           }));
         setCursors(list);
       });
