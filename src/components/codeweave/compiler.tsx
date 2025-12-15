@@ -3,8 +3,8 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { addDoc, collection } from 'firebase/firestore';
-import { getClientDb } from '@/lib/firebase';
+import { getClientDb, getClientRtdb } from '@/lib/firebase';
+import { ref as rtdbRef, onValue, set, serverTimestamp } from 'firebase/database';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
@@ -26,7 +26,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { useSettings } from '@/hooks/use-settings';
 import * as acorn from 'acorn';
-import { ConnectedUser } from '@/hooks/use-presence';
+import { ConnectedUser, usePresence } from '@/hooks/use-presence';
+import { useDebounce } from '@/hooks/use-debounce';
+import { useRealtimeCode } from '@/hooks/use-realtime-code';
+import { addDoc, collection } from 'firebase/firestore';
+
 
 export interface RunResult {
     output: any[][];
@@ -73,7 +77,6 @@ interface CompilerProps {
   renameFile?: (index: number, newName: string) => void;
   setActiveFileIndex?: (index: number) => void;
   onRun?: () => Promise<void>;
-  connectedUsers?: ConnectedUser[];
   connectId?: string;
 }
 
@@ -122,7 +125,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     initialCode, 
     variant = 'default', 
     hideHeader = false, 
-    onCodeChange, 
+    onCodeChange: onCodeChangeProp, 
     EditorComponent = CodeEditor, 
     onToggleDebugger, 
     activeLine, 
@@ -132,35 +135,42 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     breakpoints,
     onToggleBreakpoint,
     onStartDebuggerFromLine,
-    connectedUsers,
     connectId,
-    ...props
+    ...fsProps
 }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
   
-  const fs = useCompilerFs({ onCodeChange, initialCode });
+  const fs = useCompilerFs({ onCodeChange: onCodeChangeProp, initialCode });
+  const { code: rtdbCode, setCode: setRtdbCode } = useRealtimeCode(connectId, initialCode);
 
-  const code = props.code ?? fs.code;
-  const setCode = props.setCode ?? fs.setCode;
-  const history = props.history ?? fs.history;
-  const historyIndex = props.historyIndex ?? fs.historyIndex;
-  const setHistoryIndex = props.setHistoryIndex ?? fs.setHistoryIndex;
-  const fileSystem = props.fileSystem ?? fs.fileSystem;
-  const openFiles = props.openFiles ?? fs.openFiles;
-  const activeFileIndex = props.activeFileIndex ?? fs.activeFileIndex;
-  const activeFile = props.activeFile ?? fs.activeFile;
-  const isFsReady = props.isFsReady ?? fs.isFsReady;
-  const loadFile = props.loadFile ?? fs.loadFile;
-  const addFile = props.addFile ?? fs.addFile;
-  const createNewFile = props.createNewFile ?? fs.createNewFile;
-  const closeTab = props.closeTab ?? fs.closeTab;
-  const deleteFile = props.deleteFile ?? fs.deleteFile;
-  const renameFile = props.renameFile ?? fs.renameFile;
-  const setActiveFileIndex = props.setActiveFileIndex ?? fs.setActiveFileIndex;
-  const hasActiveFile = props.hasActiveFile ?? !!activeFile;
+  const isRealtime = !!connectId;
+
+  // Determine the source of truth for code
+  const code = isRealtime ? rtdbCode : fs.code;
+  const setCode = isRealtime ? setRtdbCode : fs.setCode;
+
+  const {
+    fileSystem,
+    openFiles,
+    activeFileIndex,
+    activeFile,
+    isFsReady,
+    loadFile,
+    addFile,
+    createNewFile,
+    closeTab,
+    deleteFile,
+    renameFile,
+    setActiveFileIndex,
+    history,
+    historyIndex,
+    setHistoryIndex
+  } = fs;
+  
+  const { connectedUsers } = usePresence(connectId);
 
   const [isCompiling, setIsCompiling] = useState(false);
   const [isAiChecking, setIsAiChecking] = useState(false);
@@ -475,11 +485,13 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     setSettings({ ...settings, errorChecking: value });
   };
 
-  if (!isFsReady && variant === 'default') {
+  const hasActiveFile = !!activeFile;
+
+  if (!isFsReady && variant === 'default' && !isRealtime) {
     return null; // Or a loading spinner for the main compiler
   }
 
-  const editorVisible = variant === 'default' ? hasActiveFile : true;
+  const editorVisible = isRealtime || (variant === 'default' ? hasActiveFile : true);
 
   const effectiveOnRun = onRunProp || handleRun;
 
@@ -570,7 +582,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
             connectId={connectId}
           />
         )}
-        {variant === 'default' && (
+        {variant === 'default' && !isRealtime && (
           <TabBar 
             openFiles={openFiles}
             activeFileIndex={activeFileIndex}
@@ -585,7 +597,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         {editorVisible ? (
             <EditorComponent
                 code={code || ''}
-                onCodeChange={onCodeChange ? onCodeChange : handleCodeChange}
+                onCodeChange={handleCodeChange}
                 onUndo={undo}
                 onRedo={redo}
                 onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
