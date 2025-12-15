@@ -56,5 +56,5 @@ export default function SharePage() {
         notFound();
     }
     
-    return <Home initialCode={initialCode} />;
+    return <Home initialCode={initialCode} connectId={id} />;
 }
