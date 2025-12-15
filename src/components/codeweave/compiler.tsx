@@ -143,14 +143,15 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const isMobile = useIsMobile();
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
   
-  const fs = useCompilerFs({ onCodeChange: onCodeChangeProp, initialCode });
-  const { code: rtdbCode, setCode: setRtdbCode } = useRealtimeCode(connectId, initialCode);
-
   const isRealtime = !!connectId;
 
-  // Determine the source of truth for code
-  const code = isRealtime ? rtdbCode : fs.code;
-  const setCode = isRealtime ? setRtdbCode : fs.setCode;
+  // State management based on mode (realtime vs. local)
+  const { code: rtdbCode, setCode: setRtdbCode } = useRealtimeCode(connectId, initialCode);
+  
+  const localFs = !isRealtime ? useCompilerFs({ onCodeChange: onCodeChangeProp, initialCode }) : null;
+
+  const code = isRealtime ? rtdbCode : localFs?.code ?? '';
+  const setCode = isRealtime ? setRtdbCode : localFs?.setCode ?? (() => {});
 
   const {
     fileSystem,
@@ -168,7 +169,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     history,
     historyIndex,
     setHistoryIndex
-  } = fs;
+  } = localFs || {};
   
   const { connectedUsers } = usePresence(connectId);
 
@@ -308,19 +309,22 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
   const handleCodeChange = useCallback((newCode: string) => {
     setCode(newCode);
-  }, [setCode]);
+    if(onCodeChangeProp) onCodeChangeProp(newCode);
+  }, [setCode, onCodeChangeProp]);
 
   const undo = useCallback(() => {
-    if (historyIndex > 0) {
+    if (isRealtime || !localFs) return;
+    if (historyIndex && historyIndex > 0 && setHistoryIndex) {
       setHistoryIndex(prev => prev - 1);
     }
-  }, [historyIndex, setHistoryIndex]);
+  }, [isRealtime, localFs, historyIndex, setHistoryIndex]);
 
   const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev - 1);
+    if (isRealtime || !localFs) return;
+    if (history && historyIndex && setHistoryIndex && historyIndex < history.length - 1) {
+      setHistoryIndex(prev => prev + 1);
     }
-  }, [historyIndex, history.length, setHistoryIndex]);
+  }, [isRealtime, localFs, history, historyIndex, setHistoryIndex]);
 
   const handleRun = useCallback(async (): Promise<RunResult> => {
     // Determine if we should open a modal/floating panel
@@ -388,7 +392,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
     useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            if (e.altKey && e.key.toLowerCase() === 'n') {
+            if (e.altKey && e.key.toLowerCase() === 'n' && createNewFile) {
                 e.preventDefault();
                 createNewFile(true);
             }
@@ -420,6 +424,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   }
 
   const handleOpenFileFromDrive = useCallback(() => {
+    if(!addFile) return;
     openFileFromDrive((fileName, content) => {
       addFile('Google Drive', fileName, content);
       toast({
@@ -485,9 +490,9 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     setSettings({ ...settings, errorChecking: value });
   };
 
-  const hasActiveFile = !!activeFile;
+  const hasActiveFile = isRealtime || (!!activeFile);
 
-  if (!isFsReady && variant === 'default' && !isRealtime) {
+  if (!isRealtime && !isFsReady && variant === 'default') {
     return null; // Or a loading spinner for the main compiler
   }
 
@@ -571,8 +576,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
             onRun={effectiveOnRun} 
             onSettings={() => setIsSettingsOpen(true)} 
             isCompiling={isCompiling} 
-            onSaveToBrowser={handleSaveRequest} 
-            onSaveToDrive={handleSaveToDrive}
+            onSaveToBrowser={!isRealtime ? handleSaveRequest : undefined} 
+            onSaveToDrive={!isRealtime ? handleSaveToDrive : undefined}
             onShare={handleShare}
             activeFile={activeFile} 
             hasActiveFile={hasActiveFile}
@@ -584,12 +589,12 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         )}
         {variant === 'default' && !isRealtime && (
           <TabBar 
-            openFiles={openFiles}
-            activeFileIndex={activeFileIndex}
-            onTabClick={setActiveFileIndex}
-            onTabClose={closeTab}
-            onNewFile={() => createNewFile(true)}
-            onRenameFile={renameFile}
+            openFiles={openFiles || []}
+            activeFileIndex={activeFileIndex || 0}
+            onTabClick={setActiveFileIndex ?? (() => {})}
+            onTabClose={closeTab ?? (() => {})}
+            onNewFile={createNewFile ?? (() => {})}
+            onRenameFile={renameFile ?? (() => {})}
           />
         )}
       </div>
@@ -600,7 +605,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
                 onCodeChange={handleCodeChange}
                 onUndo={undo}
                 onRedo={redo}
-                onDeleteFile={() => activeFile && deleteFile(activeFile.folderName, activeFile.fileName)}
+                onDeleteFile={!isRealtime && activeFile ? () => deleteFile?.(activeFile.folderName, activeFile.fileName) : () => {}}
                 hasActiveFile={hasActiveFile}
                 onRun={effectiveOnRun}
                 activeLine={activeLine}
@@ -623,11 +628,11 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
       <SettingsPanel
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
-        fileSystem={fileSystem}
-        onLoadFile={loadFile}
-        onNewFile={() => createNewFile(false)}
-        onDeleteFile={deleteFile}
-        onOpenFileFromDrive={handleOpenFileFromDrive}
+        fileSystem={fileSystem || {}}
+        onLoadFile={loadFile ?? (() => {})}
+        onNewFile={createNewFile ?? (() => {})}
+        onDeleteFile={deleteFile ?? (() => {})}
+        onOpenFileFromDrive={!isRealtime ? handleOpenFileFromDrive : () => {}}
       />
       {showDialogPanel && (
         <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>

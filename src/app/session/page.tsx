@@ -78,15 +78,18 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
     fetchCode();
   }, [connectId]);
   
-  const fs = useCompilerFs({ initialCode });
+  const isRealtime = !!connectId;
+  const fs = !isRealtime ? useCompilerFs({ initialCode }) : null;
+
   const { connectedUsers } = usePresence(connectId);
   
   const handleCodeChange = useCallback((newCode: string) => {
-    fs.setCode(newCode);
+    // This no longer needs to set code via fs.setCode
+    // The Compiler component will handle its own state.
     setCurrentStep(1);
     setIsPlaying(false);
     setLineExecutionCounts({});
-  }, [fs]);
+  }, []);
 
 
   const [activeLine, setActiveLine] = useState(0);
@@ -211,13 +214,14 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
 
 
   const timeline = useMemo(() => {
+    const codeToGenerate = fs?.code ?? initialCode ?? '';
     try {
-      return generateTimeline(fs.code);
+      return generateTimeline(codeToGenerate);
     } catch (e: any) {
       console.error(e);
       return [{ step: 0, line: 0, variables: {}, heap: {}, stack: [], output: [`Error: ${e.message}`] }];
     }
-  }, [fs.code]);
+  }, [fs?.code, initialCode]);
 
   const currentState = timeline[currentStep];
 
@@ -401,6 +405,14 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
 
   const showFloating = isMobile ? settings.outputMode === 'floating' : settings.outputMode === 'floating';
   const showSidePanel = !isMobile && settings.outputMode === 'side';
+  
+  const compilerProps = {
+    ...(!isRealtime && fs ? fs : {}),
+    initialCode: isRealtime ? initialCode : undefined,
+    onCodeChange: handleCodeChange,
+    connectId: connectId,
+  };
+
 
   return (
     <div className="bg-background h-[calc(100vh-4rem)]">
@@ -409,13 +421,12 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
                 <div className="h-full flex flex-col overflow-y-auto">
                     <Compiler
                     ref={compilerRef}
-                    {...fs}
-                    onCodeChange={handleCodeChange}
+                    {...compilerProps}
                     EditorComponent={MemoizedGridEditor}
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
-                    hasActiveFile={!!fs.activeFile}
+                    hasActiveFile={!isRealtime ? !!fs?.activeFile : true}
                     onRun={handleRun}
                     variant="default"
                     onResetDebugger={reset}
@@ -423,7 +434,6 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
                     onToggleBreakpoint={handleToggleBreakpoint}
                     onStartDebuggerFromLine={handleStartFromLine}
                     connectedUsers={connectedUsers}
-                    connectId={connectId}
                     />
                 </div>
                 <div className="h-full min-h-0 flex flex-col">{SidePanelOutput}</div>
@@ -432,13 +442,12 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
             <div className="h-full">
                 <Compiler
                     ref={compilerRef}
-                    {...fs}
-                    onCodeChange={handleCodeChange}
+                    {...compilerProps}
                     EditorComponent={MemoizedGridEditor}
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
-                    hasActiveFile={!!fs.activeFile}
+                    hasActiveFile={!isRealtime ? !!fs?.activeFile : true}
                     onRun={handleRun}
                     variant="default"
                     onResetDebugger={reset}
@@ -446,7 +455,6 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
                     onToggleBreakpoint={handleToggleBreakpoint}
                     onStartDebuggerFromLine={handleStartFromLine}
                     connectedUsers={connectedUsers}
-                    connectId={connectId}
                 />
             </div>
         )}
