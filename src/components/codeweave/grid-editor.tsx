@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -14,6 +15,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { getCaretCoordinates } from '@/lib/caret-position';
 import { getSmartIndentation } from '@/lib/indentation';
 import 'acorn-walk';
+import { type RemoteCursor } from '@/hooks/use-realtime-cursor';
 
 
 export interface OverlayEditorProps {
@@ -28,6 +30,8 @@ export interface OverlayEditorProps {
   breakpoints?: Set<number>;
   onToggleBreakpoint?: (lineNumber: number) => void;
   onStartDebuggerFromLine?: (lineNumber: number) => void;
+  remoteCursors?: RemoteCursor[];
+  onCursorChange?: (line: number, ch: number) => void;
 }
 
 interface FoldableRegion {
@@ -102,6 +106,15 @@ const findMatchingBracket = (code: string, position: number): [number, number] |
     return bestPair;
 };
 
+const getUserColor = (userId: string) => {
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+        hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, 90%, 65%)`;
+};
+
 
 export const GridEditor: React.FC<OverlayEditorProps> = ({
   code,
@@ -115,6 +128,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   breakpoints = new Set(),
   onToggleBreakpoint = () => {},
   onStartDebuggerFromLine = () => {},
+  remoteCursors = [],
+  onCursorChange,
 }) => {
   const { settings } = useSettings();
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -127,6 +142,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const [collapsedLines, setCollapsedLines] = React.useState<Set<number>>(new Set());
   const [matchedBrackets, setMatchedBrackets] = React.useState<[number, number] | null>(null);
   const [lineHeights, setLineHeights] = React.useState<number[]>([]);
+  const [lineTops, setLineTops] = React.useState<number[]>([]);
+  const [charWidths, setCharWidths] = React.useState<number[][]>([]);
 
   const [suggestions, setSuggestions] = React.useState<Suggestion[]>([]);
   const [suggestionPos, setSuggestionPos] = React.useState<Partial<React.CSSProperties>>({});
@@ -250,24 +267,37 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     measure.style.width = `${ta.clientWidth - paddingLeft - paddingRight}px`;
 
     const heights: number[] = [];
+    const tops: number[] = [];
+    const charWidthsByLine: number[][] = [];
+    let currentTop = 0;
 
     for (let i = 0; i < lines.length; i++) {
         if (!isLineVisible(i)) {
-        heights.push(0);
-        continue;
+            heights.push(0);
+            tops.push(currentTop);
+            charWidthsByLine.push([]);
+            continue;
         }
 
         const text = lines[i] === '' ? '\u00A0' : lines[i];
         measure.textContent = text;
 
-        const height =
-        measure.offsetHeight ||
-        parseFloat(getComputedStyle(measure).lineHeight || `${fontSize * 1.5}px`);
-
+        const height = measure.offsetHeight || parseFloat(getComputedStyle(measure).lineHeight || `${fontSize * 1.5}px`);
         heights.push(height);
+        tops.push(currentTop);
+        currentTop += height;
+        
+        const charWidthsForLine: number[] = [0];
+        for (let j = 0; j < lines[i].length; j++) {
+            measure.textContent = lines[i].substring(0, j + 1);
+            charWidthsForLine.push(measure.offsetWidth);
+        }
+        charWidthsByLine.push(charWidthsForLine);
     }
 
     setLineHeights(heights);
+    setLineTops(tops);
+    setCharWidths(charWidthsByLine);
   }, [lines, fontSize, isLineVisible]);
 
   const handleSelectionChange = React.useCallback(() => {
@@ -286,9 +316,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         }
     }
     setCursorLine(line);
+    onCursorChange?.(line, charPos);
     setMatchedBrackets(findMatchingBracket(code, index));
 
-  }, [code]);
+  }, [code, onCursorChange]);
 
   const handleEnterPress = React.useCallback(() => {
     const textarea = textareaRef.current;
@@ -862,6 +893,32 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           }}
         >
             {highlightedCode}
+            {remoteCursors.map(cursor => {
+                const top = lineTops[cursor.line] ?? 0;
+                const left = (charWidths[cursor.line] ? charWidths[cursor.line][cursor.ch] : 0) ?? 0;
+                const color = getUserColor(cursor.userId);
+                
+                if (top === undefined || left === undefined) return null;
+
+                return (
+                    <div
+                        key={cursor.userId}
+                        className="absolute"
+                        style={{ top, left }}
+                    >
+                        <div
+                            className="w-0.5 h-[calc(var(--editor-font-size)_*_1.5)]"
+                            style={{ backgroundColor: color }}
+                        />
+                        <div
+                            className="absolute -top-5 -left-1 px-1.5 py-0.5 rounded-md text-xs text-white"
+                            style={{ backgroundColor: color }}
+                        >
+                            {cursor.userId.slice(0, 6)}
+                        </div>
+                    </div>
+                );
+            })}
         </div>
 
         {/* REAL textarea */}
@@ -901,5 +958,3 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
-
-    

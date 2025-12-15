@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { getClientDb, getClientRtdb } from '@/lib/firebase';
 import { ref as rtdbRef, onValue, set, serverTimestamp } from 'firebase/database';
 import { CodeEditor } from './code-editor';
@@ -30,6 +30,8 @@ import { ConnectedUser, usePresence } from '@/hooks/use-presence';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useRealtimeCode } from '@/hooks/use-realtime-code';
 import { addDoc, collection } from 'firebase/firestore';
+import { useRealtimeCursor, RemoteCursor } from '@/hooks/use-realtime-cursor';
+import { nanoid } from 'nanoid';
 
 
 export interface RunResult {
@@ -122,33 +124,16 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
   
   const isRealtime = !!connectId;
+  const myId = useRef(nanoid(8)).current;
 
   // --- State Management ---
-  // The compiler now manages its own state, switching between hooks.
   const localFs = useCompilerFs();
-  const realtimeState = useRealtimeCode(connectId, initialCode);
+  const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialCode);
 
-  const {
-    code,
-    setCode,
-    fileSystem,
-    openFiles,
-    activeFileIndex,
-    activeFile,
-    isFsReady,
-    loadFile,
-    addFile,
-    createNewFile,
-    closeTab,
-    deleteFile,
-    renameFile,
-    setActiveFileIndex,
-    history,
-    historyIndex,
-    setHistoryIndex
-  } = isRealtime ? { ...localFs, ...realtimeState } : localFs;
+  const { code, setCode, fileSystem, openFiles, activeFileIndex, activeFile, isFsReady, loadFile, addFile, createNewFile, closeTab, deleteFile, renameFile, setActiveFileIndex, history, historyIndex, setHistoryIndex } = isRealtime ? { ...localFs, code: realtimeCode, setCode: setRealtimeCode } : localFs;
   
   const { connectedUsers } = usePresence(connectId);
+  const { cursors, updateCursor } = useRealtimeCursor(connectId, myId);
 
   const [isCompiling, setIsCompiling] = useState(false);
   const [isAiChecking, setIsAiChecking] = useState(false);
@@ -586,6 +571,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
                 breakpoints={breakpoints}
                 onToggleBreakpoint={onToggleBreakpoint}
                 onStartDebuggerFromLine={onStartDebuggerFromLine}
+                remoteCursors={cursors}
+                onCursorChange={updateCursor}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">

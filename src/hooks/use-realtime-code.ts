@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -7,9 +8,8 @@ import { useDebounce } from './use-debounce';
 
 export function useRealtimeCode(connectId?: string, initialCode?: string | null) {
   const [code, setCode] = useState(initialCode ?? '');
-  const debouncedCode = useDebounce(code, 100); 
+  const debouncedCode = useDebounce(code, 250); 
   const lastWrittenCode = useRef<string | null>(null);
-  const isTypingRef = useRef(false);
 
   // Set initial code only once when it becomes available
   useEffect(() => {
@@ -34,9 +34,6 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
 
         if (typeof remoteCode !== 'string') return;
         
-        // DO NOT override while user is typing
-        if (isTypingRef.current) return;
-
         // Ignore the echo of our own write
         if (remoteCode === lastWrittenCode.current) return;
         
@@ -66,18 +63,5 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
     })();
   }, [debouncedCode, connectId, initialCode]);
 
-  const setLocalCode = useCallback((value: string) => {
-    isTypingRef.current = true;
-    setCode(value);
-  
-    // Clear typing flag shortly after the user stops typing.
-    // The debounce delay on the write effect should be longer than this.
-    const timer = setTimeout(() => {
-      isTypingRef.current = false;
-    }, 300); // A 300ms pause is a good indicator the user has stopped.
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  return { code, setCode: setLocalCode };
+  return { code, setCode };
 }
