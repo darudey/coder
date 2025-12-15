@@ -894,6 +894,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         >
             {highlightedCode}
             {remoteCursors?.map(cursor => {
+                const gutterWidth = gutterRef.current?.offsetWidth ?? 0;
                 const top = lineTops[cursor.line] ?? 0;
                 const left = (charWidths[cursor.line] ? charWidths[cursor.line][cursor.ch] : 0) ?? 0;
                 const color = getUserColor(cursor.userId);
