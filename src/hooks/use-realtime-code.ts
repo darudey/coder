@@ -3,9 +3,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
-import { ref, onValue, set, serverTimestamp } from 'firebase/database';
+import { ref, onValue, update, serverTimestamp } from 'firebase/database';
 import { useDebounce } from './use-debounce';
-import { useAuth } from './use-auth';
 import { nanoid } from 'nanoid';
 
 const getGuestId = () => {
@@ -19,19 +18,15 @@ const getGuestId = () => {
 };
 
 export function useRealtimeCode(connectId?: string, initialCode?: string | null) {
-  const { user } = useAuth();
-  const myId = useRef(user?.uid ?? getGuestId());
-
+  const myId = useRef(getGuestId());
   const [code, setCode] = useState(initialCode ?? '');
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const debouncedCode = useDebounce(code, 250);
 
-  const debouncedCode = useDebounce(code, 300);
-
-  /* ------------------ LISTEN (ONCE) ------------------ */
+  /* LISTEN */
   useEffect(() => {
     if (!connectId) return;
 
-    let unsubscribe: (() => void) | undefined;
+    let unsub: () => void;
 
     (async () => {
       const db = await getClientRtdb();
@@ -39,48 +34,41 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
 
       const sessionRef = ref(db, `connectSessions/${connectId}`);
 
-      unsubscribe = onValue(sessionRef, snap => {
+      unsub = onValue(sessionRef, snap => {
         const data = snap.val();
-        if (!data || typeof data.code !== 'string') {
-          setHasLoaded(true);
-          return;
-        }
-
-        // Ignore my own writes
-        if (data.updatedBy === myId.current) {
-          setHasLoaded(true);
-          return;
-        }
-
+        if (!data?.code) return;
+        if (data.code === code) return;
         setCode(data.code);
-        setHasLoaded(true);
       });
     })();
 
-    return () => unsubscribe?.();
-  }, [connectId]);
+    return () => unsub?.();
+  }, [connectId, code]);
 
-  /* ------------------ WRITE (DEBOUNCED) ------------------ */
+  /* WRITE */
   useEffect(() => {
     if (!connectId) return;
-    if (!hasLoaded) return; // ⛔ prevent initial overwrite
 
     (async () => {
       const db = await getClientRtdb();
       if (!db) return;
 
-      await set(ref(db, `connectSessions/${connectId}/code`), debouncedCode);
-      await set(ref(db, `connectSessions/${connectId}/updatedBy`), myId.current);
-      await set(ref(db, `connectSessions/${connectId}/updatedAt`), serverTimestamp());
+      await update(ref(db, `connectSessions/${connectId}`), {
+        code: debouncedCode,
+        updatedBy: myId.current,
+        updatedAt: serverTimestamp(),
+      });
     })();
-  }, [debouncedCode, connectId, hasLoaded]);
-
-  /* ------------------ INITIAL CODE ------------------ */
+  }, [debouncedCode, connectId]);
+  
+  // Handle initial code if provided, but only once
   useEffect(() => {
-    if (initialCode && !hasLoaded) {
-      setCode(initialCode);
+    if (initialCode) {
+        setCode(initialCode);
     }
-  }, [initialCode, hasLoaded]);
+  }, [initialCode]);
+
 
   return { code, setCode };
 }
+
