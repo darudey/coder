@@ -14,7 +14,7 @@ const firebaseConfig = {
   storageBucket: "studio-8417032287-659a9.firebasestorage.app",
   messagingSenderId: "905325384029",
   appId: "1:905325384029:web:519e0e0cbf6baa5507d8b4",
-  databaseURL: "https://studio-8417032287-659a9-default-rtdb.firebaseio.com",
+  databaseURL: "https://studio-8417032287-659a9-default-rtdb.asia-southeast1.firebasedatabase.app",
 };
 
 // Initialize Firebase
