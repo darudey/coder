@@ -2,10 +2,11 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
-import { collection, doc, getDoc, addDoc } from 'firebase/firestore';
-
 
 export async function shareCode(code: string): Promise<{id: string} | {error: string}> {
+    if (!adminDb) {
+        return { error: 'Failed to connect to the database. Please check server configuration.' };
+    }
     try {
         const docRef = await adminDb.collection("shares").add({
             code: code,
@@ -19,6 +20,10 @@ export async function shareCode(code: string): Promise<{id: string} | {error: st
 }
 
 export async function getSharedCode(id: string): Promise<string | null> {
+    if (!adminDb) {
+        console.error('Database not connected for getSharedCode.');
+        return null;
+    }
     try {
         const docRef = adminDb.collection("shares").doc(id);
         const docSnap = await docRef.get();
