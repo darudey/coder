@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Compiler, type CompilerRef, type RunResult } from '@/components/codeweave/compiler';
 import { useSettings } from '@/hooks/use-settings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,11 +13,55 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useCompilerFs } from '@/hooks/use-compiler-fs';
 import { usePresence } from '@/hooks/use-presence';
 import { Header } from '@/components/codeweave/header';
+import { getDoc, doc } from 'firebase/firestore';
+import { getClientDb } from '@/lib/firebase';
+import { LoadingPage } from '@/components/loading-page';
+import { notFound } from 'next/navigation';
 
-export default function Home({ initialCode, connectId }: { initialCode?: string | null; connectId?: string }) {
+
+export default function Home({ connectId }: { connectId?: string }) {
   const { settings } = useSettings();
   const compilerRef = useRef<CompilerRef>(null);
   const isMobile = useIsMobile();
+  
+  const [initialCode, setInitialCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!connectId);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!connectId) {
+        setLoading(false);
+        return;
+    }
+
+    const fetchCode = async () => {
+        setLoading(true);
+        const db = await getClientDb();
+        if (!db) {
+            setError(true);
+            setLoading(false);
+            return;
+        }
+        try {
+            const docRef = doc(db, "shares", connectId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                setInitialCode(docSnap.data()?.code);
+            } else {
+                setError(true);
+            }
+        } catch (e) {
+            console.error(e);
+            setError(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchCode();
+  }, [connectId]);
+
   const fs = useCompilerFs({ initialCode });
   const { connectedUsers } = usePresence(connectId);
   
@@ -32,7 +76,6 @@ export default function Home({ initialCode, connectId }: { initialCode?: string 
             setIsCompiling(true);
             setOutput(null);
         }
-        // The Compiler component will handle opening the floating panel
         const result = await compilerRef.current.run();
         if (!showFloating) {
             setOutput(result);
@@ -40,6 +83,14 @@ export default function Home({ initialCode, connectId }: { initialCode?: string 
         }
     }
   }, [settings.outputMode, isMobile]);
+
+  if (loading) {
+    return <LoadingPage />;
+  }
+
+  if (error) {
+    notFound();
+  }
 
   const showSidePanel = !isMobile && settings.outputMode === 'side';
 

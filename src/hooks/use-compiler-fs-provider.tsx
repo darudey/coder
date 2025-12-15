@@ -48,21 +48,11 @@ function greet(name) {
 console.log(greet('World'));
 `;
 
-const getInitialFileSystem = (initialCode?: string | null): FileSystem => {
+const getInitialFileSystem = (): FileSystem => {
     if (typeof window === 'undefined') {
-        const baseFs: FileSystem = {};
-        if (initialCode) {
-            baseFs['Shared'] = { 'Shared-Code.js': initialCode };
-        } else {
-            baseFs['Examples'] = { 'Welcome.js': defaultCode };
-        }
-        return baseFs;
+        return { 'Examples': { 'Welcome.js': defaultCode } };
     }
     
-    if (initialCode) {
-        return { 'Shared': { 'Shared-Code.js': initialCode } };
-    }
-
     const saved = localStorage.getItem('codeFileSystem');
     if (saved) {
         try {
@@ -75,7 +65,7 @@ const getInitialFileSystem = (initialCode?: string | null): FileSystem => {
     return { 'Examples': { 'Welcome.js': defaultCode } };
 }
 
-export function CompilerFsProvider({ children, initialCode: initialCodeFromProps }: { children: React.ReactNode, initialCode?: string | null }) {
+export function CompilerFsProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const [fileSystem, setFileSystem] = useState<FileSystem>({});
   const [openFiles, setOpenFiles] = useState<ActiveFile[]>([]);
@@ -100,23 +90,19 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
   }, [historyIndex]);
   
   useEffect(() => {
-    const fs = getInitialFileSystem(initialCodeFromProps);
+    const fs = getInitialFileSystem();
     setFileSystem(fs);
 
     let initialOpen: ActiveFile[] = [];
-    if (initialCodeFromProps) {
-        initialOpen.push({ folderName: 'Shared', fileName: 'Shared-Code.js' });
-    } else {
-        try {
-            const savedOpen = localStorage.getItem('openFiles');
-            if (savedOpen) {
-                const parsed = JSON.parse(savedOpen);
-                if (Array.isArray(parsed)) {
-                    initialOpen = parsed.filter(f => fs[f.folderName]?.[f.fileName] !== undefined);
-                }
+    try {
+        const savedOpen = localStorage.getItem('openFiles');
+        if (savedOpen) {
+            const parsed = JSON.parse(savedOpen);
+            if (Array.isArray(parsed)) {
+                initialOpen = parsed.filter(f => fs[f.folderName]?.[f.fileName] !== undefined);
             }
-        } catch (e) { /* ignore */ }
-    }
+        }
+    } catch (e) { /* ignore */ }
     
     if (initialOpen.length === 0) {
         const fallbackFolder = Object.keys(fs)[0];
@@ -129,20 +115,18 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
     setOpenFiles(initialOpen);
 
     let initialActive = 0;
-    if (!initialCodeFromProps) {
-        try {
-            const savedActive = localStorage.getItem('activeFileIndex');
-            if (savedActive) {
-                const parsed = parseInt(savedActive, 10);
-                if (parsed >= 0 && parsed < initialOpen.length) {
-                    initialActive = parsed;
-                }
+    try {
+        const savedActive = localStorage.getItem('activeFileIndex');
+        if (savedActive) {
+            const parsed = parseInt(savedActive, 10);
+            if (parsed >= 0 && parsed < initialOpen.length) {
+                initialActive = parsed;
             }
-        } catch(e) { /* ignore */ }
-    }
+        }
+    } catch(e) { /* ignore */ }
     setActiveFileIndex(initialOpen.length > 0 ? initialActive : -1);
     setIsFsReady(true);
-  }, [initialCodeFromProps]);
+  }, []);
 
   useEffect(() => {
     if (!isFsReady || !activeFile) return;
@@ -158,7 +142,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
 
 
   useEffect(() => {
-    if (!isFsReady || !activeFile || initialCodeFromProps) return; // Don't save over shared code
+    if (!isFsReady || !activeFile) return;
     if (fileSystem[activeFile.folderName]?.[activeFile.fileName] !== debouncedCode) {
         setFileSystem(fs => {
             const newFs = { ...fs };
@@ -170,13 +154,13 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
             return newFs;
         });
     }
-  }, [debouncedCode, activeFile, isFsReady, fileSystem, initialCodeFromProps]);
+  }, [debouncedCode, activeFile, isFsReady, fileSystem]);
 
   useEffect(() => {
-    if (!isFsReady || initialCodeFromProps) return;
+    if (!isFsReady) return;
     localStorage.setItem('openFiles', JSON.stringify(openFiles));
     localStorage.setItem('activeFileIndex', String(activeFileIndex));
-  }, [openFiles, activeFileIndex, isFsReady, initialCodeFromProps]);
+  }, [openFiles, activeFileIndex, isFsReady]);
 
 
   const addFile = useCallback((folderName: string, fileName: string, fileContent: string) => {
@@ -186,7 +170,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
         newFs[folderName] = {};
       }
       newFs[folderName][fileName] = fileContent;
-      if(!initialCodeFromProps) localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+      localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
       
       setOpenFiles(of => {
         const existingIndex = of.findIndex(f => f.folderName === folderName && f.fileName === fileName);
@@ -201,7 +185,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
 
       return newFs;
     });
-  }, [initialCodeFromProps]);
+  }, []);
 
   const loadFile = useCallback((folderName: string, fileName: string) => {
     const existingIndex = openFiles.findIndex(f => f.folderName === folderName && f.fileName === fileName);
@@ -234,7 +218,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
             newFs[newFile.folderName] = {};
         }
         newFs[newFile.folderName][newFile.fileName] = defaultCode;
-        if(!initialCodeFromProps) localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
 
@@ -245,7 +229,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
             return newOpenFiles;
         });
     }
-  }, [fileSystem, initialCodeFromProps]);
+  }, [fileSystem]);
 
   const closeTab = useCallback((indexToClose: number) => {
     setOpenFiles(of => {
@@ -270,7 +254,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
                 delete newFs[folderName];
             }
         }
-        if(!initialCodeFromProps) localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
 
@@ -278,7 +262,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
     if (fileIndexToRemove !== -1) {
         closeTab(fileIndexToRemove);
     }
-  }, [openFiles, closeTab, initialCodeFromProps]);
+  }, [openFiles, closeTab]);
 
   const renameFile = useCallback((index: number, newFileName: string) => {
     let trimmedNewName = newFileName.trim();
@@ -305,7 +289,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
         const content = newFs[oldFile.folderName]?.[oldFile.fileName] ?? '';
         delete newFs[oldFile.folderName][oldFile.fileName];
         newFs[oldFile.folderName][newFile.fileName] = content;
-        if(!initialCodeFromProps) localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
+        localStorage.setItem('codeFileSystem', JSON.stringify(newFs));
         return newFs;
     });
 
@@ -316,7 +300,7 @@ export function CompilerFsProvider({ children, initialCode: initialCodeFromProps
     });
 
     toast({ title: 'File Renamed', description: `Renamed to ${trimmedNewName}` });
-  }, [openFiles, fileSystem, toast, initialCodeFromProps]);
+  }, [openFiles, fileSystem, toast]);
 
   const value = useMemo(() => ({
     fileSystem,

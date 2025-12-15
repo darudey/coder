@@ -18,14 +18,10 @@ export const metadata: Metadata = {
 const faviconHref = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICAgIDxkZWZzPgogICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZjAwYTAiLz4KICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMGJmZmYiLz4KICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KCiAgICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiByeT0iMjAiIGZpbGw9InVybCgjZykiIC8+CgogICAgPCEtLSBDbGVhbiwgbm9uLWJsb2F0ZWQgYXJyb3cgLS0+CiAgICA8cGF0aAogICAgICBkPSJNMjIgMzUgTDQ1IDUwIEwyMiA2NSIKICAgICAgc3Ryb2tlPSJ3aGl0ZSIKICAgICAgc3Ryb2tlLXdpZHRoPSIxMCIKICAgICAgZmlsbD0ibm9uZSIKICAgICAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogICAgICBzdHJva2UtbGluZWpvaW49InJvdW5kIgogICAgLz4KCiAgICA8IS0tIEJhbGFuY2VkIGhvcml6b250YWwgbGluZSAtLT4KICAgIDxwYXRoCiAgICAgIGQ9Ik00OCA2MiBINDgwIgogICAgICBzdHJva2U9IndoaXRlIgogICAgICBzdHJva2Utd2lkdGg9IjEwIgogICAgICBmaWxsPSJub25lIgogICAgICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgICAvPgo8L3N2Zz4=";
 
 export default function RootLayout({
-  children,
-  params
+  children
 }: Readonly<{
   children: React.ReactNode;
-  params: { id?: string };
 }>) {
-  // Check if we are on a share page to pass initialCode
-  const initialCode = (children as any)?.props?.childProp?.segment === 's' ? (children as any).props.childProp.initialCode : null;
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -43,7 +39,7 @@ export default function RootLayout({
           <AuthProvider>
             <GoogleDriveProvider>
               <CoursesProvider>
-                <CompilerFsProvider initialCode={initialCode}>
+                <CompilerFsProvider>
                   <MainLayout>
                     {children}
                   </MainLayout>

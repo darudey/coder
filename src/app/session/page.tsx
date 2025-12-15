@@ -9,12 +9,16 @@ import { generateTimeline } from '@/engine/interpreter';
 import { useCompilerFs } from '@/hooks/use-compiler-fs';
 import { OutputDisplay } from '@/components/codeweave/output-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Grab, X, GripHorizontal, PlayIcon, RefreshCw } from 'lucide-react';
+import { Play, Grab, X, GripHorizontal, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DotLoader } from '@/components/codeweave/dot-loader';
 import { useSettings } from '@/hooks/use-settings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePresence } from '@/hooks/use-presence';
+import { getDoc, doc } from 'firebase/firestore';
+import { getClientDb } from '@/lib/firebase';
+import { LoadingPage } from '@/components/loading-page';
+import { notFound } from 'next/navigation';
 
 const factorialCode = `function factorial(n) {
   if (n === 0) {
@@ -25,23 +29,60 @@ const factorialCode = `function factorial(n) {
 
 console.log(factorial(5));`;
 
-// Define the editor component outside of the main page component
 const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />);
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
 
 
-export default function SessionPage({ connectId, initialCode }: { connectId?: string, initialCode?: string | null }) {
+export default function SessionPage({ connectId }: { connectId?: string }) {
   const { settings } = useSettings();
   const [showDebugger, setShowDebugger] = useState(false);
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
 
-  const fs = useCompilerFs({ initialCode: initialCode ?? factorialCode });
+  const [initialCode, setInitialCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!connectId);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!connectId) {
+      setInitialCode(factorialCode);
+      setLoading(false);
+      return;
+    }
+
+    const fetchCode = async () => {
+      setLoading(true);
+      const db = await getClientDb();
+      if (!db) {
+          setError(true);
+          setLoading(false);
+          return;
+      }
+      try {
+          const docRef = doc(db, "shares", connectId);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+              setInitialCode(docSnap.data()?.code);
+          } else {
+              setError(true);
+          }
+      } catch (e) {
+          console.error(e);
+          setError(true);
+      } finally {
+          setLoading(false);
+      }
+    };
+
+    fetchCode();
+  }, [connectId]);
+  
+  const fs = useCompilerFs({ initialCode });
   const { connectedUsers } = usePresence(connectId);
   
   const handleCodeChange = useCallback((newCode: string) => {
     fs.setCode(newCode);
-    // Reset debugger state on code change
     setCurrentStep(1);
     setIsPlaying(false);
     setLineExecutionCounts({});
@@ -60,13 +101,11 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
 
   const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
 
-  // State for draggable panel
   const [position, setPosition] = React.useState({ top: 80, left: window.innerWidth / 2 + 100 });
   const [isDragging, setIsDragging] = React.useState(false);
   const dragStartPos = React.useRef({ x: 0, y: 0 });
   const elementStartPos = React.useRef({ top: 0, left: 0 });
   
-  // State for resizable panel
   const [resizeMode, setResizeMode] = React.useState<'height' | 'width-left' | 'width-right' | null>(null);
   const [panelSize, setPanelSize] = React.useState({ width: Math.max(350, window.innerWidth / 6), height: 400 });
   const resizeStartPos = React.useRef({ x: 0, y: 0, width: 0, height: 0, left: 0 });
@@ -85,7 +124,7 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
     const touch = e.touches[0];
     dragStartPos.current = { x: touch.clientX, y: touch.clientY };
     elementStartPos.current = { top: position.top, left: position.left };
-};
+  };
 
   const handleMouseMove = React.useCallback((e: MouseEvent | TouchEvent) => {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -176,14 +215,12 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
       return generateTimeline(fs.code);
     } catch (e: any) {
       console.error(e);
-      // Return a minimal timeline to prevent crashing
       return [{ step: 0, line: 0, variables: {}, heap: {}, stack: [], output: [`Error: ${e.message}`] }];
     }
   }, [fs.code]);
 
   const currentState = timeline[currentStep];
 
-  // STEP CONTROL
   const nextStep = useCallback(() => {
     setCurrentStep((s) =>
       s + 1 < timeline.length ? s + 1 : s
@@ -200,7 +237,6 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
     setIsPlaying(false);
   }, []);
 
-  // PLAY LOGIC
   useEffect(() => {
     if (!isPlaying) return;
 
@@ -211,11 +247,10 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
           return s;
         }
         
-        // Check for breakpoint
         const nextState = timeline[s + 1];
         if (nextState && breakpoints.has(nextState.line)) {
             setIsPlaying(false);
-            return s + 1; // Move to the breakpoint line and stop
+            return s + 1;
         }
 
         return s + 1;
@@ -228,7 +263,6 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
   const play = () => setIsPlaying(true);
   const pause = () => setIsPlaying(false);
 
-  // Sync active line and execution counts based on current interpreter step
   useEffect(() => {
     if (currentState) {
       const currentLine = currentState.line;
@@ -281,6 +315,14 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
       setIsCompiling(false);
     }
   }, []);
+
+  if (loading) {
+    return <LoadingPage />;
+  }
+
+  if (error) {
+    notFound();
+  }
 
   const DraggableOutputPanel = (
     <Card 
@@ -427,15 +469,11 @@ export default function SessionPage({ connectId, initialCode }: { connectId?: st
   );
 }
 
-// Add new prop to Compiler's EditorComponent
 declare module '@/components/codeweave/compiler' {
     interface CompilerProps {
         onResetDebugger?: () => void;
         breakpoints?: Set<number>;
         onToggleBreakpoint?: (lineNumber: number) => void;
         onStartDebuggerFromLine?: (lineNumber: number) => void;
-        initialCode?: string | null;
     }
 }
-
-    
