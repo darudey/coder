@@ -15,7 +15,7 @@ interface ConnectPageProps {
 }
 
 export default function ConnectPage({ params }: ConnectPageProps) {
-    const { id } = params;
+    const { id } = useParams() as { id: string };
     const [initialCode, setInitialCode] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -64,5 +64,3 @@ export default function ConnectPage({ params }: ConnectPageProps) {
 
     return <SessionPage connectId={id} initialCode={initialCode} />;
 }
-
-    
