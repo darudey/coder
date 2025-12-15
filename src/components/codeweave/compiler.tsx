@@ -25,6 +25,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { useSettings } from '@/hooks/use-settings';
 import * as acorn from 'acorn';
+import { ConnectedUser } from '@/hooks/use-presence';
 
 export interface RunResult {
     output: any[][];
@@ -71,6 +72,8 @@ interface CompilerProps {
   renameFile?: (index: number, newName: string) => void;
   setActiveFileIndex?: (index: number) => void;
   onRun?: () => Promise<void>;
+  connectedUsers?: ConnectedUser[];
+  connectId?: string;
 }
 
 export interface CompilerRef {
@@ -128,6 +131,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     breakpoints,
     onToggleBreakpoint,
     onStartDebuggerFromLine,
+    connectedUsers,
+    connectId,
     ...props
 }, ref) => {
   const { toast } = useToast();
@@ -550,6 +555,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
             hasActiveFile={hasActiveFile}
             variant={variant}
             onToggleDebugger={onToggleDebugger}
+            connectedUsers={connectedUsers}
+            connectId={connectId}
           />
         )}
         {variant === 'default' && (
