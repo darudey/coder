@@ -18,11 +18,11 @@ const getGuestId = () => {
     return id;
 };
 
+
 export function useRealtimeCode(connectId?: string, initialCode?: string | null) {
   const { user } = useAuth();
   const [code, setCode] = useState(initialCode || '');
-  const [isRemoteUpdate, setIsRemoteUpdate] = useState(false);
-
+  
   const debouncedCode = useDebounce(code, 300);
   const lastWrittenRef = useRef<string | null>(null);
 
@@ -37,49 +37,50 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
   useEffect(() => {
     if (!connectId) return;
 
-    let unsub: (() => void) | undefined;
+    let unsubscribe: (() => void) | undefined;
 
-    (async () => {
+    const setupListener = async () => {
       const db = await getClientRtdb();
       if (!db) return;
 
       const codeRef = ref(db, `connectSessions/${connectId}/code`);
 
-      unsub = onValue(codeRef, snap => {
-        const remoteCode = snap.val();
-        if (typeof remoteCode !== 'string') return;
-
-        // Prevent echo loop by checking if the remote code is what we just wrote
-        if (remoteCode !== lastWrittenRef.current) {
-          setIsRemoteUpdate(true);
-          setCode(remoteCode);
+      unsubscribe = onValue(codeRef, (snapshot) => {
+        const remoteCode = snapshot.val();
+        
+        // Only update if the remote code is a string and different from the current code
+        // and also not the exact same as what we last wrote (to prevent echo)
+        if (typeof remoteCode === 'string' && remoteCode !== code && remoteCode !== lastWrittenRef.current) {
+            setCode(remoteCode);
         }
       });
-    })();
+    };
 
-    return () => unsub?.();
-  }, [connectId]);
+    setupListener();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [connectId, code]); // Re-subscribe if connectId changes, depend on `code` to prevent echo
 
   // 🔹 Push local changes (debounced)
   useEffect(() => {
-    // If it's a remote update, just reset the flag and do nothing.
-    if (isRemoteUpdate) {
-      setIsRemoteUpdate(false);
-      return;
-    }
-    
     if (!connectId) return;
     
-    // Only write if the debounced code is different from the last written code
+    // Do not write if the debounced code is the same as what we last wrote
     if (debouncedCode === lastWrittenRef.current) {
         return;
     }
 
-    (async () => {
+    const writeData = async () => {
       const db = await getClientRtdb();
       if (!db) return;
 
+      // Update the ref *before* writing to prevent race conditions with the listener
       lastWrittenRef.current = debouncedCode;
+      
       const myId = user?.uid ?? getGuestId();
 
       await set(ref(db, `connectSessions/${connectId}`), {
@@ -87,8 +88,11 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
         updatedAt: serverTimestamp(),
         updatedBy: myId
       });
-    })();
-  }, [debouncedCode, connectId, isRemoteUpdate, user]);
+    };
+    
+    writeData();
+
+  }, [debouncedCode, connectId, user]);
 
   return { code, setCode };
 }
