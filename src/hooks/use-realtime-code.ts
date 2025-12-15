@@ -4,22 +4,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
 import { ref, onValue, update, serverTimestamp } from 'firebase/database';
 import { useDebounce } from './use-debounce';
-import { nanoid } from 'nanoid';
-
-const getGuestId = () => {
-  if (typeof window === 'undefined') return 'guest-server';
-  let id = sessionStorage.getItem('guestId');
-  if (!id) {
-    id = `guest-${nanoid(6)}`;
-    sessionStorage.setItem('guestId', id);
-  }
-  return id;
-};
 
 export function useRealtimeCode(connectId?: string, initialCode?: string | null) {
   const [code, setCode] = useState(initialCode ?? '');
-  const debouncedCode = useDebounce(code, 100); // Reduced delay for better responsiveness
+  const debouncedCode = useDebounce(code, 100); 
   const lastWrittenCode = useRef<string | null>(null);
+  const isTypingRef = useRef(false);
 
   // Set initial code only once when it becomes available
   useEffect(() => {
@@ -42,16 +32,14 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
         const data = snap.val();
         const remoteCode = data?.code;
 
-        // If there's no remote code, do nothing.
-        if (remoteCode === null || remoteCode === undefined) return;
+        if (typeof remoteCode !== 'string') return;
         
-        // If the remote code is the same as what we last wrote, ignore it.
-        // This prevents the listener from overwriting local state with our own echo.
-        if (remoteCode === lastWrittenCode.current) {
-          return;
-        }
+        // DO NOT override while user is typing
+        if (isTypingRef.current) return;
 
-        // If the remote code is different from the current local state, update.
+        // Ignore the echo of our own write
+        if (remoteCode === lastWrittenCode.current) return;
+        
         setCode(remoteCode);
       });
     })();
@@ -61,17 +49,14 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
 
   // Firebase writer effect
   useEffect(() => {
-    // Do not write if there is no connectId, or if the code is the initial default.
     if (!connectId || debouncedCode === initialCode) return;
 
-    // Prevent writing if the debounced code hasn't changed from the last written value.
     if (debouncedCode === lastWrittenCode.current) return;
     
     (async () => {
       const db = await getClientRtdb();
       if (!db) return;
 
-      // Update what we're about to write, so the listener can ignore the echo.
       lastWrittenCode.current = debouncedCode;
       
       await update(ref(db, `connectSessions/${connectId}`), {
@@ -81,5 +66,18 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
     })();
   }, [debouncedCode, connectId, initialCode]);
 
-  return { code, setCode };
+  const setLocalCode = useCallback((value: string) => {
+    isTypingRef.current = true;
+    setCode(value);
+  
+    // Clear typing flag shortly after the user stops typing.
+    // The debounce delay on the write effect should be longer than this.
+    const timer = setTimeout(() => {
+      isTypingRef.current = false;
+    }, 300); // A 300ms pause is a good indicator the user has stopped.
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  return { code, setCode: setLocalCode };
 }

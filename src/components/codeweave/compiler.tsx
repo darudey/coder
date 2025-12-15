@@ -48,7 +48,6 @@ interface CompilerProps {
   initialCode?: string | null;
   variant?: 'default' | 'minimal';
   hideHeader?: boolean;
-  onCodeChange?: (code: string) => void;
   EditorComponent?: React.FC<any>;
   onToggleDebugger?: () => void;
   onResetDebugger?: () => void;
@@ -57,25 +56,6 @@ interface CompilerProps {
   breakpoints?: Set<number>;
   onToggleBreakpoint?: (lineNumber: number) => void;
   onStartDebuggerFromLine?: (lineNumber: number) => void;
-  code?: string;
-  fileSystem?: FileSystem;
-  openFiles?: ActiveFile[];
-  activeFileIndex?: number;
-  activeFile?: ActiveFile | null;
-  hasActiveFile?: boolean;
-  isFsReady?: boolean;
-  history?: string[];
-  historyIndex?: number;
-  setCode?: (newCode: string) => void;
-  setHistory?: (history: string[]) => void;
-  setHistoryIndex?: (index: number) => void;
-  loadFile?: (folderName: string, fileName: string) => void;
-  addFile?: (folderName: string, fileName: string, content: string) => void;
-  createNewFile?: (activate?: boolean) => void;
-  closeTab?: (index: number) => void;
-  deleteFile?: (folderName: string, fileName: string) => void;
-  renameFile?: (index: number, newName: string) => void;
-  setActiveFileIndex?: (index: number) => void;
   onRun?: () => Promise<void>;
   connectId?: string;
 }
@@ -125,7 +105,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     initialCode, 
     variant = 'default', 
     hideHeader = false, 
-    onCodeChange: onCodeChangeProp, 
     EditorComponent = CodeEditor, 
     onToggleDebugger, 
     activeLine, 
@@ -136,7 +115,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     onToggleBreakpoint,
     onStartDebuggerFromLine,
     connectId,
-    ...fsProps
 }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
@@ -145,15 +123,14 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   
   const isRealtime = !!connectId;
 
-  // State management based on mode (realtime vs. local)
-  const { code: rtdbCode, setCode: setRtdbCode } = useRealtimeCode(connectId, initialCode);
-  
-  const localFs = !isRealtime ? useCompilerFs({ onCodeChange: onCodeChangeProp, initialCode }) : null;
-
-  const code = isRealtime ? rtdbCode : localFs?.code ?? '';
-  const setCode = isRealtime ? setRtdbCode : localFs?.setCode ?? (() => {});
+  // --- State Management ---
+  // The compiler now manages its own state, switching between hooks.
+  const localFs = useCompilerFs();
+  const realtimeState = useRealtimeCode(connectId, initialCode);
 
   const {
+    code,
+    setCode,
     fileSystem,
     openFiles,
     activeFileIndex,
@@ -169,7 +146,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     history,
     historyIndex,
     setHistoryIndex
-  } = localFs || {};
+  } = isRealtime ? { ...localFs, ...realtimeState } : localFs;
   
   const { connectedUsers } = usePresence(connectId);
 
@@ -306,11 +283,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     };
   }, [isDragging, resizeMode, handleMouseMove, handleMouseUp]);
 
-
-  const handleCodeChange = useCallback((newCode: string) => {
-    setCode(newCode);
-    if(onCodeChangeProp) onCodeChangeProp(newCode);
-  }, [setCode, onCodeChangeProp]);
 
   const undo = useCallback(() => {
     if (isRealtime || !localFs) return;
@@ -602,7 +574,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         {editorVisible ? (
             <EditorComponent
                 code={code || ''}
-                onCodeChange={handleCodeChange}
+                onCodeChange={setCode}
                 onUndo={undo}
                 onRedo={redo}
                 onDeleteFile={!isRealtime && activeFile ? () => deleteFile?.(activeFile.folderName, activeFile.fileName) : () => {}}
