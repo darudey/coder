@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
 import { ref, onValue, set, serverTimestamp } from 'firebase/database';
 import { useDebounce } from './use-debounce';
@@ -18,7 +18,6 @@ const getGuestId = () => {
     return id;
 };
 
-
 export function useRealtimeCode(connectId?: string, initialCode?: string | null) {
   const { user } = useAuth();
   const [code, setCode] = useState(initialCode || '');
@@ -33,7 +32,7 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
     }
   }, [initialCode]);
 
-  // 🔹 Listen for remote changes
+  // Listen for remote changes and update the local state
   useEffect(() => {
     if (!connectId) return;
 
@@ -47,11 +46,11 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
 
       unsubscribe = onValue(codeRef, (snapshot) => {
         const remoteCode = snapshot.val();
-        
-        // Only update if the remote code is a string and different from the current code
-        // and also not the exact same as what we last wrote (to prevent echo)
-        if (typeof remoteCode === 'string' && remoteCode !== code && remoteCode !== lastWrittenRef.current) {
-            setCode(remoteCode);
+        if (typeof remoteCode === 'string' && remoteCode !== code) {
+            // Check if the incoming code is what we just wrote. If so, ignore it.
+            if (remoteCode !== lastWrittenRef.current) {
+                setCode(remoteCode);
+            }
         }
       });
     };
@@ -63,25 +62,24 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
         unsubscribe();
       }
     };
-  }, [connectId, code]); // Re-subscribe if connectId changes, depend on `code` to prevent echo
+  // IMPORTANT: The dependency array must be correct to avoid re-subscribing unnecessarily
+  // and to correctly handle updates.
+  }, [connectId, code]);
 
-  // 🔹 Push local changes (debounced)
+  // Push local changes (debounced) to the database
   useEffect(() => {
-    if (!connectId) return;
-    
-    // Do not write if the debounced code is the same as what we last wrote
-    if (debouncedCode === lastWrittenRef.current) {
-        return;
+    if (!connectId || debouncedCode === lastWrittenRef.current) {
+      return;
     }
 
     const writeData = async () => {
       const db = await getClientRtdb();
       if (!db) return;
-
-      // Update the ref *before* writing to prevent race conditions with the listener
-      lastWrittenRef.current = debouncedCode;
       
       const myId = user?.uid ?? getGuestId();
+
+      // Update our ref *before* writing to Firebase
+      lastWrittenRef.current = debouncedCode;
 
       await set(ref(db, `connectSessions/${connectId}`), {
         code: debouncedCode,
@@ -90,9 +88,13 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
       });
     };
     
-    writeData();
+    // Only write if the debounced code is different from the initial code it might have started with.
+    // This prevents writing on initial load.
+    if (debouncedCode !== initialCode) {
+      writeData();
+    }
 
-  }, [debouncedCode, connectId, user]);
+  }, [debouncedCode, connectId, user, initialCode]);
 
   return { code, setCode };
 }
