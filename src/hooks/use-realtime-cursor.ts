@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
-import { ref, onValue, update, serverTimestamp } from 'firebase/database';
+import { ref, onValue, update, serverTimestamp, onDisconnect } from 'firebase/database';
 import throttle from 'lodash.throttle';
 
 export interface RemoteCursor {
@@ -27,10 +27,15 @@ export function useRealtimeCursor(
       const db = await getClientRtdb();
       if (!db) return;
 
-      await update(ref(db, `connectSessions/${connectId}/cursors/${myId}`), {
+      const cursorRef = ref(db, `connectSessions/${connectId}/cursors/${myId}`);
+      
+      // Ensure cursor is removed if client disconnects
+      onDisconnect(cursorRef).remove();
+
+      await update(cursorRef, {
         line,
         ch,
-        name: myName,
+        name: myName ?? 'Guest', // Ensure name is never undefined
         updatedAt: serverTimestamp(),
       });
     }, 120)
@@ -52,7 +57,8 @@ export function useRealtimeCursor(
         const now = Date.now();
         const list = Object.entries(data)
           .filter(([id]) => id !== myId)
-          .filter(([, v]: any) => now - v.updatedAt < 30000) // Cursors disappear after 30s
+          // Filter out cursors that haven't been updated in 30 seconds
+          .filter(([, v]: any) => typeof v.updatedAt === 'number' && now - v.updatedAt < 30000)
           .map(([userId, v]: any) => ({
             userId,
             name: v.name || 'Guest',
