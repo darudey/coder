@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
 import { ref, onValue, update, serverTimestamp } from 'firebase/database';
 import { useDebounce } from './use-debounce';
@@ -17,19 +17,18 @@ const getGuestId = () => {
 };
 
 export function useRealtimeCode(connectId?: string, initialCode?: string | null) {
-  const myId = useRef(getGuestId());
   const [code, setCode] = useState(initialCode ?? '');
-  const debouncedCode = useDebounce(code, 250);
-  const isWriting = useRef(false);
+  const debouncedCode = useDebounce(code, 100); // Reduced delay for better responsiveness
+  const lastWrittenCode = useRef<string | null>(null);
 
-  // Set initial code only once
+  // Set initial code only once when it becomes available
   useEffect(() => {
-    if (initialCode) {
+    if (initialCode !== null && initialCode !== undefined) {
       setCode(initialCode);
     }
   }, [initialCode]);
 
-  /* LISTEN */
+  // Firebase listener effect
   useEffect(() => {
     if (!connectId) return;
 
@@ -41,46 +40,46 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
       const sessionRef = ref(db, `connectSessions/${connectId}`);
       unsub = onValue(sessionRef, (snap) => {
         const data = snap.val();
-        // If we are in the middle of writing, don't accept updates.
-        if (isWriting.current) return;
+        const remoteCode = data?.code;
 
-        // If there's no remote code or it matches local code, do nothing.
-        if (!data?.code || data.code === code) return;
+        // If there's no remote code, do nothing.
+        if (remoteCode === null || remoteCode === undefined) return;
         
-        // Update local state with remote changes.
-        setCode(data.code);
+        // If the remote code is the same as what we last wrote, ignore it.
+        // This prevents the listener from overwriting local state with our own echo.
+        if (remoteCode === lastWrittenCode.current) {
+          return;
+        }
+
+        // If the remote code is different from the current local state, update.
+        setCode(remoteCode);
       });
     })();
 
     return () => unsub?.();
-  }, [connectId, code]);
+  }, [connectId]);
 
-  /* WRITE */
+  // Firebase writer effect
   useEffect(() => {
-    if (!connectId) return;
+    // Do not write if there is no connectId, or if the code is the initial default.
+    if (!connectId || debouncedCode === initialCode) return;
 
-    // Don't write if the debounced code is the same as the initial state
-    if (debouncedCode === initialCode && code === initialCode) return;
-
+    // Prevent writing if the debounced code hasn't changed from the last written value.
+    if (debouncedCode === lastWrittenCode.current) return;
+    
     (async () => {
-      isWriting.current = true;
       const db = await getClientRtdb();
-      if (!db) {
-        isWriting.current = false;
-        return;
-      }
+      if (!db) return;
 
+      // Update what we're about to write, so the listener can ignore the echo.
+      lastWrittenCode.current = debouncedCode;
+      
       await update(ref(db, `connectSessions/${connectId}`), {
         code: debouncedCode,
-        updatedBy: myId.current,
         updatedAt: serverTimestamp(),
       });
-      // After writing, allow listening for remote changes again
-      setTimeout(() => {
-        isWriting.current = false;
-      }, 100); 
     })();
-  }, [debouncedCode, connectId, initialCode, code]);
+  }, [debouncedCode, connectId, initialCode]);
 
   return { code, setCode };
 }
