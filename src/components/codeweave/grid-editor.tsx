@@ -893,28 +893,28 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           }}
         >
             {highlightedCode}
-            {remoteCursors.map(cursor => {
+            {remoteCursors?.map(cursor => {
                 const top = lineTops[cursor.line] ?? 0;
                 const left = (charWidths[cursor.line] ? charWidths[cursor.line][cursor.ch] : 0) ?? 0;
                 const color = getUserColor(cursor.userId);
                 
-                if (top === undefined || left === undefined) return null;
+                if (top === undefined || left === undefined || !isLineVisible(cursor.line)) return null;
 
                 return (
                     <div
                         key={cursor.userId}
-                        className="absolute"
-                        style={{ top, left }}
+                        className="remote-cursor"
+                        style={{ top, left, position: 'absolute', pointerEvents: 'none', zIndex: 50, }}
                     >
                         <div
-                            className="w-0.5 h-[calc(var(--editor-font-size)_*_1.5)]"
+                            className="remote-cursor-caret"
                             style={{ backgroundColor: color }}
                         />
                         <div
-                            className="absolute -top-5 -left-1 px-1.5 py-0.5 rounded-md text-xs text-white"
+                            className="remote-cursor-label"
                             style={{ backgroundColor: color }}
                         >
-                            {cursor.userId.slice(0, 6)}
+                            {cursor.name}
                         </div>
                     </div>
                 );
