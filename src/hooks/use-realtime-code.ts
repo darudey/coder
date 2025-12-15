@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -71,4 +70,3 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
 
   return { code, setCode };
 }
-
