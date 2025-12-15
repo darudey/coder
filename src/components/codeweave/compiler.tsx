@@ -3,7 +3,8 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { shareCode } from '@/app/actions';
+import { addDoc, collection } from 'firebase/firestore';
+import { getClientDb } from '@/lib/firebase';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
@@ -420,10 +421,10 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
 
   const handleShare = useCallback(async () => {
-    const codeToShare = variant === 'minimal' ? code : fileSystem[activeFile!.folderName]?.[activeFile!.fileName];
+    const codeToShare = code;
 
     if (!codeToShare) {
-        toast({ title: 'Error', description: 'No active file to share.', variant: 'destructive' });
+        toast({ title: 'Error', description: 'There is no code to share.', variant: 'destructive' });
         return;
     }
     
@@ -431,18 +432,28 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     setShareDialogOpen(true);
     setShareLink('');
 
-    const result = await shareCode(codeToShare);
-    
-    if ('id' in result) {
-        const url = `${window.location.origin}/s/${result.id}`;
+    try {
+        const db = await getClientDb();
+        if (!db) {
+            toast({ title: 'Error', description: 'Failed to connect to the database.', variant: 'destructive' });
+            setIsSharing(false);
+            return;
+        }
+        const docRef = await addDoc(collection(db, "shares"), {
+            code: codeToShare,
+        });
+
+        const url = `${window.location.origin}/s/${docRef.id}`;
         setShareLink(url);
-    } else {
-        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+    } catch (e: any) {
+        console.error("Sharing failed: ", e);
+        toast({ title: 'Error', description: 'Failed to share code. Please try again.', variant: 'destructive' });
         setShareLink('');
         setShareDialogOpen(false); // Close dialog on error
+    } finally {
+        setIsSharing(false);
     }
-    setIsSharing(false);
-  }, [activeFile, fileSystem, toast, variant, code]);
+  }, [code, toast]);
 
   const handleCopyShareLink = () => {
     navigator.clipboard.writeText(shareLink);
