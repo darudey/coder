@@ -32,7 +32,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
 
-  const [initialData, setInitialData] = useState<{ code: string } | null>(null);
+  const [initialData, setInitialData] = useState<{ code: string, adminId?: string } | null>(null);
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
@@ -92,6 +92,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
               const data = docSnap.data();
               setInitialData({
                   code: data?.code || '',
+                  adminId: data?.adminId,
               });
           } else {
               setError(true);
@@ -107,7 +108,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
     fetchCode();
   }, [connectId]);
   
-  const { connectedUsers } = usePresence(connectId);
+  const { connectedUsers } = usePresence(connectId, initialData?.adminId);
   
   const handleCodeChange = useCallback((newCode: string) => {
     // If in a realtime session, send changes to firebase.
@@ -515,5 +516,3 @@ declare module '@/components/codeweave/compiler' {
         onStartDebuggerFromLine?: (lineNumber: number) => void;
     }
 }
-
-    

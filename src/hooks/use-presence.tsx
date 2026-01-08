@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
-import { ref, onValue, onDisconnect, set, serverTimestamp } from 'firebase/database';
+import { ref, onValue, onDisconnect, set, serverTimestamp, runTransaction } from 'firebase/database';
 import { useAuth } from './use-auth';
 import { nanoid } from 'nanoid';
 
@@ -11,9 +11,10 @@ export interface ConnectedUser {
   id: string;
   name: string;
   isGuest: boolean;
+  isAdmin: boolean;
 }
 
-export function usePresence(sessionId?: string) {
+export function usePresence(sessionId?: string, adminId?: string) {
   const { user, loading: authLoading } = useAuth();
   const [connectedUsers, setConnectedUsers] = useState<ConnectedUser[]>([]);
 
@@ -32,32 +33,45 @@ export function usePresence(sessionId?: string) {
       const lastOnlineRef = ref(rtdb, `sessions/${sessionId}/lastOnline/${myId}`);
       const connectedRef = ref(rtdb, '.info/connected');
       const connectionsRef = ref(rtdb, `sessions/${sessionId}/connections`);
+      const adminRef = ref(rtdb, `sessions/${sessionId}/adminId`);
 
       const unsubscribe = onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
-          const con = myConnectionsRef;
-          onDisconnect(con).remove();
-          set(con, { name: myName, isGuest });
+          onDisconnect(myConnectionsRef).remove();
+          set(myConnectionsRef, { name: myName, isGuest });
           set(lastOnlineRef, serverTimestamp());
+
+          // Try to become admin if no one is
+          runTransaction(adminRef, (currentAdminId) => {
+            if (currentAdminId === null) {
+              return myId;
+            }
+            return; // Abort transaction
+          });
         }
       });
       
       const userListUnsubscribe = onValue(connectionsRef, (snap) => {
           const usersData = snap.val() || {};
-          const usersList: ConnectedUser[] = Object.entries(usersData).map(([id, data]) => ({
-              id,
-              name: (data as any).name || 'Anonymous',
-              isGuest: (data as any).isGuest || false,
-          }));
-          setConnectedUsers(usersList);
+          
+          onValue(adminRef, (adminSnap) => {
+            const currentAdminId = adminSnap.val();
+            const usersList: ConnectedUser[] = Object.entries(usersData).map(([id, data]) => ({
+                id,
+                name: (data as any).name || 'Anonymous',
+                isGuest: (data as any).isGuest || false,
+                isAdmin: id === currentAdminId,
+            }));
+            setConnectedUsers(usersList);
+          }, { onlyOnce: true });
+
       });
 
       return () => {
         unsubscribe();
         userListUnsubscribe();
-        const con = myConnectionsRef;
-        if(con) {
-            set(con, null);
+        if (myConnectionsRef) {
+            set(myConnectionsRef, null);
         }
       };
     };
