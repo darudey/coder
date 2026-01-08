@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette, Grid, Zap, Link as LinkIcon } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette, Grid, Zap, Link as LinkIcon, LogOut } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from '@/hooks/use-compiler-fs';
 import { DotLoader } from './dot-loader';
@@ -214,6 +214,14 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleDisconnect = () => {
+    router.push('/');
+    toast({
+      title: 'Disconnected',
+      description: 'You have left the collaborative session.',
+    });
+  };
+
   const MainNav = ({className}: {className?: string}) => (
      <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -344,7 +352,7 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
         
         <div className="flex-1 flex justify-center min-w-0 px-2">
             {connectId && connectedUsers.length > 0 ? (
-                <PresenceDisplay users={connectedUsers} />
+                <PresenceDisplay users={connectedUsers} onDisconnect={handleDisconnect} />
             ) : activeFile ? (
                 <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground truncate bg-muted px-3 py-1.5 rounded-md">
                     <File className="w-4 h-4 shrink-0" />
@@ -402,5 +410,3 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
 };
 
 export const Header = React.memo(MemoizedHeader);
-
-    

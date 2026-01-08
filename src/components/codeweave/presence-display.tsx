@@ -11,8 +11,9 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Users } from 'lucide-react';
+import { User, Users, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '../ui/button';
 
 export interface ConnectedUser {
   id: string;
@@ -23,9 +24,10 @@ export interface ConnectedUser {
 interface PresenceDisplayProps {
   users: ConnectedUser[];
   className?: string;
+  onDisconnect: () => void;
 }
 
-export const PresenceDisplay: React.FC<PresenceDisplayProps> = ({ users, className }) => {
+export const PresenceDisplay: React.FC<PresenceDisplayProps> = ({ users, className, onDisconnect }) => {
   if (users.length === 0) {
     return null;
   }
@@ -51,6 +53,11 @@ export const PresenceDisplay: React.FC<PresenceDisplayProps> = ({ users, classNa
             <span className={cn(user.isGuest && "italic text-muted-foreground")}>{user.name}</span>
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onDisconnect} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Disconnect</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

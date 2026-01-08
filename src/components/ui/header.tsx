@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette, Grid, Zap } from 'lucide-react';
+import { Play, Settings, Save, File, Share2, Code, Book, User, Edit3, Moon, Sun, Info, HelpCircle, MessageSquare, ChevronDown, Palette, Grid, Zap, Link as LinkIcon, LogOut } from 'lucide-react';
 import React from 'react';
 import type { ActiveFile } from '@/hooks/use-compiler-fs';
 import { DotLoader } from './dot-loader';
@@ -27,6 +27,12 @@ import { AboutContent } from './about-content';
 import { Slider } from '../ui/slider';
 import { Label } from '../ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { PresenceDisplay, type ConnectedUser } from './presence-display';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { getClientDb } from '@/lib/firebase';
+import { addDoc, collection } from 'firebase/firestore';
+import { useCompilerFs } from '@/hooks/use-compiler-fs';
 
 interface HeaderProps {
   onRun?: () => void;
@@ -41,6 +47,8 @@ interface HeaderProps {
   children?: React.ReactNode;
   actions?: React.ReactNode;
   onToggleDebugger?: () => void;
+  connectedUsers?: ConnectedUser[];
+  connectId?: string;
 }
 
 const NavItems = () => {
@@ -166,8 +174,53 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
   children,
   actions,
   onToggleDebugger,
+  connectedUsers = [],
+  connectId,
 }) => {
   const { settings, setSettings, toggleTheme } = useSettings();
+  const { toast } = useToast();
+  const router = useRouter();
+  const { code } = useCompilerFs();
+
+  const handleConnect = async () => {
+    const codeToShare = code;
+    if (!codeToShare) {
+        toast({ title: 'Error', description: 'There is no code to share.', variant: 'destructive' });
+        return;
+    }
+
+    try {
+        const db = await getClientDb();
+        if (!db) {
+            toast({ title: 'Error', description: 'Failed to connect to the database.', variant: 'destructive' });
+            return;
+        }
+        const docRef = await addDoc(collection(db, "shares"), {
+            code: codeToShare,
+        });
+
+        const newConnectId = docRef.id;
+        const url = `${window.location.origin}/connect/${newConnectId}`;
+        navigator.clipboard.writeText(url);
+        toast({
+          title: 'Link Copied!',
+          description: 'A shareable link to this session has been copied to your clipboard.',
+        });
+        router.push(`/connect/${newConnectId}`);
+
+    } catch (e: any) {
+        console.error("Connection failed: ", e);
+        toast({ title: 'Error', description: 'Failed to create connection link. Please try again.', variant: 'destructive' });
+    }
+  };
+
+  const handleDisconnect = () => {
+    router.push('/');
+    toast({
+      title: 'Disconnected',
+      description: 'You have left the collaborative session.',
+    });
+  };
 
   const MainNav = ({className}: {className?: string}) => (
      <DropdownMenu>
@@ -298,13 +351,16 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
         <MainNav />
         
         <div className="flex-1 flex justify-center min-w-0 px-2">
-          {activeFile && (
-              <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground truncate bg-muted px-3 py-1.5 rounded-md">
-                  <File className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{activeFile.folderName} / {activeFile.fileName}</span>
-              </div>
-          )}
+            {connectId && connectedUsers.length > 0 ? (
+                <PresenceDisplay users={connectedUsers} onDisconnect={handleDisconnect} />
+            ) : activeFile ? (
+                <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground truncate bg-muted px-3 py-1.5 rounded-md">
+                    <File className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{activeFile.folderName} / {activeFile.fileName}</span>
+                </div>
+            ) : null}
         </div>
+
 
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           <RunButton />
@@ -315,6 +371,10 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                     <span className="sr-only">Debug</span>
                 </Button>
               )}
+               <Button variant="outline" size="icon" onClick={handleConnect} disabled={!!connectId || isCompiling} className="h-8 w-8">
+                <LinkIcon className="w-4 h-4" />
+                <span className="sr-only">Connect</span>
+              </Button>
               <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
