@@ -50,7 +50,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
     if (isRealtime && realtimeCode !== localFs.code) {
       localFs.setCode(realtimeCode);
     }
-  }, [isRealtime, realtimeCode, localFs.code, localFs.setCode]);
+  }, [isRealtime, realtimeCode, localFs]);
 
 
   // When in a realtime session, ensure a local file exists for it.
@@ -515,7 +515,5 @@ declare module '@/components/codeweave/compiler' {
         onStartDebuggerFromLine?: (lineNumber: number) => void;
     }
 }
-
-    
 
     

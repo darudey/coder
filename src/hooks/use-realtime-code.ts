@@ -8,20 +8,16 @@ import { useDebounce } from './use-debounce';
 
 export function useRealtimeCode(connectId?: string, initialCode?: string | null) {
   const [code, setCode] = useState(initialCode ?? '');
-  const debouncedCode = useDebounce(code, 250); 
+  const debouncedCode = useDebounce(code, 300);
   const lastWrittenCode = useRef<string | null>(null);
-
-  // Use a ref to hold the latest code for immediate access in unload handlers
-  const latestCodeRef = useRef(code);
-  useEffect(() => {
-    latestCodeRef.current = code;
-  }, [code]);
+  const isMounted = useRef(false);
 
   // Set initial code only once when it becomes available
   useEffect(() => {
-    if (initialCode !== null && initialCode !== undefined) {
+    if (initialCode !== null && initialCode !== undefined && !isMounted.current) {
       setCode(initialCode);
-      latestCodeRef.current = initialCode;
+      lastWrittenCode.current = initialCode;
+      isMounted.current = true;
     }
   }, [initialCode]);
 
@@ -45,53 +41,38 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
         if (remoteCode === lastWrittenCode.current) return;
         
         setCode(remoteCode);
-        latestCodeRef.current = remoteCode;
       });
     })();
 
     return () => unsub?.();
   }, [connectId]);
 
-  const flushChanges = useCallback(async () => {
-    if (!connectId) return;
-    const currentCode = latestCodeRef.current;
-    if (currentCode === lastWrittenCode.current) return;
-
-    const db = await getClientRtdb();
-    if (!db) return;
-
-    lastWrittenCode.current = currentCode;
-    
-    await update(ref(db, `connectSessions/${connectId}`), {
-      code: currentCode,
-      updatedAt: serverTimestamp(),
-    });
-  }, [connectId]);
-
   // Firebase writer effect
   useEffect(() => {
-    if (!connectId || debouncedCode === initialCode) return;
+    if (!connectId || !isMounted.current) return;
 
+    // Do not write if the debounced code is the same as what we last wrote
     if (debouncedCode === lastWrittenCode.current) return;
+
+    // Do not write if the debounced code is the same as the initial code (prevents overwriting on join)
+    if(debouncedCode === initialCode) return;
+
+    (async () => {
+        const db = await getClientRtdb();
+        if (!db) return;
+
+        lastWrittenCode.current = debouncedCode;
+        
+        await update(ref(db, `connectSessions/${connectId}`), {
+          code: debouncedCode,
+          updatedAt: serverTimestamp(),
+        });
+    })();
     
-    flushChanges();
-  }, [debouncedCode, connectId, initialCode, flushChanges]);
-
-  // Save on unload/unmount
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      flushChanges();
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Also flush when navigating within the app (component unmount)
-      flushChanges();
-    };
-  }, [flushChanges]);
+  }, [debouncedCode, connectId, initialCode]);
 
 
   return { code, setCode };
 }
+
+    

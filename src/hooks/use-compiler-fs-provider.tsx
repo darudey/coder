@@ -82,12 +82,17 @@ export function CompilerFsProvider({ children }: { children: React.ReactNode }) 
 
   const setCode = useCallback((newCode: string) => {
     setHistory(h => {
+        // Prevent adding duplicate state to history
+        if (h[historyIndex] === newCode) return h;
         const newHistory = h.slice(0, historyIndex + 1);
         newHistory.push(newCode);
         return newHistory;
     });
-    setHistoryIndex(i => i + 1);
-  }, [historyIndex]);
+    setHistoryIndex(i => {
+        if(history[i] === newCode) return i;
+        return i + 1;
+    });
+  }, [historyIndex, history]);
   
   useEffect(() => {
     const fs = getInitialFileSystem();
@@ -333,3 +338,5 @@ export function CompilerFsProvider({ children }: { children: React.ReactNode }) 
     </CompilerFsContext.Provider>
   );
 }
+
+    
