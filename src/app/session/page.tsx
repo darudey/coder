@@ -34,6 +34,28 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
+  const isRealtime = !!connectId;
+  const fs = useCompilerFs({ initialCode: isRealtime ? initialCode : undefined });
+
+  // When in a realtime session, ensure a local file exists for it.
+  useEffect(() => {
+    if (isRealtime && connectId && fs.isFsReady && initialCode !== null) {
+      const sessionFileName = `s-${connectId}.js`;
+      const sessionFolderName = 'Shared Sessions';
+      
+      // Check if the file already exists in the file system state
+      if (!fs.fileSystem[sessionFolderName]?.[sessionFileName]) {
+        fs.addFile(sessionFolderName, sessionFileName, initialCode);
+      }
+      
+      // Check if the file is currently open
+      const isOpen = fs.openFiles.some(f => f.fileName === sessionFileName && f.folderName === sessionFolderName);
+      if (!isOpen) {
+        fs.loadFile(sessionFolderName, sessionFileName);
+      }
+    }
+  }, [isRealtime, connectId, fs.isFsReady, initialCode, fs]);
+
   useEffect(() => {
     if (!connectId) {
       setLoading(false);
@@ -68,9 +90,6 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
     fetchCode();
   }, [connectId]);
   
-  const isRealtime = !!connectId;
-  const fs = useCompilerFs({ initialCode: isRealtime ? initialCode : undefined });
-
   const { connectedUsers } = usePresence(connectId);
   
   const handleCodeChange = useCallback((newCode: string) => {
