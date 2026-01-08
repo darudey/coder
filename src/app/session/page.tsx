@@ -56,7 +56,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   // When in a realtime session, ensure a local file exists for it.
   useEffect(() => {
     if (isRealtime && connectId && localFs.isFsReady && initialData) {
-      const sessionFileName = `collab_${connectId.slice(0, 8)}.js`;
+      const sessionFileName = `collab_${connectId.slice(0, 4)}.js`;
       const sessionFolderName = 'Shared Sessions';
       
       if (!localFs.fileSystem[sessionFolderName]?.[sessionFileName]) {

@@ -90,7 +90,7 @@ export default function Home({ connectId }: { connectId?: string }) {
 
   useEffect(() => {
     if (connectId && initialData && fs.isFsReady) {
-        const sessionFileName = `collab_${connectId.slice(0, 8)}.js`;
+        const sessionFileName = `collab_${connectId.slice(0, 4)}.js`;
         const sessionFolderName = 'Shared Sessions';
       
         if (!fs.fileSystem[sessionFolderName]?.[sessionFileName]) {
