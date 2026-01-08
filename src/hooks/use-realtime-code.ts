@@ -11,10 +11,17 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
   const debouncedCode = useDebounce(code, 250); 
   const lastWrittenCode = useRef<string | null>(null);
 
+  // Use a ref to hold the latest code for immediate access in unload handlers
+  const latestCodeRef = useRef(code);
+  useEffect(() => {
+    latestCodeRef.current = code;
+  }, [code]);
+
   // Set initial code only once when it becomes available
   useEffect(() => {
     if (initialCode !== null && initialCode !== undefined) {
       setCode(initialCode);
+      latestCodeRef.current = initialCode;
     }
   }, [initialCode]);
 
@@ -38,10 +45,27 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
         if (remoteCode === lastWrittenCode.current) return;
         
         setCode(remoteCode);
+        latestCodeRef.current = remoteCode;
       });
     })();
 
     return () => unsub?.();
+  }, [connectId]);
+
+  const flushChanges = useCallback(async () => {
+    if (!connectId) return;
+    const currentCode = latestCodeRef.current;
+    if (currentCode === lastWrittenCode.current) return;
+
+    const db = await getClientRtdb();
+    if (!db) return;
+
+    lastWrittenCode.current = currentCode;
+    
+    await update(ref(db, `connectSessions/${connectId}`), {
+      code: currentCode,
+      updatedAt: serverTimestamp(),
+    });
   }, [connectId]);
 
   // Firebase writer effect
@@ -50,18 +74,24 @@ export function useRealtimeCode(connectId?: string, initialCode?: string | null)
 
     if (debouncedCode === lastWrittenCode.current) return;
     
-    (async () => {
-      const db = await getClientRtdb();
-      if (!db) return;
+    flushChanges();
+  }, [debouncedCode, connectId, initialCode, flushChanges]);
 
-      lastWrittenCode.current = debouncedCode;
-      
-      await update(ref(db, `connectSessions/${connectId}`), {
-        code: debouncedCode,
-        updatedAt: serverTimestamp(),
-      });
-    })();
-  }, [debouncedCode, connectId, initialCode]);
+  // Save on unload/unmount
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      flushChanges();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Also flush when navigating within the app (component unmount)
+      flushChanges();
+    };
+  }, [flushChanges]);
+
 
   return { code, setCode };
 }
