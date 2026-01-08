@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
@@ -24,7 +25,7 @@ export default function Home({ connectId }: { connectId?: string }) {
   const compilerRef = useRef<CompilerRef>(null);
   const isMobile = useIsMobile();
   
-  const [initialCode, setInitialCode] = useState<string | null>(null);
+  const [initialData, setInitialData] = useState<{ code: string, fileName: string } | null>(null);
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
@@ -47,7 +48,11 @@ export default function Home({ connectId }: { connectId?: string }) {
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
-                setInitialCode(docSnap.data()?.code);
+                const data = docSnap.data();
+                setInitialData({
+                    code: data?.code || '',
+                    fileName: data?.fileName || 'shared-code.js'
+                });
             } else {
                 setError(true);
             }
@@ -62,7 +67,7 @@ export default function Home({ connectId }: { connectId?: string }) {
     fetchCode();
   }, [connectId]);
 
-  const { setCode, ...fs } = useCompilerFs({ initialCode });
+  const { setCode, ...fs } = useCompilerFs({ initialCode: initialData?.code });
   const { connectedUsers } = usePresence(connectId);
   
   const [output, setOutput] = useState<RunResult | null>(null);
@@ -83,6 +88,22 @@ export default function Home({ connectId }: { connectId?: string }) {
         }
     }
   }, [settings.outputMode, isMobile]);
+
+  useEffect(() => {
+    if (connectId && initialData && fs.isFsReady) {
+        const sessionFileName = `collab+${initialData.fileName}`;
+        const sessionFolderName = 'Shared Sessions';
+      
+        if (!fs.fileSystem[sessionFolderName]?.[sessionFileName]) {
+            fs.addFile(sessionFolderName, sessionFileName, initialData.code);
+        }
+      
+        const isOpen = fs.openFiles.some(f => f.fileName === sessionFileName && f.folderName === sessionFolderName);
+        if (!isOpen) {
+            fs.loadFile(sessionFolderName, sessionFileName);
+        }
+    }
+  }, [connectId, initialData, fs]);
 
   if (loading) {
     return <LoadingPage />;
@@ -168,3 +189,5 @@ export default function Home({ connectId }: { connectId?: string }) {
     </div>
   );
 }
+
+    

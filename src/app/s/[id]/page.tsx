@@ -12,3 +12,5 @@ export default function SharePage() {
     
     return <Home connectId={id} />;
 }
+
+    

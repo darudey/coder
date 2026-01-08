@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -31,15 +32,15 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
 
-  const [initialCode, setInitialCode] = useState<string | null>(null);
+  const [initialData, setInitialData] = useState<{ code: string, fileName: string } | null>(null);
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
   // This is the key: useCompilerFs manages the local state (history, localstorage)
-  const localFs = useCompilerFs({ initialCode: connectId ? initialCode : undefined });
+  const localFs = useCompilerFs({ initialCode: connectId ? initialData?.code : undefined });
 
   // useRealtimeCode manages the connection to Firebase for collaboration
-  const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialCode);
+  const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialData?.code);
 
   const isRealtime = !!connectId;
 
@@ -54,12 +55,12 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
 
   // When in a realtime session, ensure a local file exists for it.
   useEffect(() => {
-    if (isRealtime && connectId && localFs.isFsReady && initialCode !== null) {
-      const sessionFileName = `s-${connectId}.js`;
+    if (isRealtime && connectId && localFs.isFsReady && initialData) {
+      const sessionFileName = `collab+${initialData.fileName}`;
       const sessionFolderName = 'Shared Sessions';
       
       if (!localFs.fileSystem[sessionFolderName]?.[sessionFileName]) {
-        localFs.addFile(sessionFolderName, sessionFileName, initialCode);
+        localFs.addFile(sessionFolderName, sessionFileName, initialData.code);
       }
       
       const isOpen = localFs.openFiles.some(f => f.fileName === sessionFileName && f.folderName === sessionFolderName);
@@ -67,7 +68,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
         localFs.loadFile(sessionFolderName, sessionFileName);
       }
     }
-  }, [isRealtime, connectId, localFs.isFsReady, initialCode, localFs]);
+  }, [isRealtime, connectId, localFs.isFsReady, initialData, localFs]);
 
   useEffect(() => {
     if (!connectId) {
@@ -88,7 +89,11 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
-              setInitialCode(docSnap.data()?.code);
+              const data = docSnap.data();
+              setInitialData({
+                  code: data?.code || '',
+                  fileName: data?.fileName || 'shared-code.js'
+              });
           } else {
               setError(true);
           }
@@ -511,3 +516,5 @@ declare module '@/components/codeweave/compiler' {
         onStartDebuggerFromLine?: (lineNumber: number) => void;
     }
 }
+
+    
