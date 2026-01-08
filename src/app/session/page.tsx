@@ -20,15 +20,6 @@ import { getClientDb } from '@/lib/firebase';
 import { LoadingPage } from '@/components/loading-page';
 import { notFound } from 'next/navigation';
 
-const factorialCode = `function factorial(n) {
-  if (n === 0) {
-    return 1;
-  }
-  return n * factorial(n - 1);
-}
-
-console.log(factorial(5));`;
-
 const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />);
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
 
@@ -45,7 +36,6 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
 
   useEffect(() => {
     if (!connectId) {
-      setInitialCode(factorialCode);
       setLoading(false);
       return;
     }
@@ -79,7 +69,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   }, [connectId]);
   
   const isRealtime = !!connectId;
-  const fs = !isRealtime ? useCompilerFs({ initialCode }) : null;
+  const fs = useCompilerFs({ initialCode: isRealtime ? initialCode : undefined });
 
   const { connectedUsers } = usePresence(connectId);
   
@@ -407,8 +397,8 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const showSidePanel = !isMobile && settings.outputMode === 'side';
   
   const compilerProps = {
-    ...(!isRealtime && fs ? fs : {}),
-    initialCode: isRealtime ? initialCode : undefined,
+    ...(!isRealtime ? { ...fs } : {}),
+    initialCode: isRealtime ? initialCode ?? undefined : undefined,
     onCodeChange: handleCodeChange,
     connectId: connectId,
   };
