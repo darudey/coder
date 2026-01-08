@@ -30,5 +30,5 @@ export function useCompilerFs(props?: UseCompilerFsProps) {
     setContextCode(newCode);
   }, [setContextCode]);
 
-  return { ...rest, setCode };
+  return { ...rest, code: context.code, setCode };
 }

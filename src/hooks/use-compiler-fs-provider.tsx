@@ -323,7 +323,7 @@ export function CompilerFsProvider({ children }: { children: React.ReactNode }) 
     setActiveFileIndex,
   }), [
     fileSystem, openFiles, activeFileIndex, activeFile, isFsReady, code, history,
-    historyIndex, setCode, loadFile, addFile, createNewFile, closeTab, deleteFile,
+    historyIndex, setCode, setHistory, setHistoryIndex, loadFile, addFile, createNewFile, closeTab, deleteFile,
     renameFile, setActiveFileIndex
   ]);
 
