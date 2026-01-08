@@ -442,7 +442,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         }
         const docRef = await addDoc(collection(db, "shares"), {
             code: codeToShare,
-            fileName: activeFile?.fileName || 'shared-code.js',
         });
 
         const url = `${window.location.origin}/s/${docRef.id}`;
@@ -455,7 +454,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     } finally {
         setIsSharing(false);
     }
-  }, [code, toast, activeFile]);
+  }, [code, toast]);
 
   const handleCopyShareLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -679,5 +678,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
+
+    
 
     

@@ -32,7 +32,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
 
-  const [initialData, setInitialData] = useState<{ code: string, fileName: string } | null>(null);
+  const [initialData, setInitialData] = useState<{ code: string } | null>(null);
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
@@ -56,7 +56,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   // When in a realtime session, ensure a local file exists for it.
   useEffect(() => {
     if (isRealtime && connectId && localFs.isFsReady && initialData) {
-      const sessionFileName = `collab+${initialData.fileName}`;
+      const sessionFileName = `collab_${connectId.slice(0, 8)}.js`;
       const sessionFolderName = 'Shared Sessions';
       
       if (!localFs.fileSystem[sessionFolderName]?.[sessionFileName]) {
@@ -92,7 +92,6 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
               const data = docSnap.data();
               setInitialData({
                   code: data?.code || '',
-                  fileName: data?.fileName || 'shared-code.js'
               });
           } else {
               setError(true);
@@ -516,5 +515,7 @@ declare module '@/components/codeweave/compiler' {
         onStartDebuggerFromLine?: (lineNumber: number) => void;
     }
 }
+
+    
 
     

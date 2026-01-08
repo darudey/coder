@@ -25,7 +25,7 @@ export default function Home({ connectId }: { connectId?: string }) {
   const compilerRef = useRef<CompilerRef>(null);
   const isMobile = useIsMobile();
   
-  const [initialData, setInitialData] = useState<{ code: string, fileName: string } | null>(null);
+  const [initialData, setInitialData] = useState<{ code: string } | null>(null);
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
@@ -51,7 +51,6 @@ export default function Home({ connectId }: { connectId?: string }) {
                 const data = docSnap.data();
                 setInitialData({
                     code: data?.code || '',
-                    fileName: data?.fileName || 'shared-code.js'
                 });
             } else {
                 setError(true);
@@ -91,7 +90,7 @@ export default function Home({ connectId }: { connectId?: string }) {
 
   useEffect(() => {
     if (connectId && initialData && fs.isFsReady) {
-        const sessionFileName = `collab+${initialData.fileName}`;
+        const sessionFileName = `collab_${connectId.slice(0, 8)}.js`;
         const sessionFolderName = 'Shared Sessions';
       
         if (!fs.fileSystem[sessionFolderName]?.[sessionFileName]) {
@@ -189,5 +188,7 @@ export default function Home({ connectId }: { connectId?: string }) {
     </div>
   );
 }
+
+    
 
     
