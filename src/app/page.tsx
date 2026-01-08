@@ -62,7 +62,7 @@ export default function Home({ connectId }: { connectId?: string }) {
     fetchCode();
   }, [connectId]);
 
-  const fs = useCompilerFs({ initialCode });
+  const { setCode, ...fs } = useCompilerFs({ initialCode });
   const { connectedUsers } = usePresence(connectId);
   
   const [output, setOutput] = useState<RunResult | null>(null);
@@ -94,15 +94,37 @@ export default function Home({ connectId }: { connectId?: string }) {
 
   const showSidePanel = !isMobile && settings.outputMode === 'side';
 
+  const compilerProps = {
+      code: fs.code,
+      onCodeChange: setCode,
+      fileSystem: fs.fileSystem,
+      openFiles: fs.openFiles,
+      activeFileIndex: fs.activeFileIndex,
+      activeFile: fs.activeFile,
+      isFsReady: fs.isFsReady,
+      history: fs.history,
+      historyIndex: fs.historyIndex,
+      setHistory: fs.setHistory,
+      setHistoryIndex: fs.setHistoryIndex,
+      loadFile: fs.loadFile,
+      addFile: fs.addFile,
+      createNewFile: fs.createNewFile,
+      closeTab: fs.closeTab,
+      deleteFile: fs.deleteFile,
+      renameFile: fs.renameFile,
+      setActiveFileIndex: fs.setActiveFileIndex,
+      connectedUsers: connectedUsers,
+      connectId: connectId,
+  };
+
+
   if (!showSidePanel) {
     return (
         <div className="bg-background min-h-screen">
             <Compiler 
               ref={compilerRef} 
               onRun={handleRun} 
-              {...fs} 
-              connectedUsers={connectedUsers} 
-              connectId={connectId}
+              {...compilerProps}
             />
         </div>
     );
@@ -138,9 +160,7 @@ export default function Home({ connectId }: { connectId?: string }) {
                  <Compiler 
                     ref={compilerRef} 
                     onRun={handleRun} 
-                    {...fs}
-                    connectedUsers={connectedUsers} 
-                    connectId={connectId}
+                    {...compilerProps}
                  />
             </div>
             {SidePanelOutput}

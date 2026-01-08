@@ -19,6 +19,7 @@ import { getDoc, doc } from 'firebase/firestore';
 import { getClientDb } from '@/lib/firebase';
 import { LoadingPage } from '@/components/loading-page';
 import { notFound } from 'next/navigation';
+import { useRealtimeCode } from '@/hooks/use-realtime-code';
 
 const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />);
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
@@ -34,27 +35,39 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
+  // This is the key: useCompilerFs manages the local state (history, localstorage)
+  const localFs = useCompilerFs({ initialCode: connectId ? initialCode : undefined });
+
+  // useRealtimeCode manages the connection to Firebase for collaboration
+  const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialCode);
+
   const isRealtime = !!connectId;
-  const fs = useCompilerFs({ initialCode: isRealtime ? initialCode : undefined });
+
+  // This effect is the bridge: it syncs the realtime code back into the local filesystem hook.
+  // This ensures that all save operations (auto and manual) work correctly.
+  useEffect(() => {
+    if (isRealtime && realtimeCode !== localFs.code) {
+      localFs.setCode(realtimeCode);
+    }
+  }, [isRealtime, realtimeCode, localFs.code, localFs.setCode]);
+
 
   // When in a realtime session, ensure a local file exists for it.
   useEffect(() => {
-    if (isRealtime && connectId && fs.isFsReady && initialCode !== null) {
+    if (isRealtime && connectId && localFs.isFsReady && initialCode !== null) {
       const sessionFileName = `s-${connectId}.js`;
       const sessionFolderName = 'Shared Sessions';
       
-      // Check if the file already exists in the file system state
-      if (!fs.fileSystem[sessionFolderName]?.[sessionFileName]) {
-        fs.addFile(sessionFolderName, sessionFileName, initialCode);
+      if (!localFs.fileSystem[sessionFolderName]?.[sessionFileName]) {
+        localFs.addFile(sessionFolderName, sessionFileName, initialCode);
       }
       
-      // Check if the file is currently open
-      const isOpen = fs.openFiles.some(f => f.fileName === sessionFileName && f.folderName === sessionFolderName);
+      const isOpen = localFs.openFiles.some(f => f.fileName === sessionFileName && f.folderName === sessionFolderName);
       if (!isOpen) {
-        fs.loadFile(sessionFolderName, sessionFileName);
+        localFs.loadFile(sessionFolderName, sessionFileName);
       }
     }
-  }, [isRealtime, connectId, fs.isFsReady, initialCode, fs]);
+  }, [isRealtime, connectId, localFs.isFsReady, initialCode, localFs]);
 
   useEffect(() => {
     if (!connectId) {
@@ -93,12 +106,17 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const { connectedUsers } = usePresence(connectId);
   
   const handleCodeChange = useCallback((newCode: string) => {
-    // This no longer needs to set code via fs.setCode
-    // The Compiler component will handle its own state.
+    // If in a realtime session, send changes to firebase.
+    // Otherwise, the local file system hook will handle it.
+    if (isRealtime) {
+        setRealtimeCode(newCode);
+    }
+    localFs.setCode(newCode);
+
     setCurrentStep(1);
     setIsPlaying(false);
     setLineExecutionCounts({});
-  }, []);
+  }, [isRealtime, setRealtimeCode, localFs]);
 
 
   const [activeLine, setActiveLine] = useState(0);
@@ -223,14 +241,14 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
 
 
   const timeline = useMemo(() => {
-    const codeToGenerate = fs?.code ?? initialCode ?? '';
+    const codeToGenerate = localFs.code ?? '';
     try {
       return generateTimeline(codeToGenerate);
     } catch (e: any) {
       console.error(e);
       return [{ step: 0, line: 0, variables: {}, heap: {}, stack: [], output: [`Error: ${e.message}`] }];
     }
-  }, [fs?.code, initialCode]);
+  }, [localFs.code]);
 
   const currentState = timeline[currentStep];
 
@@ -416,8 +434,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const showSidePanel = !isMobile && settings.outputMode === 'side';
   
   const compilerProps = {
-    ...(!isRealtime ? { ...fs } : {}),
-    initialCode: isRealtime ? initialCode ?? undefined : undefined,
+    ...localFs,
     onCodeChange: handleCodeChange,
     connectId: connectId,
   };
@@ -435,7 +452,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
-                    hasActiveFile={!isRealtime ? !!fs?.activeFile : true}
+                    hasActiveFile={!isRealtime ? !!localFs?.activeFile : true}
                     onRun={handleRun}
                     variant="default"
                     onResetDebugger={reset}
@@ -456,7 +473,7 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
                     onToggleDebugger={() => setShowDebugger(s => !s)}
                     activeLine={activeLine}
                     lineExecutionCounts={lineExecutionCounts}
-                    hasActiveFile={!isRealtime ? !!fs?.activeFile : true}
+                    hasActiveFile={!isRealtime ? !!localFs?.activeFile : true}
                     onRun={handleRun}
                     variant="default"
                     onResetDebugger={reset}

@@ -3,8 +3,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { getClientDb, getClientRtdb } from '@/lib/firebase';
-import { ref as rtdbRef, onValue, set, serverTimestamp } from 'firebase/database';
+import { getClientDb } from '@/lib/firebase';
 import { CodeEditor } from './code-editor';
 import { Header } from './header';
 import { SettingsPanel } from './settings-panel';
@@ -16,11 +15,10 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { TabBar } from './tab-bar';
 import { Switch } from '../ui/switch';
-import { Copy, Grab, X, GripHorizontal, Play, Zap, RefreshCw } from 'lucide-react';
+import { Copy, Grab, X, GripHorizontal, Play } from 'lucide-react';
 import { DotLoader } from './dot-loader';
 import { errorCheck } from '@/ai/flows/error-checking';
 import { useGoogleDrive } from '@/hooks/use-google-drive';
-import { useCompilerFs } from '@/hooks/use-compiler-fs';
 import type { ActiveFile, FileSystem } from '@/hooks/use-compiler-fs-provider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader } from '../ui/card';
@@ -48,7 +46,33 @@ export interface Settings {
 }
 
 interface CompilerProps {
-  initialCode?: string | null;
+  // Direct state from parent
+  code: string;
+  onCodeChange: (newCode: string) => void;
+
+  // File system state from parent (useCompilerFs)
+  fileSystem: FileSystem;
+  openFiles: ActiveFile[];
+  activeFileIndex: number;
+  activeFile: ActiveFile | null;
+  isFsReady: boolean;
+  history: string[];
+  historyIndex: number;
+  setHistory: (history: string[]) => void;
+  setHistoryIndex: (index: number) => void;
+  loadFile: (folderName: string, fileName: string) => void;
+  addFile: (folderName: string, fileName: string, content: string) => void;
+  createNewFile: (activate?: boolean) => void;
+  closeTab: (index: number) => void;
+  deleteFile: (folderName: string, fileName: string) => void;
+  renameFile: (index: number, newName: string) => void;
+  setActiveFileIndex: (index: number) => void;
+  
+  // Optional collaboration state from parent
+  connectId?: string;
+  connectedUsers?: ConnectedUser[];
+
+  // Editor-specific props
   variant?: 'default' | 'minimal';
   hideHeader?: boolean;
   EditorComponent?: React.FC<any>;
@@ -60,7 +84,6 @@ interface CompilerProps {
   onToggleBreakpoint?: (lineNumber: number) => void;
   onStartDebuggerFromLine?: (lineNumber: number) => void;
   onRun?: () => Promise<void>;
-  connectId?: string;
 }
 
 export interface CompilerRef {
@@ -105,7 +128,26 @@ const runCodeOnClient = (code: string): Promise<RunResult> => {
 
 
 const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({ 
-    initialCode, 
+    code,
+    onCodeChange,
+    fileSystem,
+    openFiles,
+    activeFileIndex,
+    activeFile,
+    isFsReady,
+    history,
+    historyIndex,
+    setHistory,
+    setHistoryIndex,
+    loadFile,
+    addFile,
+    createNewFile,
+    closeTab,
+    deleteFile,
+    renameFile,
+    setActiveFileIndex,
+    connectId,
+    connectedUsers,
     variant = 'default', 
     hideHeader = false, 
     EditorComponent = CodeEditor, 
@@ -117,7 +159,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     breakpoints,
     onToggleBreakpoint,
     onStartDebuggerFromLine,
-    connectId,
 }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
@@ -128,14 +169,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const isRealtime = !!connectId;
   const myId = useRef(user?.uid || nanoid(8)).current;
   const myName = user?.displayName ?? undefined;
-
-  // --- State Management ---
-  const localFs = useCompilerFs();
-  const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialCode);
-
-  const { code, setCode, fileSystem, openFiles, activeFileIndex, activeFile, isFsReady, loadFile, addFile, createNewFile, closeTab, deleteFile, renameFile, setActiveFileIndex, history, historyIndex, setHistoryIndex } = isRealtime ? { ...localFs, code: realtimeCode, setCode: setRealtimeCode } : localFs;
   
-  const { connectedUsers } = usePresence(connectId);
   const { cursors, updateCursor } = useRealtimeCursor(connectId, myId, myName);
 
   const [isCompiling, setIsCompiling] = useState(false);
@@ -151,13 +185,11 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const [shareLink, setShareLink] = useState('');
   const [isSharing, setIsSharing] = useState(false);
 
-  // State for draggable panel
   const [position, setPosition] = React.useState({ top: 80, left: window.innerWidth / 2 + 100 });
   const [isDragging, setIsDragging] = React.useState(false);
   const dragStartPos = React.useRef({ x: 0, y: 0 });
   const elementStartPos = React.useRef({ top: 0, left: 0 });
   
-  // State for resizable panel
   const [resizeMode, setResizeMode] = React.useState<'height' | 'width-left' | 'width-right' | null>(null);
   const [panelSize, setPanelSize] = React.useState({ width: Math.max(350, window.innerWidth / 6), height: 400 });
   const resizeStartPos = React.useRef({ x: 0, y: 0, width: 0, height: 0, left: 0 });
@@ -179,7 +211,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    // Prevent the default touch action, like scrolling
     e.preventDefault();
     setIsDragging(true);
     const touch = e.touches[0];
@@ -273,33 +304,29 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
 
   const undo = useCallback(() => {
-    if (isRealtime || !localFs) return;
-    if (historyIndex && historyIndex > 0 && setHistoryIndex) {
+    if (historyIndex > 0) {
       setHistoryIndex(prev => prev - 1);
     }
-  }, [isRealtime, localFs, historyIndex, setHistoryIndex]);
+  }, [historyIndex, setHistoryIndex]);
 
   const redo = useCallback(() => {
-    if (isRealtime || !localFs) return;
-    if (history && historyIndex && setHistoryIndex && historyIndex < history.length - 1) {
+    if (historyIndex < history.length - 1) {
       setHistoryIndex(prev => prev + 1);
     }
-  }, [isRealtime, localFs, history, historyIndex, setHistoryIndex]);
+  }, [history, historyIndex, setHistoryIndex]);
 
   const handleRun = useCallback(async (): Promise<RunResult> => {
-    // Determine if we should open a modal/floating panel
     const showFloating = globalSettings.outputMode === 'floating';
     
     if (variant !== 'minimal' && showFloating) {
         setIsCompiling(true);
         setIsResultOpen(true);
-        setOutput(null); // Clear previous output
+        setOutput(null);
     } else if (variant !== 'minimal') {
         setIsCompiling(true);
         setOutput(null);
     }
     
-    // Client-side syntax check
     try {
         acorn.parse(code, { ecmaVersion: 'latest', silent: false });
     } catch (e: any) {
@@ -352,7 +379,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
     useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            if (e.altKey && e.key.toLowerCase() === 'n' && createNewFile) {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 createNewFile(true);
             }
@@ -384,7 +411,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   }
 
   const handleOpenFileFromDrive = useCallback(() => {
-    if(!addFile) return;
     openFileFromDrive((fileName, content) => {
       addFile('Google Drive', fileName, content);
       toast({
@@ -424,7 +450,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         console.error("Sharing failed: ", e);
         toast({ title: 'Error', description: 'Failed to share code. Please try again.', variant: 'destructive' });
         setShareLink('');
-        setShareDialogOpen(false); // Close dialog on error
+        setShareDialogOpen(false);
     } finally {
         setIsSharing(false);
     }
@@ -453,7 +479,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const hasActiveFile = isRealtime || (!!activeFile);
 
   if (!isRealtime && !isFsReady && variant === 'default') {
-    return null; // Or a loading spinner for the main compiler
+    return null;
   }
 
   const editorVisible = isRealtime || (variant === 'default' ? hasActiveFile : true);
@@ -562,7 +588,7 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
         {editorVisible ? (
             <EditorComponent
                 code={code || ''}
-                onCodeChange={setCode}
+                onCodeChange={onCodeChange}
                 onUndo={undo}
                 onRedo={redo}
                 onDeleteFile={!isRealtime && activeFile ? () => deleteFile?.(activeFile.folderName, activeFile.fileName) : () => {}}
