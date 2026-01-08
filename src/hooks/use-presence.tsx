@@ -63,7 +63,7 @@ export function usePresence(sessionId?: string, adminId?: string) {
                 isAdmin: id === currentAdminId,
             }));
             setConnectedUsers(usersList);
-          }, { onlyOnce: true });
+          });
 
       });
 
