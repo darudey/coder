@@ -290,9 +290,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     
     const pos = textarea.selectionStart;
     const coords = getCaretCoordinates(textarea, pos);
-    onCursorChange(coords.top, coords.left, coords.height);
-
-  }, [onCursorChange]);
+    const scrollTop = textarea.scrollTop || 0;
+    
+    onCursorChange(coords.top + scrollTop, coords.left, coords.height);
+}, [onCursorChange]);
   
   const handleSelectionChange = React.useCallback(() => {
     const ta = textareaRef.current;
@@ -307,8 +308,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     }
     setCursorLine(line);
     setMatchedBrackets(findMatchingBracket(code, index));
-    handleCursorMove();
-  }, [code, handleCursorMove]);
+  }, [code]);
 
   const handleEnterPress = React.useCallback(() => {
     const textarea = textareaRef.current;
@@ -360,6 +360,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const handleNativeKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
+
+        const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (arrowKeys.includes(e.key)) {
+            setTimeout(handleCursorMove, 0);
+        }
 
         if(e.altKey && e.key.toLowerCase() === 's') {
             e.preventDefault();
@@ -635,7 +640,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             return;
         }
 
-    }, [code, onCodeChange, onUndo, onRedo, onRun, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger]);
+    }, [code, onCodeChange, onUndo, onRedo, onRun, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger, handleCursorMove]);
 
   React.useEffect(() => {
     const ta = textareaRef.current;
@@ -646,22 +651,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     });
     observer.observe(ta);
 
-    const handler = () => handleSelectionChange();
-    document.addEventListener('selectionchange', handler);
-    ta.addEventListener('keyup', handler);
-    ta.addEventListener('click', handler);
-
     return () => {
         observer.disconnect();
-        if(document) {
-          document.removeEventListener('selectionchange', handler);
-        }
-        if (ta) {
-          ta.removeEventListener('keyup', handler);
-          ta.removeEventListener('click', handler);
-        }
     };
-  }, [handleSelectionChange, computeWrappedRows]);
+  }, [computeWrappedRows]);
 
   React.useEffect(() => {
     computeWrappedRows();
@@ -923,11 +916,16 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <Textarea
           ref={textareaRef}
           value={code}
-          onChange={(e) => onCodeChange(e.target.value)}
+          onChange={(e) => {
+              onCodeChange(e.target.value);
+              setTimeout(() => handleSelectionChange(), 0);
+          }}
           onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
-          onClick={handleCursorMove}
-          onKeyUp={handleCursorMove}
+          onClick={() => {
+              handleCursorMove();
+              handleSelectionChange();
+          }}
           className={cn(
             'absolute inset-0 w-full h-full resize-none border-0 bg-transparent',
             'focus-visible:ring-0 focus-visible:ring-offset-0 text-transparent caret-foreground',
