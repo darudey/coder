@@ -71,6 +71,8 @@ interface CompilerProps {
   // Optional collaboration state from parent
   connectId?: string;
   connectedUsers?: ConnectedUser[];
+  myId?: string;
+  myName?: string;
 
   // Editor-specific props
   variant?: 'default' | 'minimal';
@@ -148,6 +150,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     setActiveFileIndex,
     connectId,
     connectedUsers,
+    myId,
+    myName,
     variant = 'default', 
     hideHeader = false, 
     EditorComponent = CodeEditor, 
@@ -164,11 +168,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
   const isMobile = useIsMobile();
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
-  const { user } = useAuth();
   
   const isRealtime = !!connectId;
-  const myId = useRef(user?.uid || nanoid(8)).current;
-  const myName = user?.displayName ?? undefined;
   
   const { cursors, updateCursor } = useRealtimeCursor(connectId, myId, myName);
 
@@ -678,7 +679,3 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
 
 CompilerWithRef.displayName = "Compiler";
 export const Compiler = CompilerWithRef;
-
-    
-
-    

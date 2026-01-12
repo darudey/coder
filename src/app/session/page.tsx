@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -21,6 +20,8 @@ import { getClientDb } from '@/lib/firebase';
 import { LoadingPage } from '@/components/loading-page';
 import { notFound } from 'next/navigation';
 import { useRealtimeCode } from '@/hooks/use-realtime-code';
+import { useAuth } from '@/hooks/use-auth';
+import { nanoid } from 'nanoid';
 
 const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />);
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
@@ -32,20 +33,56 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
 
+  const { user } = useAuth();
+  const myId = useRef(user?.uid || nanoid()).current;
+  const myName = user?.displayName ?? undefined;
+
   const [initialData, setInitialData] = useState<{ code: string, adminId?: string } | null>(null);
   const [loading, setLoading] = useState(!!connectId);
   const [error, setError] = useState(false);
 
-  // This is the key: useCompilerFs manages the local state (history, localstorage)
-  const localFs = useCompilerFs({ initialCode: connectId ? initialData?.code : undefined });
+  const fetchCode = useCallback(async () => {
+    if (!connectId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const db = await getClientDb();
+    if (!db) {
+        setError(true);
+        setLoading(false);
+        return;
+    }
+    try {
+        const docRef = doc(db, "shares", connectId);
+        const docSnap = await getDoc(docRef);
 
-  // useRealtimeCode manages the connection to Firebase for collaboration
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            setInitialData({
+                code: data?.code || '',
+                adminId: data?.adminId,
+            });
+        } else {
+            setError(true);
+        }
+    } catch (e) {
+        console.error(e);
+        setError(true);
+    } finally {
+        setLoading(false);
+    }
+  }, [connectId]);
+
+  useEffect(() => {
+    fetchCode();
+  }, [fetchCode]);
+
+  const localFs = useCompilerFs({ initialCode: connectId ? initialData?.code : undefined });
   const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialData?.code);
 
   const isRealtime = !!connectId;
 
-  // This is the bridge: it syncs the realtime code back into the local filesystem hook.
-  // This ensures that all save operations (auto and manual) work correctly.
   useEffect(() => {
     if (isRealtime && realtimeCode !== localFs.code) {
       localFs.setCode(realtimeCode);
@@ -53,7 +90,6 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   }, [isRealtime, realtimeCode, localFs.code, localFs.setCode]);
 
 
-  // When in a realtime session, ensure a local file exists for it.
   useEffect(() => {
     if (isRealtime && connectId && localFs.isFsReady && initialData) {
       const sessionFileName = `collab_${connectId.slice(0, 4)}.js`;
@@ -69,50 +105,10 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
       }
     }
   }, [isRealtime, connectId, localFs.isFsReady, initialData, localFs]);
-
-  useEffect(() => {
-    if (!connectId) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchCode = async () => {
-      setLoading(true);
-      const db = await getClientDb();
-      if (!db) {
-          setError(true);
-          setLoading(false);
-          return;
-      }
-      try {
-          const docRef = doc(db, "shares", connectId);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-              const data = docSnap.data();
-              setInitialData({
-                  code: data?.code || '',
-                  adminId: data?.adminId,
-              });
-          } else {
-              setError(true);
-          }
-      } catch (e) {
-          console.error(e);
-          setError(true);
-      } finally {
-          setLoading(false);
-      }
-    };
-
-    fetchCode();
-  }, [connectId]);
   
   const { connectedUsers } = usePresence(connectId, initialData?.adminId);
   
   const handleCodeChange = useCallback((newCode: string) => {
-    // If in a realtime session, send changes to firebase.
-    // Otherwise, the local file system hook will handle it.
     if (isRealtime) {
         setRealtimeCode(newCode);
     }
@@ -442,6 +438,8 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
     ...localFs,
     onCodeChange: handleCodeChange,
     connectId: connectId,
+    myId: myId,
+    myName: myName,
   };
 
 
