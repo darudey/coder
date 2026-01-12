@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import React from 'react';
@@ -31,7 +32,7 @@ export interface OverlayEditorProps {
   onToggleBreakpoint?: (lineNumber: number) => void;
   onStartDebuggerFromLine?: (lineNumber: number) => void;
   remoteCursors?: RemoteCursor[];
-  onCursorChange?: (top: number, left: number, height: number) => void;
+  onCursorChange?: (lineIndex: number, left: number, height: number) => void;
   myId?: string; // Add myId to props
 }
 
@@ -137,6 +138,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
   const gutterRef = React.useRef<HTMLDivElement | null>(null);
   const measureRef = React.useRef<HTMLDivElement | null>(null);
+  const [cursorLine, setCursorLine] = React.useState(0);
   
   const [foldableRegions, setFoldableRegions] = React.useState<FoldableRegion[]>([]);
   const [collapsedLines, setCollapsedLines] = React.useState<Set<number>>(new Set());
@@ -292,16 +294,23 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const coords = getCaretCoordinates(textarea, pos);
 
     if (onCursorChange) {
-        onCursorChange(coords.top, coords.left, coords.height);
+      let lineIndex = 0;
+      for (let i = 0; i < pos; i++) {
+        if (code[i] === '\n') {
+          lineIndex++;
+        }
+      }
+      onCursorChange(lineIndex, coords.left, coords.height);
     }
-
-    // Update local UI (cursor line, bracket matching)
+    
+    // update local visual state
     let line = 0;
     for (let i = 0; i < pos; i++) {
-        if (code[i] === '\n') {
-            line++;
-        }
+      if (code[i] === '\n') {
+        line++;
+      }
     }
+    setCursorLine(line);
     setMatchedBrackets(findMatchingBracket(code, pos));
   }, [onCursorChange, code]);
 
@@ -356,6 +365,11 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const handleNativeKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
+
+        const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (arrowKeys.includes(e.key)) {
+            setTimeout(handleCursorMove, 0);
+        }
 
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '/') {
             e.preventDefault();
@@ -589,7 +603,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             return;
         }
 
-    }, [code, onCodeChange, onUndo, onRedo, onRun, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger]);
+    }, [code, onCodeChange, onUndo, onRedo, onRun, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger, handleCursorMove]);
 
   React.useEffect(() => {
     const ta = textareaRef.current;
@@ -754,7 +768,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           <div className="flex items-center justify-end w-full h-full pr-2 pl-10">
             <span
               className={cn(
-                'text-xs text-muted-foreground'
+                'text-xs text-muted-foreground',
+                i === cursorLine && 'text-primary font-semibold'
               )}
             >
               {i + 1}
@@ -783,6 +798,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     fontSize,
     foldableRegions,
     collapsedLines,
+    cursorLine,
     isLineVisible,
     toggleFold,
     breakpoints,
@@ -790,6 +806,16 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     onToggleBreakpoint,
     onStartDebuggerFromLine
   ]);
+
+  const getPixelTopFromLineIndex = (lineIndex: number) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return 0;
+    const scrollTop = textarea.scrollTop;
+    const rawTop = lineHeights
+      .slice(0, lineIndex)
+      .reduce((sum, h) => sum + h, 0);
+    return rawTop - scrollTop;
+  };
 
   return (
     <div
@@ -822,8 +848,9 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             {highlightedCode}
             {remoteCursors?.map(cursor => {
                 const color = getUserColor(cursor.userId);
+                if (cursor.lineIndex == null) return null;
 
-                if (typeof cursor.top !== 'number' || typeof cursor.left !== 'number') return null;
+                const top = getPixelTopFromLineIndex(cursor.lineIndex);
 
                 return (
                     <div
@@ -831,7 +858,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                         className="remote-cursor"
                         style={{
                             position: "absolute",
-                            top: cursor.top,
+                            top: top,
                             left: cursor.left,
                             pointerEvents: "none",
                             zIndex: 100,
@@ -861,12 +888,15 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <Textarea
           ref={textareaRef}
           value={code}
-          onChange={(e) => onCodeChange(e.target.value)}
+          onChange={(e) => {
+              onCodeChange(e.target.value);
+              setTimeout(() => handleCursorMove(), 0);
+          }}
           onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
           onClick={handleCursorMove}
-          onKeyUp={handleCursorMove}
           onSelect={handleCursorMove}
+          onKeyUp={handleCursorMove}
           className={cn(
             'absolute inset-0 w-full h-full resize-none border-0 bg-transparent',
             'focus-visible:ring-0 focus-visible:ring-offset-0 text-transparent caret-foreground',
@@ -889,7 +919,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <div
           ref={measureRef}
           className="absolute invisible pointer-events-none"
-          style={{ ...textStyle, padding: 0, border: 0, left: 0, top: 0 }}
+          style={{ ...textStyle, padding: 0, border: 0, left: 0, top: 0, width: 'max-content' }}
         />
       </div>
     </div>

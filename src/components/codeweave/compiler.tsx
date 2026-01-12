@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
@@ -86,6 +87,8 @@ interface CompilerProps {
   onToggleBreakpoint?: (lineNumber: number) => void;
   onStartDebuggerFromLine?: (lineNumber: number) => void;
   onRun?: () => Promise<void>;
+  remoteCursors?: RemoteCursor[];
+  onCursorChange?: (lineIndex: number, left: number, height: number) => void;
 }
 
 export interface CompilerRef {
@@ -163,6 +166,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
     breakpoints,
     onToggleBreakpoint,
     onStartDebuggerFromLine,
+    remoteCursors,
+    onCursorChange,
 }, ref) => {
   const { toast } = useToast();
   const { saveFileToDrive, openFileFromDrive } = useGoogleDrive();
@@ -170,8 +175,6 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
   const { settings: globalSettings, setSettings: setGlobalSettings } = useSettings();
   
   const isRealtime = !!connectId;
-  
-  const { cursors, updateCursor } = useRealtimeCursor(connectId, myId, myName);
 
   const [isCompiling, setIsCompiling] = useState(false);
   const [isAiChecking, setIsAiChecking] = useState(false);
@@ -601,8 +604,8 @@ const CompilerWithRef = forwardRef<CompilerRef, CompilerProps>(({
                 breakpoints={breakpoints}
                 onToggleBreakpoint={onToggleBreakpoint}
                 onStartDebuggerFromLine={onStartDebuggerFromLine}
-                remoteCursors={cursors}
-                onCursorChange={updateCursor}
+                remoteCursors={remoteCursors}
+                onCursorChange={onCursorChange}
             />
         ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">

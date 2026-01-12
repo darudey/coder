@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -22,6 +23,7 @@ import { notFound } from 'next/navigation';
 import { useRealtimeCode } from '@/hooks/use-realtime-code';
 import { useAuth } from '@/hooks/use-auth';
 import { nanoid } from 'nanoid';
+import { useRealtimeCursor } from '@/hooks/use-realtime-cursor';
 
 const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />);
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
@@ -82,6 +84,8 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialData?.code);
 
   const isRealtime = !!connectId;
+
+  const { cursors, updateCursor } = useRealtimeCursor(connectId, myId, myName);
 
   useEffect(() => {
     if (isRealtime && realtimeCode !== localFs.code) {
@@ -463,6 +467,8 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
                     onToggleBreakpoint={handleToggleBreakpoint}
                     onStartDebuggerFromLine={handleStartFromLine}
                     connectedUsers={connectedUsers}
+                    remoteCursors={cursors}
+                    onCursorChange={updateCursor}
                     />
                 </div>
                 <div className="h-full min-h-0 flex flex-col">{SidePanelOutput}</div>
@@ -484,6 +490,8 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
                     onToggleBreakpoint={handleToggleBreakpoint}
                     onStartDebuggerFromLine={handleStartFromLine}
                     connectedUsers={connectedUsers}
+                    remoteCursors={cursors}
+                    onCursorChange={updateCursor}
                 />
             </div>
         )}
@@ -512,5 +520,7 @@ declare module '@/components/codeweave/compiler' {
         breakpoints?: Set<number>;
         onToggleBreakpoint?: (lineNumber: number) => void;
         onStartDebuggerFromLine?: (lineNumber: number) => void;
+        remoteCursors?: RemoteCursor[];
+        onCursorChange?: (lineIndex: number, left: number, height: number) => void;
     }
 }

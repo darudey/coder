@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -9,7 +10,7 @@ import throttle from 'lodash.throttle';
 export interface RemoteCursor {
   userId: string;
   name: string;
-  top: number;
+  lineIndex: number;
   left: number;
   height: number;
 }
@@ -23,7 +24,7 @@ export function useRealtimeCursor(
 
   /* WRITE (throttled) */
   const updateCursor = useRef(
-    throttle(async (top: number, left: number, height: number) => {
+    throttle(async (lineIndex: number, left: number, height: number) => {
       if (!connectId || !myId) return;
       const db = await getClientRtdb();
       if (!db) return;
@@ -34,7 +35,7 @@ export function useRealtimeCursor(
       onDisconnect(cursorRef).remove();
 
       await update(cursorRef, {
-        top,
+        lineIndex,
         left,
         height,
         name: myName ?? 'Guest',
@@ -64,7 +65,7 @@ export function useRealtimeCursor(
           .map(([userId, v]: any) => ({
             userId,
             name: v.name || 'Guest',
-            top: v.top,
+            lineIndex: v.lineIndex,
             left: v.left,
             height: v.height,
           }));
