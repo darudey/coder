@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React from 'react';
@@ -283,32 +282,30 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
     setLineHeights(heights);
   }, [lines, fontSize, isLineVisible]);
-
+  
   const handleCursorMove = React.useCallback(() => {
     const textarea = textareaRef.current;
-    if (!textarea || !onCursorChange) return;
-    
+    if (!textarea) return;
+
     const pos = textarea.selectionStart;
-    const coords = getCaretCoordinates(textarea, pos);
-    const scrollTop = textarea.scrollTop || 0;
+
+    // Update broadcasted cursor position for remote users
+    if (onCursorChange) {
+        const coords = getCaretCoordinates(textarea, pos);
+        const scrollTop = textarea.scrollTop || 0;
+        onCursorChange(coords.top + scrollTop, coords.left, coords.height);
+    }
     
-    onCursorChange(coords.top + scrollTop, coords.left, coords.height);
-}, [onCursorChange]);
-  
-  const handleSelectionChange = React.useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const index = ta.selectionStart ?? 0;
-    
+    // Update local UI (cursor line, bracket matching)
     let line = 0;
-    for (let i = 0; i < index; i++) {
+    for (let i = 0; i < pos; i++) {
         if (code[i] === '\n') {
             line++;
         }
     }
     setCursorLine(line);
-    setMatchedBrackets(findMatchingBracket(code, index));
-  }, [code]);
+    setMatchedBrackets(findMatchingBracket(code, pos));
+  }, [onCursorChange, code]);
 
   const handleEnterPress = React.useCallback(() => {
     const textarea = textareaRef.current;
@@ -360,11 +357,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const handleNativeKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
-
-        const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-        if (arrowKeys.includes(e.key)) {
-            setTimeout(handleCursorMove, 0);
-        }
 
         if(e.altKey && e.key.toLowerCase() === 's') {
             e.preventDefault();
@@ -640,7 +632,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             return;
         }
 
-    }, [code, onCodeChange, onUndo, onRedo, onRun, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger, handleCursorMove]);
+    }, [code, onCodeChange, onUndo, onRedo, onRun, suggestions, activeSuggestion, handleSuggestionSelection, handleEnterPress, handleNavigateSuggestions, onResetDebugger]);
 
   React.useEffect(() => {
     const ta = textareaRef.current;
@@ -658,8 +650,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   React.useEffect(() => {
     computeWrappedRows();
-    handleSelectionChange();
-  }, [code, computeWrappedRows, handleSelectionChange, collapsedLines]);
+    handleCursorMove();
+  }, [code, computeWrappedRows, handleCursorMove, collapsedLines]);
 
   const syncScroll = React.useCallback(() => {
     const ta = textareaRef.current;
@@ -916,16 +908,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <Textarea
           ref={textareaRef}
           value={code}
-          onChange={(e) => {
-              onCodeChange(e.target.value);
-              setTimeout(() => handleSelectionChange(), 0);
-          }}
+          onChange={(e) => onCodeChange(e.target.value)}
           onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
-          onClick={() => {
-              handleCursorMove();
-              handleSelectionChange();
-          }}
+          onClick={handleCursorMove}
           onKeyUp={handleCursorMove}
           onSelect={handleCursorMove}
           className={cn(
@@ -958,3 +944,5 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
+
+    
