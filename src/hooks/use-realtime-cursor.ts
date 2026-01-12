@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
 import { ref, onValue, update, serverTimestamp, onDisconnect } from 'firebase/database';
 import throttle from 'lodash.throttle';
@@ -21,10 +21,11 @@ export function useRealtimeCursor(
   myName?: string,
 ) {
   const [cursors, setCursors] = useState<RemoteCursor[]>([]);
+  const updateCursorRef = useRef<((lineIndex: number, left: number, height: number) => void) | null>(null);
 
   /* WRITE (throttled) */
-  const updateCursor = useRef(
-    throttle(async (lineIndex: number, left: number, height: number) => {
+  useEffect(() => {
+    updateCursorRef.current = throttle(async (lineIndex: number, left: number, height: number) => {
       if (!connectId || !myId) return;
       const db = await getClientRtdb();
       if (!db) return;
@@ -41,8 +42,17 @@ export function useRealtimeCursor(
         name: myName ?? 'Guest',
         updatedAt: serverTimestamp(),
       });
-    }, 120)
-  ).current;
+    }, 120);
+
+    return () => {
+      (updateCursorRef.current as any)?.cancel();
+    };
+  }, [connectId, myId, myName]);
+
+  const updateCursor = useCallback((lineIndex: number, left: number, height: number) => {
+    updateCursorRef.current?.(lineIndex, left, height);
+  }, []);
+
 
   /* READ */
   useEffect(() => {
@@ -60,8 +70,8 @@ export function useRealtimeCursor(
         const now = Date.now();
         const list = Object.entries(data)
           .filter(([id]) => id !== myId)
-          // Filter out cursors that haven't been updated in 2 seconds
-          .filter(([, v]: any) => typeof v.updatedAt === 'number' && now - v.updatedAt < 2000)
+          // Filter out cursors that haven't been updated in 5 seconds
+          .filter(([, v]: any) => typeof v.updatedAt === 'number' && now - v.updatedAt < 5000)
           .map(([userId, v]: any) => ({
             userId,
             name: v.name || 'Guest',
