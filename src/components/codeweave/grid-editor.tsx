@@ -138,8 +138,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const gutterRef = React.useRef<HTMLDivElement | null>(null);
   const measureRef = React.useRef<HTMLDivElement | null>(null);
   
-  const [cursorLine, setCursorLine] = React.useState(0);
-
   const [foldableRegions, setFoldableRegions] = React.useState<FoldableRegion[]>([]);
   const [collapsedLines, setCollapsedLines] = React.useState<Set<number>>(new Set());
   const [matchedBrackets, setMatchedBrackets] = React.useState<[number, number] | null>(null);
@@ -296,7 +294,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     if (onCursorChange) {
         onCursorChange(coords.top, coords.left, coords.height);
     }
-    
+
     // Update local UI (cursor line, bracket matching)
     let line = 0;
     for (let i = 0; i < pos; i++) {
@@ -304,7 +302,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             line++;
         }
     }
-    setCursorLine(line);
     setMatchedBrackets(findMatchingBracket(code, pos));
   }, [onCursorChange, code]);
 
@@ -359,48 +356,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const handleNativeKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
-
-        if(e.altKey && e.key.toLowerCase() === 's') {
-            e.preventDefault();
-            const currentPos = textarea.selectionStart;
-            const nextLinePos = code.indexOf('\n', currentPos);
-            const newPos = nextLinePos === -1 ? code.length : nextLinePos + 1;
-            requestAnimationFrame(() => {
-                textarea.selectionStart = newPos;
-                textarea.selectionEnd = newPos;
-            });
-            return;
-        }
-
-        if(e.altKey && e.key.toLowerCase() === 'w') {
-            e.preventDefault();
-            const currentPos = textarea.selectionStart;
-            const prevLineBreak = code.lastIndexOf('\n', currentPos - 2);
-            const startOfLine = prevLineBreak === -1 ? 0 : prevLineBreak + 1;
-            
-            requestAnimationFrame(() => {
-                textarea.selectionStart = startOfLine;
-                textarea.selectionEnd = startOfLine;
-            });
-            return;
-        }
-
-        if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
-            e.preventDefault();
-            const currentPos = textarea.selectionStart;
-            const textBefore = code.substring(0, currentPos);
-            const reversedText = textBefore.split('').reverse().join('');
-            
-            const match = reversedText.match(/(\s+)|(\w+)|(\S)/);
-            if (match) {
-                const jumpTo = currentPos - (match.index || 0) - match[0].length;
-                requestAnimationFrame(() => {
-                    textarea.selectionStart = jumpTo;
-                    textarea.selectionEnd = jumpTo;
-                });
-            }
-            return;
-        }
 
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '/') {
             e.preventDefault();
@@ -652,8 +607,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 
   React.useEffect(() => {
     computeWrappedRows();
-    handleCursorMove();
-  }, [code, computeWrappedRows, handleCursorMove, collapsedLines]);
+  }, [code, computeWrappedRows, collapsedLines]);
 
   const syncScroll = React.useCallback(() => {
     const ta = textareaRef.current;
@@ -735,7 +689,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <div
           key={i}
           className={cn(
-            i === cursorLine && "bg-slate-700/50",
             "flex"
           )}
           style={getHighlightStyle(i)}
@@ -746,7 +699,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         </div>
       );
     }).filter(Boolean);
-  }, [lines, isLineVisible, collapsedLines, foldableRegions, matchedBrackets, toggleFold, cursorLine, getHighlightStyle]);
+  }, [lines, isLineVisible, collapsedLines, foldableRegions, matchedBrackets, toggleFold, getHighlightStyle]);
 
 
   const gutterRows = React.useMemo(() => {
@@ -801,8 +754,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           <div className="flex items-center justify-end w-full h-full pr-2 pl-10">
             <span
               className={cn(
-                'text-xs text-muted-foreground',
-                i === cursorLine && 'text-foreground font-semibold'
+                'text-xs text-muted-foreground'
               )}
             >
               {i + 1}
@@ -829,7 +781,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     lines,
     lineHeights,
     fontSize,
-    cursorLine,
     foldableRegions,
     collapsedLines,
     isLineVisible,
@@ -871,36 +822,36 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
             {highlightedCode}
             {remoteCursors?.map(cursor => {
                 const color = getUserColor(cursor.userId);
-                
+
                 if (typeof cursor.top !== 'number' || typeof cursor.left !== 'number') return null;
 
                 return (
                     <div
-                      key={cursor.userId}
-                      className="remote-cursor"
-                      style={{
-                        position: 'absolute',
-                        left: cursor.left,
-                        top: cursor.top,
-                        pointerEvents: 'none',
-                        zIndex: 100,
-                      }}
+                        key={cursor.userId}
+                        className="remote-cursor"
+                        style={{
+                            position: "absolute",
+                            top: cursor.top,
+                            left: cursor.left,
+                            pointerEvents: "none",
+                            zIndex: 100,
+                        }}
                     >
-                      <div
-                        className="remote-cursor-label"
-                        style={{
-                          backgroundColor: color,
-                        }}
-                      >
-                        {cursor.name}
-                      </div>
-                      <div
-                        className="remote-cursor-caret"
-                        style={{
-                          backgroundColor: color,
-                          height: cursor.height,
-                        }}
-                      />
+                        <div
+                          className="remote-cursor-label"
+                          style={{
+                            backgroundColor: color,
+                          }}
+                        >
+                          {cursor.name}
+                        </div>
+                        <div
+                          className="remote-cursor-caret"
+                          style={{
+                            backgroundColor: color,
+                            height: cursor.height,
+                          }}
+                        />
                     </div>
                 );
             })}
@@ -910,10 +861,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <Textarea
           ref={textareaRef}
           value={code}
-          onChange={(e) => {
-            onCodeChange(e.target.value);
-            handleCursorMove();
-          }}
+          onChange={(e) => onCodeChange(e.target.value)}
           onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
           onClick={handleCursorMove}
