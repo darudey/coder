@@ -237,4 +237,14 @@ body {
       height: 1.4em; /* same as line height */
       border-radius: 1px;
     }
+    
+    .active-line {
+      background: rgba(100, 150, 255, 0.16) !important;
+      border-left: 3px solid rgba(100, 150, 255, 0.7);
+    }
+    
+    .dark .active-line {
+      background: rgba(120, 160, 255, 0.12) !important;
+      border-left: 3px solid rgba(160, 190, 255, 0.8);
+    }
 }

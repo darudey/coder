@@ -702,8 +702,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <div
           key={i}
           className={cn(
-            "flex",
-            i === cursorLine && 'bg-accent'
+            "flex w-full",
+            i === cursorLine && 'active-line'
           )}
           style={getHighlightStyle(i)}
         >
@@ -730,7 +730,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
       return (
         <div
           key={i}
-          className="group/gutter-line relative flex items-start"
+          className={cn(
+            'group/gutter-line relative flex items-start',
+            i === cursorLine && 'bg-blue-500/20 border-l-2 border-blue-400'
+          )}
           style={{
             height,
             fontFamily: 'var(--font-code)',
