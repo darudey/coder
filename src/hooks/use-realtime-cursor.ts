@@ -59,8 +59,8 @@ export function useRealtimeCursor(
         const now = Date.now();
         const list = Object.entries(data)
           .filter(([id]) => id !== myId)
-          // Filter out cursors that haven't been updated in 10 seconds
-          .filter(([, v]: any) => typeof v.updatedAt === 'number' && now - v.updatedAt < 10000)
+          // Filter out cursors that haven't been updated in 2 seconds
+          .filter(([, v]: any) => typeof v.updatedAt === 'number' && now - v.updatedAt < 2000)
           .map(([userId, v]: any) => ({
             userId,
             name: v.name || 'Guest',
