@@ -732,7 +732,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           key={i}
           className={cn(
             'group/gutter-line relative flex items-start',
-            i === cursorLine && 'bg-blue-500/20 border-l-2 border-blue-400'
+            i === cursorLine && 'bg-blue-500/20'
           )}
           style={{
             height,
