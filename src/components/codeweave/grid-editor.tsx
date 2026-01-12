@@ -926,6 +926,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
               handleCursorMove();
               handleSelectionChange();
           }}
+          onKeyUp={handleCursorMove}
+          onSelect={handleCursorMove}
           className={cn(
             'absolute inset-0 w-full h-full resize-none border-0 bg-transparent',
             'focus-visible:ring-0 focus-visible:ring-offset-0 text-transparent caret-foreground',
