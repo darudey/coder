@@ -1,6 +1,5 @@
 
 
-
 'use client';
 
 import React from 'react';
@@ -703,7 +702,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <div
           key={i}
           className={cn(
-            "flex"
+            "flex",
+            i === cursorLine && 'bg-accent'
           )}
           style={getHighlightStyle(i)}
         >
@@ -713,7 +713,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         </div>
       );
     }).filter(Boolean);
-  }, [lines, isLineVisible, collapsedLines, foldableRegions, matchedBrackets, toggleFold, getHighlightStyle]);
+  }, [lines, isLineVisible, collapsedLines, foldableRegions, matchedBrackets, toggleFold, getHighlightStyle, cursorLine]);
 
 
   const gutterRows = React.useMemo(() => {
@@ -927,5 +927,3 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
 };
 
 export default GridEditor;
-
-    
