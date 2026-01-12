@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -31,6 +32,7 @@ export interface OverlayEditorProps {
   onStartDebuggerFromLine?: (lineNumber: number) => void;
   remoteCursors?: RemoteCursor[];
   onCursorChange?: (top: number, left: number, height: number) => void;
+  myId?: string; // Add myId to props
 }
 
 interface FoldableRegion {
@@ -135,6 +137,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
   const gutterRef = React.useRef<HTMLDivElement | null>(null);
   const measureRef = React.useRef<HTMLDivElement | null>(null);
+  const localScrollTopRef = React.useRef(0); // Track local scroll
+  
   const [cursorLine, setCursorLine] = React.useState(0);
 
   const [foldableRegions, setFoldableRegions] = React.useState<FoldableRegion[]>([]);
@@ -292,8 +296,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     // Update broadcasted cursor position for remote users
     if (onCursorChange) {
         const coords = getCaretCoordinates(textarea, pos);
-        const scrollTop = textarea.scrollTop || 0;
-        onCursorChange(coords.top + scrollTop, coords.left, coords.height);
+        onCursorChange(coords.top + textarea.scrollTop, coords.left, coords.height);
     }
     
     // Update local UI (cursor line, bracket matching)
@@ -657,6 +660,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const ta = textareaRef.current;
     if (!ta) return;
     const scrollTop = ta.scrollTop;
+    localScrollTopRef.current = scrollTop; // Track local scroll
     if (overlayRef.current) overlayRef.current.style.transform = `translateY(-${scrollTop}px)`;
     if (gutterRef.current) gutterRef.current.style.transform = `translateY(-${scrollTop}px)`;
   }, []);
@@ -878,8 +882,8 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                       className="remote-cursor"
                       style={{
                         position: 'absolute',
-                        top: cursor.top,
                         left: cursor.left,
+                        transform: `translateY(${cursor.top - localScrollTopRef.current}px)`,
                         pointerEvents: 'none',
                         zIndex: 100,
                       }}
@@ -908,7 +912,10 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
         <Textarea
           ref={textareaRef}
           value={code}
-          onChange={(e) => onCodeChange(e.target.value)}
+          onChange={(e) => {
+            onCodeChange(e.target.value);
+            setTimeout(() => handleCursorMove(), 0);
+          }}
           onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
           onClick={handleCursorMove}
