@@ -137,7 +137,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
   const overlayRef = React.useRef<HTMLDivElement | null>(null);
   const gutterRef = React.useRef<HTMLDivElement | null>(null);
   const measureRef = React.useRef<HTMLDivElement | null>(null);
-  const localScrollTopRef = React.useRef(0); // Track local scroll
   
   const [cursorLine, setCursorLine] = React.useState(0);
 
@@ -292,10 +291,9 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     if (!textarea) return;
 
     const pos = textarea.selectionStart;
+    const coords = getCaretCoordinates(textarea, pos);
 
-    // Update broadcasted cursor position for remote users
     if (onCursorChange) {
-        const coords = getCaretCoordinates(textarea, pos);
         onCursorChange(coords.top, coords.left, coords.height);
     }
     
@@ -309,6 +307,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     setCursorLine(line);
     setMatchedBrackets(findMatchingBracket(code, pos));
   }, [onCursorChange, code]);
+
 
   const handleEnterPress = React.useCallback(() => {
     const textarea = textareaRef.current;
@@ -660,7 +659,6 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     const ta = textareaRef.current;
     if (!ta) return;
     const scrollTop = ta.scrollTop;
-    localScrollTopRef.current = scrollTop; // Track local scroll
     if (overlayRef.current) overlayRef.current.style.transform = `translateY(-${scrollTop}px)`;
     if (gutterRef.current) gutterRef.current.style.transform = `translateY(-${scrollTop}px)`;
   }, []);
@@ -883,7 +881,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
                       style={{
                         position: 'absolute',
                         left: cursor.left,
-                        transform: `translateY(${cursor.top - localScrollTopRef.current}px)`,
+                        top: cursor.top,
                         pointerEvents: 'none',
                         zIndex: 100,
                       }}
@@ -914,7 +912,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
           value={code}
           onChange={(e) => {
             onCodeChange(e.target.value);
-            setTimeout(() => handleCursorMove(), 0);
+            handleCursorMove();
           }}
           onKeyDown={handleNativeKeyDown}
           onScroll={syncScroll}
