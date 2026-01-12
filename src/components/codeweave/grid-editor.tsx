@@ -296,7 +296,7 @@ export const GridEditor: React.FC<OverlayEditorProps> = ({
     // Update broadcasted cursor position for remote users
     if (onCursorChange) {
         const coords = getCaretCoordinates(textarea, pos);
-        onCursorChange(coords.top + textarea.scrollTop, coords.left, coords.height);
+        onCursorChange(coords.top, coords.left, coords.height);
     }
     
     // Update local UI (cursor line, bracket matching)
