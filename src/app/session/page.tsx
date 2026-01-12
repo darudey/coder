@@ -44,13 +44,13 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
 
   const isRealtime = !!connectId;
 
-  // This effect is the bridge: it syncs the realtime code back into the local filesystem hook.
+  // This is the bridge: it syncs the realtime code back into the local filesystem hook.
   // This ensures that all save operations (auto and manual) work correctly.
   useEffect(() => {
     if (isRealtime && realtimeCode !== localFs.code) {
       localFs.setCode(realtimeCode);
     }
-  }, [isRealtime, realtimeCode, localFs]);
+  }, [isRealtime, realtimeCode, localFs.code, localFs.setCode]);
 
 
   // When in a realtime session, ensure a local file exists for it.
