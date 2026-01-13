@@ -234,7 +234,7 @@ body {
 
     .remote-cursor-caret {
       position: absolute;
-      top: 0;
+      top: 2px;
       width: 2px;
       height: 1.4em; /* same as line height */
       border-radius: 1px;
