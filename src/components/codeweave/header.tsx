@@ -373,42 +373,10 @@ const MemoizedHeader: React.FC<HeaderProps> = ({
                     <span className="sr-only">Debug</span>
                 </Button>
               )}
-               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" disabled={isCompiling} className="h-8 w-8">
-                    <LinkIcon className="w-4 h-4" />
-                    <span className="sr-only">Connection Options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel>Collaboration</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={handleConnect} disabled={!!connectId}>
-                        Start New Session
-                    </DropdownMenuItem>
-                    {connectId && (
-                        <DropdownMenuItem onSelect={handleDisconnect} className="text-destructive focus:text-destructive">
-                            Disconnect
-                        </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                     <div className="p-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <Label htmlFor="debounce-delay-slider">Sync Delay</Label>
-                            <span className="text-muted-foreground">{debounceDelay}ms</span>
-                        </div>
-                        <Slider
-                            id="debounce-delay-slider"
-                            min={50}
-                            max={2000}
-                            step={50}
-                            value={[debounceDelay]}
-                            onValueChange={(value) => setDebounceDelay(value[0])}
-                            className="mt-2"
-                        />
-                    </div>
-                </DropdownMenuContent>
-               </DropdownMenu>
+               <Button variant="outline" size="icon" onClick={handleConnect} disabled={!!connectId || isCompiling} className="h-8 w-8">
+                <LinkIcon className="w-4 h-4" />
+                <span className="sr-only">Start Session</span>
+              </Button>
               <Button variant="outline" size="icon" onClick={onShare} disabled={!hasActiveFile} className="h-8 w-8">
                 <Share2 className="w-4 h-4" />
                 <span className="sr-only">Share</span>
