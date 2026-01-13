@@ -24,6 +24,7 @@ import { useRealtimeCode } from '@/hooks/use-realtime-code';
 import { useAuth } from '@/hooks/use-auth';
 import { nanoid } from 'nanoid';
 import { useRealtimeCursor } from '@/hooks/use-realtime-cursor';
+import { useToast } from '@/hooks/use-toast';
 
 const MemoizedGridEditor = React.memo((props: any) => <GridEditor {...props} />);
 MemoizedGridEditor.displayName = 'MemoizedGridEditor';
@@ -31,6 +32,7 @@ MemoizedGridEditor.displayName = 'MemoizedGridEditor';
 
 export default function SessionPage({ connectId }: { connectId?: string }) {
   const { settings } = useSettings();
+  const { toast } = useToast();
   const [showDebugger, setShowDebugger] = useState(false);
   const isMobile = useIsMobile();
   const compilerRef = useRef<CompilerRef>(null);
@@ -81,7 +83,18 @@ export default function SessionPage({ connectId }: { connectId?: string }) {
   }, [fetchCode]);
 
   const localFs = useCompilerFs({ initialCode: connectId ? initialData?.code : undefined });
-  const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode(connectId, initialData?.code);
+  const { code: realtimeCode, setCode: setRealtimeCode } = useRealtimeCode({
+    connectId,
+    initialCode: initialData?.code,
+    onError: (e) => {
+        console.error("Realtime code error:", e);
+        toast({
+            title: "Connection Error",
+            description: "There was a problem syncing your code. Please check your connection.",
+            variant: "destructive",
+        });
+    }
+  });
 
   const isRealtime = !!connectId;
 
