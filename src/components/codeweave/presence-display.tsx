@@ -10,10 +10,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User, Users, LogOut, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '../ui/button';
+import { useRealtimeConfig } from '@/hooks/use-realtime-config';
+import { Label } from '../ui/label';
+import { Slider } from '../ui/slider';
 
 export interface ConnectedUser {
   id: string;
@@ -29,6 +31,8 @@ interface PresenceDisplayProps {
 }
 
 export const PresenceDisplay: React.FC<PresenceDisplayProps> = ({ users, className, onDisconnect }) => {
+  const { debounceDelay, setDebounceDelay } = useRealtimeConfig();
+
   if (users.length === 0) {
     return null;
   }
@@ -41,7 +45,7 @@ export const PresenceDisplay: React.FC<PresenceDisplayProps> = ({ users, classNa
             <span>{users.length} Connected</span>
         </div>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className="w-56">
+      <DropdownMenuContent align="center" className="w-64">
         <DropdownMenuLabel>Connected Users</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {users.map(user => (
@@ -55,6 +59,22 @@ export const PresenceDisplay: React.FC<PresenceDisplayProps> = ({ users, classNa
             {user.isAdmin && <Crown className="w-4 h-4 text-amber-500 ml-auto" />}
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <div className="p-2">
+            <div className="flex items-center justify-between text-sm">
+                <Label htmlFor="debounce-delay-slider-presence">Sync Delay</Label>
+                <span className="text-muted-foreground">{debounceDelay}ms</span>
+            </div>
+            <Slider
+                id="debounce-delay-slider-presence"
+                min={50}
+                max={2000}
+                step={50}
+                value={[debounceDelay]}
+                onValueChange={(value) => setDebounceDelay(value[0])}
+                className="mt-2"
+            />
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onDisconnect} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
