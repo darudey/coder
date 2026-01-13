@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { getClientRtdb } from '@/lib/firebase';
 import { ref, onValue, update, serverTimestamp } from 'firebase/database';
 import { useDebounce } from './use-debounce';
+import { useRealtimeConfig } from './use-realtime-config';
 
 interface UseRealtimeCodeOptions {
   connectId?: string;
@@ -14,8 +15,9 @@ interface UseRealtimeCodeOptions {
 
 export function useRealtimeCode(options: UseRealtimeCodeOptions) {
   const { connectId, initialCode, onError } = options;
+  const { debounceDelay } = useRealtimeConfig();
   const [code, setCode] = useState(initialCode ?? '');
-  const debouncedCode = useDebounce(code, 250); 
+  const debouncedCode = useDebounce(code, debounceDelay); 
   const lastWrittenCode = useRef<string | null>(null);
 
   // Set initial code only once when it becomes available

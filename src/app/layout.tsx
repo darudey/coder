@@ -8,6 +8,7 @@ import { CoursesProvider } from '@/hooks/use-courses';
 import { GoogleDriveProvider } from '@/hooks/use-google-drive';
 import Script from 'next/script';
 import { CompilerFsProvider } from '@/hooks/use-compiler-fs-provider';
+import { RealtimeConfigProvider } from '@/hooks/use-realtime-config';
 
 export const metadata: Metadata = {
   title: '24hrcoding.netlify',
@@ -39,12 +40,14 @@ export default function RootLayout({
           <AuthProvider>
             <GoogleDriveProvider>
               <CoursesProvider>
-                <CompilerFsProvider>
-                  <MainLayout>
-                    {children}
-                  </MainLayout>
-                  <Toaster />
-                </CompilerFsProvider>
+                <RealtimeConfigProvider>
+                  <CompilerFsProvider>
+                    <MainLayout>
+                      {children}
+                    </MainLayout>
+                    <Toaster />
+                  </CompilerFsProvider>
+                </RealtimeConfigProvider>
               </CoursesProvider>
             </GoogleDriveProvider>
           </AuthProvider>
